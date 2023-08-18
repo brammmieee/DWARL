@@ -1,0 +1,51 @@
+# Map and init/goal pose
+map_res: 0.1 # m/pxl
+map_width: 30 #NOTE: in pixels (don't change when using BARN dataset)
+map_bound_buffer: 0.2
+min_init2goal_dist: 1.5  # min euclid dist betw. init and goal pos. [m]
+
+# Kinodynamic constraint
+control_freq: 20
+sample_time: 0.05
+v_max: 0.2
+v_min: 0
+a_max: 0.3
+a_min: -0.3
+omega_max: 0.6
+omega_min: -0.6
+alpha_max: 0.8
+alpha_min: -0.8
+
+# Dimensions #TODO: get from Webots
+l_wb: 0.242
+r_wheel: 0.048
+lidar_y_pos: -0.07075
+r_quick_check: 0.17888543819998318 #np.linalg.norm([0.16, 0.08])
+z_pos: 0.05
+
+# Precomputations
+num_radii: 30 # !!! check visualisation -> should be some overlap between paths !!!
+delta_dist: 0.02
+polygon_coords: [[0.16, 0.08], [0.16, -0.24], [0.0, -0.4], [-0.16, -0.24], [-0.16, 0.08]]
+num_lidar_rays: 200
+max_lidar_range: 10.0
+gamma_rad_max: 17.5
+new_discretisation: True
+
+# Reward
+v_goal_threshold: 0.1
+wp_tolerance: 0.15
+goal_tolerance: 0.15
+
+c_at_goal: 50.0
+# c_at_wp: 25.0 
+c_progr: 1000.0
+
+c_speed: 2.5 
+c_stuck: 500.0 
+
+# Episode termination
+max_ep_time: 30
+
+# # Plotting
+# step_size: 10 # plotting each stepsize's precomputed polygon/point

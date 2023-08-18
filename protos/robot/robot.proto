@@ -1,0 +1,125 @@
+#VRML_SIM R2022b utf8
+
+IMPORTABLE EXTERNPROTO "../lidar/RpLidarA2.proto"
+
+PROTO robot [
+  field  SFVec3f     translation     0 0 0
+  field  SFRotation  rotation        0 0 1 0
+  field  SFString    name            "robot"  # Is `Robot.name`.
+  field  SFString    controller      "void"   # Is `Robot.controller`.
+  field  MFString    controllerArgs  []       # Is `Robot.controllerArgs`.
+  field  SFString    customData      ""       # Is `Robot.customData`.
+  field  SFBool      supervisor      TRUE     # Is `Robot.supervisor`.
+  field  SFBool      synchronization TRUE     # Is `Robot.synchronization`.
+  field  SFBool      selfCollision   FALSE    # Is `Robot.selfCollision`.
+]
+{
+  Robot {
+    translation IS translation
+    rotation IS rotation
+    controller IS controller
+    controllerArgs IS controllerArgs
+    customData IS customData
+    supervisor IS supervisor
+    synchronization IS synchronization
+    selfCollision IS selfCollision
+    children [
+      RpLidarA2 {
+        name           "lidar"
+        translation    -0.07075 0.000000 0.150000
+      }
+      Solid {
+        name "frame"
+        translation 0.000000 0.000000 -0.017600
+        children [
+          Shape {
+            appearance PBRAppearance {
+              baseColor 0.500000 0.500000 0.500000
+              roughness 1.000000
+              metalness 0
+            }
+            geometry DEF frame Mesh {
+              url "meshes/frame.stl"
+            }
+          }
+        ]
+      }
+      Transform {
+        children [
+          Solid {
+            translation 0.000000 -0.121000 0.000000
+            children [
+              Transform {
+                rotation 1.000000 0.000000 0.000000 1.570796
+                children [
+                  Shape {
+                    appearance PBRAppearance {
+                      baseColor 0.500000 0.500000 0.500000
+                      roughness 1.000000
+                      metalness 0
+                    }
+                    geometry DEF wheel Mesh {
+                      url "meshes/wheel.stl"
+                    }
+                  }
+                ]
+              }
+            ]
+            name "wheel_right_rotation"
+          }
+        ]
+      }
+      Transform {
+        children [
+          Solid {
+            translation 0.000000 0.121000 0.000000
+            children [
+              Transform {
+                rotation -1.000000 0.000000 0.000000 1.570796
+                children [
+                  Shape {
+                    appearance PBRAppearance {
+                      baseColor 0.500000 0.500000 0.500000
+                      roughness 1.000000
+                      metalness 0
+                    }
+                    geometry USE wheel
+                  }
+                ]
+              }
+            ]
+            name "wheel_left_rotation"
+          }
+        ]
+      }
+      Transform {
+        translation 0.0000 0.00000 0.000000
+        children [
+          Solid {
+            translation -0.2775 0.000000 0.000000
+            children [
+              Transform {
+                rotation -1.000000 0.000000 0.000000 1.570796
+                children [
+                  Shape {
+                    appearance PBRAppearance {
+                      baseColor 0.500000 0.500000 0.500000
+                      roughness 1.000000
+                      metalness 0
+                    }
+                    geometry DEF back_wheel Mesh {
+                      url "meshes/back_wheel.stl"
+                    }
+                  }
+                ]
+              }
+            ]
+            name "omni_wheel"
+            contactMaterial "omni_mat"
+          }
+        ]
+      }
+    ]
+    name IS name
+  }
+}
