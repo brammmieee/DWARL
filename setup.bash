@@ -1,11 +1,11 @@
-# adding package details for running GPU enabled docker container
+# Adding package details for running GPU enabled docker container
 curl -s -L https://nvidia.github.io/libnvidia-container/stable/rpm/nvidia-container-toolkit.repo | \
   sudo tee /etc/yum.repos.d/nvidia-container-toolkit.repo
 sudo apt update;
 
-# installing apt packages
+# Installing apt packages
 sudo apt install -y docker
 sudo apt-get install -y nvidia-container-toolkit # enable GPU container
 
-# build image
+# Build docker image (check if build exists with `docker images`)
 docker build -t dwarl_container .
