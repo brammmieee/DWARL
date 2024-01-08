@@ -8,4 +8,4 @@ sudo apt install -y docker
 sudo apt-get install -y nvidia-container-toolkit # enable GPU container
 
 # build image
-docker build -t my_custom_webots .
+docker build -t dwarl_container .
