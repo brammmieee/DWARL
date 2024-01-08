@@ -8,4 +8,4 @@ sudo apt install -y docker
 sudo apt-get install -y nvidia-container-toolkit # enable GPU container
 
 # Build docker image (check if build exists with `docker images`)
-docker build -t dwarl_container .
+docker build -t dwarl_container ../docker
