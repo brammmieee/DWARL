@@ -1,2 +1,4 @@
-numpy
-tensorrt
+numpy==1.26.3
+tensorrt==8.6.1
+matplotlib==3.8.2
+stable-baselines3[extra]==2.2.1

@@ -7,15 +7,11 @@ WORKDIR /DWARL
 # Copy your application code into the container (if applicable)
 COPY . /DWARL
 
-# # Install additional Python packages
-# RUN apt-get update && \
-#     apt-get install -y python3-pip && \
-#     pip3 install -r requirements.txt
+# Install Python package manager packages
+RUN apt update
+RUN apt upgrade -y
+RUN apt install -y python3-pip
 
-# # Set any environment variables as needed
-# ENV WEBOTS_HOME=/usr/local/webots
-# ENV PYTHONPATH=$PYTHONPATH:/usr/local/webots/lib/controller/python
-# ENV PYTHONIOENCODING=$PYTHONIOENCODING:UTF-8
-
-### RUNTIME ###
-CMD ["webots"]
+# Installing required packages
+RUN pip3 install torch --index-url https://download.pytorch.org/whl/cu118
+RUN pip3 install -r /DWARL/requirements.txt
