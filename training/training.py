@@ -63,7 +63,7 @@ env = Monitor(
 
 # ====================================== # Training # ==================================== #
 # %% Model #NOTE: alternatively run the "Loading non-archived model section!"
-model_name = ct.get_file_name_with_date(test_nr_today=2, comment='_less_maps__goal_prog_rew__new_action')
+model_name = ct.get_file_name_with_date(test_nr_today=0, comment='01_09_24_test')
 
 # policy_kwargs = dict(net_arch=dict(pi=[120, 120, 120], vf=[120, 120, 120]))
 # Create the agent
