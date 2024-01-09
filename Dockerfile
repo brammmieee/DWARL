@@ -10,6 +10,7 @@ COPY . /DWARL
 # Install Python package manager packages
 RUN apt update
 RUN apt upgrade -y
+RUN apt install -y jupyter
 RUN apt install -y python3-pip
 
 # Installing required packages

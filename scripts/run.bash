@@ -2,4 +2,4 @@
 xhost +local:root > /dev/null 2>&1
 
 # Run docker container
-docker run --name my_dwarl_container --gpus=all -it -e DISPLAY -v /tmp/.X11-unix:/tmp/.X11-unix:rw dwarl_container
+docker run --name my_dwarl_container --gpus=all -it -e DISPLAY=$DISPLAY -v /tmp/.X11-unix:/tmp/.X11-unix:rw -d dwarl_container
