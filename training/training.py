@@ -230,7 +230,7 @@ obs = env.reset() #options={"map_nr":40, "nominal_dist":1})
 
 # %%
 action = np.array([1.0, 1.0])
-obs, reward, done, info = env.step(action, teleop=False)
+obs, reward, done, _, _ = env.step(action, teleop=False)
 
 # %%
 import time

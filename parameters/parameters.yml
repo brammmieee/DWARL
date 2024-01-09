@@ -2,7 +2,7 @@
 map_res: 0.1 # m/pxl
 map_width: 30 #NOTE: in pixels (don't change when using BARN dataset)
 map_bound_buffer: 0.2
-min_init2goal_dist: 1.5  # min euclid dist betw. init and goal pos. [m]
+min_init2goal_dist: 0.5  # min euclid dist betw. init and goal pos. [m]
 
 # Kinodynamic constraint
 control_freq: 20
