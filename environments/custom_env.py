@@ -7,7 +7,7 @@ from controller import Supervisor, Keyboard
 import numpy as np
 import matplotlib.pyplot as plt
 import utils.custom_tools as ct
-import gym 
+import gymnasium as gym
 from matplotlib.patches import Polygon as plt_polygon
 from shapely.geometry import Point, Polygon
 from shapely.ops import nearest_points
@@ -23,7 +23,7 @@ class CustomEnv(Supervisor, gym.Env):
         self.grids_dir = os.path.join(self.package_dir, 'grids')
         self.worlds_dir = os.path.join(self.package_dir, 'worlds')
         self.env_dir = os.path.join(self.package_dir, 'environments')
-        
+
         # Parameters
         parameters_file = os.path.join(self.params_dir, 'parameters.yml')
         with open(parameters_file, "r") as file:
@@ -33,8 +33,8 @@ class CustomEnv(Supervisor, gym.Env):
 
         # Precomputations
         self.precomputed = ct.precomputations(self.params, visualize=False)
-        
-        # Rendering 
+
+        # Rendering
         assert render_mode is None or render_mode in self.metadata["render_modes"]
         self.render_mode = render_mode
         self.render_init = True
@@ -43,6 +43,9 @@ class CustomEnv(Supervisor, gym.Env):
         # WEBOTS - Starting up a new webots sim and enabling fast modus
         if wb_open:
             world_file = os.path.join(self.worlds_dir, 'webots_world_file.wbt')
+
+            # wb_process = Popen(["xvfb-run", "--auto-servernum", "webots", "--mode=fast", "--no-rendering", "--minimize", "--batch", world_file], stdout=PIPE)
+
             if wb_mode == 'training':
                 wb_process = Popen(['webots','--extern-urls', '--no-rendering', '--mode=fast', world_file], stdout=PIPE)
             elif wb_mode == 'testing':
@@ -54,7 +57,7 @@ class CustomEnv(Supervisor, gym.Env):
             start_index = output.find(ipc_prefix)
             port_nr = output[start_index + len(ipc_prefix):].split('/')[0]
             os.environ["WEBOTS_CONTROLLER_URL"] = ipc_prefix + str(port_nr)
-        
+
         # WEBOTS - Static node references
         super().__init__() # Env class instance (self) inherits Supervisor's methods + Robot's methods
         self.basic_timestep = int(self.getBasicTimeStep())
@@ -87,11 +90,11 @@ class CustomEnv(Supervisor, gym.Env):
             ),
             "dyn_win": gym.spaces.Box(
                 low=np.array([(self.params['omega_min'], self.params['v_min'])]*4),
-                high=np.array([(self.params['omega_max'], self.params['v_max'])]*4),                
+                high=np.array([(self.params['omega_max'], self.params['v_max'])]*4),
                 shape=(4, 2),
                 dtype=np.float64
             ),
-            "goal_vel": gym.spaces.Box( 
+            "goal_vel": gym.spaces.Box(
                 low=np.array([self.precomputed['omega_window_min'], self.precomputed['v_window_min']]),
                 high=np.array([self.precomputed['omega_window_max'], self.precomputed['v_window_max']]),
                 shape=(2,),
@@ -99,14 +102,14 @@ class CustomEnv(Supervisor, gym.Env):
             ),
         })
 
-        # Reward monitoring 
+        # Reward monitoring
         self.reward_monitoring = reward_monitoring
         if self.reward_monitoring == True:
             self.episode_nr = 1
             self.reward_matrix = []
-    
+
     def reset(self, seed=None): #NOTE: removed -> options={"map_nr":1, "nominal_dist":1.0}
-        # super().reset(seed=seed) # RNG seeding only done once (i.e. when value is not None) # TODO: check again 
+        # super().reset(seed=seed) # RNG seeding only done once (i.e. when value is not None) # TODO: check again
 
         # Reset the simulation
         self.simulationReset()
@@ -125,7 +128,7 @@ class CustomEnv(Supervisor, gym.Env):
 
         # Reset episode monitor and reward variables
         self.sim_time = 0.0
-        self.stuck = False 
+        self.stuck = False
         # self.waypoint_list = ct.get_waypoint_list(self.params, self.path)
 
         # WEBOTS - Loading and translating map into position
@@ -140,7 +143,7 @@ class CustomEnv(Supervisor, gym.Env):
         self.robot_rotation_field.setSFRotation([0.0, 0.0, 1.0, self.init_pose[3]])
         super().step(2*self.basic_timestep) #NOTE: 2 timesteps needed in order to succesfully set the init position
 
-        # Reset current vel, action_proj, cur_pos and orient and get local_goal_pos 
+        # Reset current vel, action_proj, cur_pos and orient and get local_goal_pos
         self.cur_vel = np.array([0.0, 0.0])
         self.action_proj = np.array([0.0, 0.0])
         self.cur_pos = np.array(self.robot_node.getPosition())
@@ -151,30 +154,33 @@ class CustomEnv(Supervisor, gym.Env):
         self.observation = self.get_obs()
 
         # Render
-        if self.render_mode != None: 
+        if self.render_mode != None:
             self.render(method='reset')
-        
+
         # Reset reward list
         if self.reward_monitoring == True:
             self.reward_list = []
+        
+        # Set empty info
+        info = {}
 
-        return self.observation #, info
+        return self.observation, info
 
     def step(self, action, teleop=False):
         # Updating previous values before updating
         self.prev_pos = self.cur_pos
         self.prev_observation = self.observation
 
-        # Computing action projection 
+        # Computing action projection
         if teleop == True:
             action = ct.get_teleop_action(self.keyboard)
         self.action_proj = self.get_action_projection(action)
-        
-        # Inacting the action 
-        self.cur_vel = self.action_proj 
+
+        # Inacting the action
+        self.cur_vel = self.action_proj
         pos, orient = ct.compute_new_pose(self.params, self.cur_pos, self.cur_orient_matrix, self.cur_vel)
         self.robot_translation_field.setSFVec3f([pos[0], pos[1], pos[2]])
-        self.robot_rotation_field.setSFRotation([0.0, 0.0, 1.0, orient]) 
+        self.robot_rotation_field.setSFRotation([0.0, 0.0, 1.0, orient])
         super().step(self.basic_timestep) # WEBOTS - Step()
         self.sim_time += self.timestep/1e3 # [s]
 
@@ -185,13 +191,13 @@ class CustomEnv(Supervisor, gym.Env):
 
         # Getting state (NOTE: depend on new cur_pos, cur_vel, sim_time)
         self.observation = self.get_obs()
-        
+
         # Gettting reward (NOTE: depends on current observation)
         self.reward = self.get_reward() # TODO: pass done for time penalty
         done = self.monitor_episode() # TODO: add stuck monitor
 
         # Render (NOTE: depens on all the above)
-        if self.render_mode != None: 
+        if self.render_mode != None:
             self.render(method='step')
 
         # Reward monitoring
@@ -202,38 +208,42 @@ class CustomEnv(Supervisor, gym.Env):
                 ct.write_pickle_file(f'rewards_ep_{self.episode_nr}', os.path.join('training','rewards'), self.reward_matrix)
                 self.episode_nr += 1
 
+        # truncated dummy for adjusted gym -> gymanasium interface (note done=terminated)
+        truncated = False
+
         info = {} # TODO: get_info()
-        return self.observation, self.reward, done, info
+        return self.observation, self.reward, done, truncated, info
 
     def get_obs(self):
         # Getting lidar data and converting to pointcloud
         super().step(self.basic_timestep) #NOTE: only after this timestep will the lidar data of the previous step be available
         lidar_range_image = self.lidar_node.getRangeImage()
         self.lidar_points = ct.lidar_to_point_cloud(self.params, self.precomputed, lidar_range_image)
-        
+
         # Computing observation components
         self.vel_obs, self.vel_obs_mid = ct.compute_velocity_obstacle(self.params, self.lidar_points, self.precomputed)
         self.dyn_win = ct.compute_dynamic_window(self.params, self.cur_vel)
         self.goal_vel = ct.compute_goal_vel_obs(self.params, self.local_goal_pos, self.cur_vel)
 
         observation = {"vel_obs": self.vel_obs_mid, "cur_vel": self.cur_vel, "dyn_win": self.dyn_win, "goal_vel": self.goal_vel}
+        # print(f"{key} = {value}" for key, value in observation.items())
 
         return observation
-       
+
     def get_reward(self):
         # Checking if @ goal with low velocity #NOTE: also used to terminate episode
         arrived_at_goal = False
         if (np.linalg.norm(self.cur_pos[:2] - self.goal_pose[:2]) <= self.params['goal_tolerance']): #and (self.cur_vel[1] < self.params['v_goal_threshold']): #TODO: pass from DONE instead of recompute
-            arrived_at_goal = True #NOTE: arrived with low speed!!!         
+            arrived_at_goal = True #NOTE: arrived with low speed!!!
 
         # Goal/Progress reward
         if arrived_at_goal:
             r_goal = self.params['c_at_goal']
         else:
-            r_goal = self.params['c_progr']*(np.linalg.norm(self.goal_pose[:2] - self.prev_pos[:2]) - np.linalg.norm(self.goal_pose[:2] - self.cur_pos[:2])) 
+            r_goal = self.params['c_progr']*(np.linalg.norm(self.goal_pose[:2] - self.prev_pos[:2]) - np.linalg.norm(self.goal_pose[:2] - self.cur_pos[:2]))
 
         # Time penalty
-        if arrived_at_goal == False: 
+        if arrived_at_goal == False:
             r_speed = -1
         else:
             r_speed = 0
@@ -249,15 +259,15 @@ class CustomEnv(Supervisor, gym.Env):
 
         return reward
 
-    def monitor_episode(self): # Returns the value for done       
+    def monitor_episode(self): # Returns the value for done
         # Arrived at the goal
         if (np.linalg.norm(self.cur_pos[:2] - self.goal_pose[:2]) <= self.params['goal_tolerance']): #and (self.cur_vel[1] < self.params['v_goal_threshold']):
-            return True 
-        
-        # Getting stuck (i.e. there is no safe vel_cmd)
-        if self.stuck: 
             return True
-        
+
+        # Getting stuck (i.e. there is no safe vel_cmd)
+        if self.stuck:
+            return True
+
         # Driving outside map limit
         cur_pos_point = Point(self.cur_pos[0], self.cur_pos[1])
         if not self.map_bounds_polygon.contains(cur_pos_point):
@@ -266,8 +276,8 @@ class CustomEnv(Supervisor, gym.Env):
 
         # When none of the done conditions are met
         else:
-            return False 
-    
+            return False
+
     def get_action_projection(self, action):
         # Project 2D action vector inside the dynamic window
         action_projection = np.array([
@@ -294,7 +304,7 @@ class CustomEnv(Supervisor, gym.Env):
             self.stuck = True
 
         return action_projection
-    
+
     def close(self):
         self.simulationQuit(0)
 
@@ -362,7 +372,7 @@ class CustomEnv(Supervisor, gym.Env):
             if self.render_mode == 'velocity' or self.render_mode == 'full':
                 try:
                     # ax[2] - Clear observation, action and current velocity
-                    if self.vel_obs_mid.shape != (0,): # protect against invalid acces (when no obstacles present and vel_obs is empty)                
+                    if self.vel_obs_mid.shape != (0,): # protect against invalid acces (when no obstacles present and vel_obs is empty)
                         self.vel_obs_mid_plot.remove()
                     self.dyn_window_plot.remove()
                     self.goal_vel_plot.remove()
@@ -377,7 +387,7 @@ class CustomEnv(Supervisor, gym.Env):
                     print("render(): removing velocity plot not possible because it doesn't exist yet")
 
             if self.render_mode == 'trajectory' or self.render_mode == 'full':
-                try:     
+                try:
                     # ax[1] - Clear path and poses
                     self.cur_pos_plot.remove()
                     if method == 'reset':
@@ -400,7 +410,7 @@ class CustomEnv(Supervisor, gym.Env):
             self.dyn_window_plot = self.ax[2].scatter(self.dyn_win[:,0], self.dyn_win[:,1], c='blue')
             self.goal_vel_plot = self.ax[2].scatter(self.observation['goal_vel'][0], self.observation['goal_vel'][1], c='purple')
             # self.goal_vel_line_plot = self.ax[2].plot([0.0, self.goal_vel_ub[0]], [0.0, self.goal_vel_ub[1]], c='purple')
-            # if self.vel_obs.shape != (0,): # protect against invalid acces (when no obstacles present and vel_obs is empty)                
+            # if self.vel_obs.shape != (0,): # protect against invalid acces (when no obstacles present and vel_obs is empty)
             #     vel_obs_patch = plt_polygon(self.vel_obs, alpha=0.17, closed=True, facecolor='black')
             dyn_win_patch = plt_polygon(self.dyn_win, alpha=0.17, closed=True, facecolor='blue')
             # if self.vel_obs.shape != (0,): # protect against invalid acces (when no obstacles present and vel_obs is empty)
@@ -417,7 +427,7 @@ class CustomEnv(Supervisor, gym.Env):
                 grid = np.load(os.path.join(self.grids_dir, 'grid_' + str(self.map_nr) + '.npy'))
                 indices = np.argwhere(grid == 1)
                 x, y = indices[:,0], indices[:,1]
-                self.x_scaled, self.y_scaled = np.multiply(x, self.params['map_res']), np.multiply(y, self.params['map_res'])   
+                self.x_scaled, self.y_scaled = np.multiply(x, self.params['map_res']), np.multiply(y, self.params['map_res'])
                 self.grid_plot = self.ax[1].scatter(self.x_scaled, self.y_scaled, marker='s', c='black')
                 self.path_plot = self.ax[1].scatter(self.path[:,0], self.path[:,1], c='grey', alpha=0.5)
                 self.init_pose_plot = self.ax[1].scatter(self.init_pose[0], self.init_pose[1], c='green')
@@ -428,4 +438,3 @@ class CustomEnv(Supervisor, gym.Env):
 
         self.render_init = False
         self.render_count += 1
-        

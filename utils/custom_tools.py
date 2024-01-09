@@ -334,6 +334,7 @@ def compute_velocity_obstacle(parameters, lidar_points, precomputed):
 
     vel_obs = np.array([omega_obs, v_obs]).T
     vel_obs_mid = np.array([omega_obs_mid, v_obs_mid]).T
+
     return vel_obs, vel_obs_mid
 
 def compute_dynamic_window(parameters, cur_vel):   
@@ -498,9 +499,9 @@ def lidar_to_point_cloud(parameters, precomputed, lidar_range_image):
             lidar_range_image*-precomputed['lidar_sines'], #NOTE: minus because lidar type was set to fixed
             lidar_range_image*-precomputed['lidar_cosines']
             ))
-    # Remove np.inf points (causes issues in search tree)
-    inf_indices = np.isinf(lidar_points).any(axis=1)
-    lidar_points = lidar_points[~inf_indices]
+    # Remove rows (i.e. points) that have np.inf or np.nan in as either x or y value (causes issues in search tree)
+    invalid_indices = np.logical_or(np.isinf(lidar_points).any(axis=1), np.isnan(lidar_points).any(axis=1))
+    lidar_points = lidar_points[~invalid_indices]
 
     # Add lidar position offset
     lidar_points[:,1] += parameters['lidar_y_pos']
