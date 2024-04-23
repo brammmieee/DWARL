@@ -19,3 +19,7 @@ RUN apt install -y python3-pip
 # Installing required packages
 RUN pip3 install torch --index-url https://download.pytorch.org/whl/cu118
 RUN pip3 install -r /DWARL/requirements.txt
+
+# Jupyter server setup
+EXPOSE 8888
+CMD ["jupyter", "lab", "--ip=0.0.0.0", "--port=8888", "--no-browser", "--allow-root"]

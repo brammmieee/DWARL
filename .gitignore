@@ -1,11 +1,10 @@
-# /maps
-# /protos/converted_maps
-# /paths
 /training/models
 /training/logs
 /training/monitor
 /testing/models
 /testing/logs
 /testing/results
-/environments/__pycache__
-/training/callbacks/__pycache__[~/DWARL] (main *%=)
+
+.ipynb_checkpoints
+.vscode
+__pycache__
