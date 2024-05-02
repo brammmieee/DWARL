@@ -1,0 +1,134 @@
+# %%
+# %load_ext autoreload
+# %autoreload 2 # reloads custom modules into Ipython interpreter
+# %matplotlib qt
+
+# %%
+import os
+import yaml
+import tensorrt
+from datetime import datetime as dt
+import matplotlib.pyplot as plt
+import numpy as np
+from gym.wrappers import TimeLimit
+
+import utils.custom_tools as ct
+from environments.custom_env import CustomEnv
+
+from stable_baselines3.td3 import TD3
+from stable_baselines3.td3.policies import MultiInputPolicy
+from stable_baselines3.ppo import PPO
+from stable_baselines3.ppo.policies import MultiInputPolicy
+
+from stable_baselines3.common.evaluation import evaluate_policy
+from stable_baselines3.common.callbacks import CheckpointCallback, EvalCallback, CallbackList, StopTrainingOnNoModelImprovement
+from stable_baselines3.common.env_util import make_vec_env
+from stable_baselines3.common.monitor import Monitor
+from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
+from stable_baselines3.common.noise import NormalActionNoise, OrnsteinUhlenbeckActionNoise
+
+np.set_printoptions(precision=5, suppress=True)
+
+package_dir = os.path.abspath(os.pardir)
+params_dir = os.path.join(package_dir, 'parameters')
+monitor_dir = os.path.join(os.getcwd(), 'monitor')
+
+parameters_file = os.path.join(params_dir, 'parameters.yml')
+with open(parameters_file, "r") as file:
+    params = yaml.safe_load(file)
+
+# ============================== # Creating the environment # ============================ #
+
+# %% Single envS
+env = CustomEnv(render_mode=None, wb_open=True, wb_mode='training')
+# env = TimeLimit(env, max_episode_steps=(params['max_ep_time']/params['sample_time']))
+# env = Monitor(
+#     env=env,
+#     filename=None,
+#     info_keywords=(),  # can be used for logging the parameters for each test run for instance
+# )
+# vec_env = DummyVecEnv([lambda: env])
+# vec_env = VecNormalize(
+#     venv=vec_env,
+#     training=True,
+#     norm_obs=True,
+#     norm_reward=True,
+#     clip_obs=10.0,
+#     clip_reward=10.0,
+#     gamma=0.99,
+#     epsilon=1e-8,
+#     norm_obs_keys=None,
+# )
+
+# ====================================== # Training # ==================================== #
+# %% Model #NOTE: alternatively run the "Loading non-archived model section!"
+model_name = ct.get_file_name_with_date(test_nr_today=0, comment='01_09_24_test')
+
+# policy_kwargs = dict(net_arch=dict(pi=[120, 120, 120], vf=[120, 120, 120]))
+# Create the agent
+model = PPO(
+    policy=MultiInputPolicy,
+    env=env,
+    tensorboard_log = "./logs/" + model_name,
+    # policy_kwargs = policy_kwargs,
+    # learning_rate= 1e-4,
+    # n_steps = 4000, # increase the
+    # batch_size = 500, # increase batch size
+    # n_epochs = 10,
+    # gamma = 0.999, # more emphasis on future rewards
+    # ent_coef = 0.01, # increase exploration
+)
+
+# %% Callbacks
+checkpoint_callback = CheckpointCallback(
+    save_freq = 10000,
+    save_path = "./models/" + model_name,
+    name_prefix = model_name,
+    save_replay_buffer = False,
+    save_vecnormalize = False,
+    verbose = 0,
+)
+# stop_training_callback = StopTrainingOnNoModelImprovement(
+#     max_no_improvement_evals = 10,
+#     min_evals = 25,
+#     verbose = 1,
+# )
+eval_callback = EvalCallback(
+    eval_env = env,
+    callback_on_new_best = None,
+    callback_after_eval = None,
+    n_eval_episodes = 25,
+    eval_freq = 15000,
+    log_path = None,
+    best_model_save_path = "./models",
+    deterministic = False,
+    render = False,
+    verbose = 0,
+    warn = True,
+)
+callback_list = CallbackList([checkpoint_callback, eval_callback]) #NOTE: can also pass list directly to learn
+
+# %% Train model
+model.learn(
+    total_timesteps=1e8,
+    callback=callback_list,
+    log_interval=10,
+    tb_log_name=model_name,
+    reset_num_timesteps=False,
+    progress_bar=True
+)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
