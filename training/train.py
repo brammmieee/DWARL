@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 
-from environments.custom_env import CustomEnv
-import utils.custom_tools as ct
+from environments.obstacle_velocity_env import CustomEnv
+import utils.admin_tools as at
 
 from stable_baselines3.ppo import PPO
 from stable_baselines3.ppo.policies import MultiInputPolicy
@@ -20,7 +20,7 @@ def main():
     # Model settings
     test_nr_today = 0
     comment = '01_09_24_test'
-    model_name = ct.get_file_name_with_date(test_nr_today, comment)
+    model_name = at.get_file_name_with_date(test_nr_today, comment)
     
     model_save_freq = 1000 # [steps]
     model_eval_freq = 10000 # [steps]

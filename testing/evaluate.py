@@ -1,5 +1,5 @@
 # %%
-from environments.custom_env import CustomEnv
+from environments.obstacle_velocity_env import CustomEnv
 from stable_baselines3.common.evaluation import evaluate_policy
 from stable_baselines3.ppo import PPO
 

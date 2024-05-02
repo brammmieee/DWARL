@@ -6,16 +6,18 @@ from subprocess import Popen, PIPE
 from controller import Supervisor, Keyboard
 import numpy as np
 import matplotlib.pyplot as plt
-import utils.custom_tools as ct
+import utils.general_tools as gt
+import utils.admin_tools as at
+import utils.obstacle_velocity_tools as ovt
 import gymnasium as gym
 from matplotlib.patches import Polygon as plt_polygon
 from shapely.geometry import Point, Polygon
 from shapely.ops import nearest_points
 from matplotlib import gridspec
 
-class CustomEnv(Supervisor, gym.Env):
+class CustomTestEnv(Supervisor, gym.Env):
     metadata = {"render_modes": ["full", "position", "velocity", "trajectory"], "render_fps": 4} # TODO: use fps in render function
-    def __init__(self, render_mode=None, wb_open=True, wb_mode='training', reward_monitoring=False):
+    def __init__(self, render_mode=None, wb_open=True, wb_mode='training'):
         # Directories
         self.package_dir = os.path.abspath(os.pardir)
         self.params_dir = os.path.join(self.package_dir, 'parameters')
@@ -24,15 +26,14 @@ class CustomEnv(Supervisor, gym.Env):
         self.worlds_dir = os.path.join(self.package_dir, 'worlds')
         self.env_dir = os.path.join(self.package_dir, 'environments')
 
-        # Parameters
+        # Parameters and map bound
         parameters_file = os.path.join(self.params_dir, 'parameters.yml')
         with open(parameters_file, "r") as file:
             self.params = yaml.safe_load(file)
-        self.train_map_nr_list = ct.read_pickle_file('train_map_nr_list', 'parameters')
-        self.map_bounds_polygon = ct.compute_map_bound_polygon(self.params)
+        self.map_bounds_polygon = gt.compute_map_bound_polygon(self.params)
 
         # Precomputations
-        self.precomputed = ct.precomputations(self.params, visualize=False)
+        self.precomputed = ovt.precomputations(self.params, visualize=False)
 
         # Rendering
         assert render_mode is None or render_mode in self.metadata["render_modes"]
@@ -43,9 +44,6 @@ class CustomEnv(Supervisor, gym.Env):
         # WEBOTS - Starting up a new webots sim and enabling fast modus
         if wb_open:
             world_file = os.path.join(self.worlds_dir, 'webots_world_file.wbt')
-
-            # wb_process = Popen(["xvfb-run", "--auto-servernum", "webots", "--mode=fast", "--no-rendering", "--minimize", "--batch", world_file], stdout=PIPE)
-
             if wb_mode == 'training':
                 wb_process = Popen(['webots','--extern-urls', '--no-rendering', '--mode=fast', world_file], stdout=PIPE)
             elif wb_mode == 'testing':
@@ -102,13 +100,7 @@ class CustomEnv(Supervisor, gym.Env):
             ),
         })
 
-        # Reward monitoring
-        self.reward_monitoring = reward_monitoring
-        if self.reward_monitoring == True:
-            self.episode_nr = 1
-            self.reward_matrix = []
-
-    def reset(self, seed=None): #NOTE: removed -> options={"map_nr":1, "nominal_dist":1.0}
+    def reset(self, options=None, seed=None): #NOTE: removed -> options={"map_nr":1, "nominal_dist":1.0}
         # super().reset(seed=seed) # RNG seeding only done once (i.e. when value is not None) # TODO: check again
 
         # Reset the simulation
@@ -116,20 +108,23 @@ class CustomEnv(Supervisor, gym.Env):
         super().step(self.basic_timestep) #NOTE: super prevents confusion with self.step() defined below
 
         # Setting simulation environment options
-        train_map_nr_idx = random.randint(0, len(self.train_map_nr_list)-1)
-        self.map_nr = self.train_map_nr_list[train_map_nr_idx]
+        self.map_nr = options['map_nr']
+        self.max_ep_time = options['max_ep_time']
+        self.goal_tolerance = options['goal_tolerance']
+        self.plot_trajectories = options['plot_trajectories']
+        self.step_size = options['step_size']
 
         # Loading test path and apply proper scaling
         path = np.load(os.path.join(self.paths_dir, 'path_' + str(self.map_nr) + '.npy'))
         self.path = np.multiply(path, self.params['map_res'])
 
         # Reset init pose, goal pose
-        self.init_pose, self.goal_pose = ct.get_init_and_goal_pose_full_path(path=self.path) #pose -> [x,y,psi]
+        self.init_pose, self.goal_pose = gt.get_init_and_goal_pose_full_path(path=self.path) #pose -> [x,y,psi]
 
-        # Reset episode monitor and reward variables
+        # Reset episode monitor
         self.sim_time = 0.0
         self.stuck = False
-        # self.waypoint_list = ct.get_waypoint_list(self.params, self.path)
+        self.done_cause = None
 
         # WEBOTS - Loading and translating map into position
         self.root_children_field.importMFNodeFromString(position=-1, nodeString='DEF MAP ' + 'yaml_' + str(self.map_nr) + '{}')
@@ -141,14 +136,14 @@ class CustomEnv(Supervisor, gym.Env):
         # WEBOTS - Positioning the robot at init_pos
         self.robot_translation_field.setSFVec3f([self.init_pose[0], self.init_pose[1], self.params['z_pos']]) #TODO: add z_pos to init_pose[2]
         self.robot_rotation_field.setSFRotation([0.0, 0.0, 1.0, self.init_pose[3]])
-        super().step(2*self.basic_timestep) #NOTE: 2 timesteps needed in order to succesfully set the init position
+        super().step(3*self.basic_timestep) #NOTE: 2 timesteps needed in order to succesfully set the init position
 
         # Reset current vel, action_proj, cur_pos and orient and get local_goal_pos
         self.cur_vel = np.array([0.0, 0.0])
         self.action_proj = np.array([0.0, 0.0])
         self.cur_pos = np.array(self.robot_node.getPosition())
         self.cur_orient_matrix = np.array(self.robot_node.getOrientation())
-        self.local_goal_pos = ct.get_local_goal_pos(self.cur_pos, self.cur_orient_matrix, self.goal_pose)
+        self.local_goal_pos = gt.get_local_goal_pos(self.cur_pos, self.cur_orient_matrix, self.goal_pose)
 
         # Getting returned data
         self.observation = self.get_obs()
@@ -157,14 +152,7 @@ class CustomEnv(Supervisor, gym.Env):
         if self.render_mode != None:
             self.render(method='reset')
 
-        # Reset reward list
-        if self.reward_monitoring == True:
-            self.reward_list = []
-        
-        # Set empty info
-        info = {}
-
-        return self.observation, info
+        return self.observation #, info
 
     def step(self, action, teleop=False):
         # Updating previous values before updating
@@ -173,12 +161,12 @@ class CustomEnv(Supervisor, gym.Env):
 
         # Computing action projection
         if teleop == True:
-            action = ct.get_teleop_action(self.keyboard)
+            action = gt.get_teleop_action(self.keyboard)
         self.action_proj = self.get_action_projection(action)
 
         # Inacting the action
         self.cur_vel = self.action_proj
-        pos, orient = ct.compute_new_pose(self.params, self.cur_pos, self.cur_orient_matrix, self.cur_vel)
+        pos, orient = gt.compute_new_pose(self.params, self.cur_pos, self.cur_orient_matrix, self.cur_vel)
         self.robot_translation_field.setSFVec3f([pos[0], pos[1], pos[2]])
         self.robot_rotation_field.setSFRotation([0.0, 0.0, 1.0, orient])
         super().step(self.basic_timestep) # WEBOTS - Step()
@@ -187,94 +175,61 @@ class CustomEnv(Supervisor, gym.Env):
         # Updating prev_pos, cur_pos and cur_orient, and getting new local goal
         self.cur_pos = np.array(self.robot_node.getPosition())
         self.cur_orient_matrix = np.array(self.robot_node.getOrientation())
-        self.local_goal_pos = ct.get_local_goal_pos(self.cur_pos, self.cur_orient_matrix, self.goal_pose)
+        self.local_goal_pos = gt.get_local_goal_pos(self.cur_pos, self.cur_orient_matrix, self.goal_pose)
 
         # Getting state (NOTE: depend on new cur_pos, cur_vel, sim_time)
         self.observation = self.get_obs()
 
-        # Gettting reward (NOTE: depends on current observation)
-        self.reward = self.get_reward() # TODO: pass done for time penalty
+        # Monitoring episode
         done = self.monitor_episode() # TODO: add stuck monitor
 
         # Render (NOTE: depens on all the above)
         if self.render_mode != None:
             self.render(method='step')
 
-        # Reward monitoring
-        if self.reward_monitoring == True:
-            self.reward_list.append(self.reward)
-            if done:
-                self.reward_matrix.append(self.reward_list)
-                ct.write_pickle_file(f'rewards_ep_{self.episode_nr}', os.path.join('training','rewards'), self.reward_matrix)
-                self.episode_nr += 1
+        # Info
+        info = self.get_info()
 
-        # truncated dummy for adjusted gym -> gymanasium interface (note done=terminated)
-        truncated = False
-
-        info = {} # TODO: get_info()
-        return self.observation, self.reward, done, truncated, info
+        return self.observation, done, info
 
     def get_obs(self):
         # Getting lidar data and converting to pointcloud
         super().step(self.basic_timestep) #NOTE: only after this timestep will the lidar data of the previous step be available
         lidar_range_image = self.lidar_node.getRangeImage()
-        self.lidar_points = ct.lidar_to_point_cloud(self.params, self.precomputed, lidar_range_image)
+        self.lidar_points = gt.lidar_to_point_cloud(self.params, self.precomputed, lidar_range_image)
 
         # Computing observation components
-        self.vel_obs, self.vel_obs_mid = ct.compute_velocity_obstacle(self.params, self.lidar_points, self.precomputed)
-        self.dyn_win = ct.compute_dynamic_window(self.params, self.cur_vel)
-        self.goal_vel = ct.compute_goal_vel_obs(self.params, self.local_goal_pos, self.cur_vel)
+        self.vel_obs, self.vel_obs_mid = ovt.compute_velocity_obstacle(self.params, self.lidar_points, self.precomputed)
+        self.dyn_win = ovt.compute_dynamic_window(self.params, self.cur_vel)
+        self.goal_vel = ovt.compute_goal_vel_obs(self.params, self.local_goal_pos, self.cur_vel)
 
         observation = {"vel_obs": self.vel_obs_mid, "cur_vel": self.cur_vel, "dyn_win": self.dyn_win, "goal_vel": self.goal_vel}
-        # print(f"{key} = {value}" for key, value in observation.items())
 
         return observation
 
-    def get_reward(self):
-        # Checking if @ goal with low velocity #NOTE: also used to terminate episode
-        arrived_at_goal = False
-        if (np.linalg.norm(self.cur_pos[:2] - self.goal_pose[:2]) <= self.params['goal_tolerance']): #and (self.cur_vel[1] < self.params['v_goal_threshold']): #TODO: pass from DONE instead of recompute
-            arrived_at_goal = True #NOTE: arrived with low speed!!!
-
-        # Goal/Progress reward
-        if arrived_at_goal:
-            r_goal = self.params['c_at_goal']
-        else:
-            r_goal = self.params['c_progr']*(np.linalg.norm(self.goal_pose[:2] - self.prev_pos[:2]) - np.linalg.norm(self.goal_pose[:2] - self.cur_pos[:2]))
-
-        # Time penalty
-        if arrived_at_goal == False:
-            r_speed = -1
-        else:
-            r_speed = 0
-
-        # Stuck penalty
-        if self.stuck == True:
-            r_stuck = -1.0
-        else:
-            r_stuck = 0.0
-
-        # Total reward
-        reward = r_goal + self.params['c_speed']*r_speed + self.params['c_stuck']*r_stuck
-
-        return reward
+    def get_info(self):
+        info = {'sim_time': self.sim_time, 'done_cause': self.done_cause}
+        return info
 
     def monitor_episode(self): # Returns the value for done
-        # Arrived at the goal
-        if (np.linalg.norm(self.cur_pos[:2] - self.goal_pose[:2]) <= self.params['goal_tolerance']): #and (self.cur_vel[1] < self.params['v_goal_threshold']):
+        if self.sim_time >= self.max_ep_time:
+            self.done_cause = 'timed_out'
             return True
-
+        # Arrived at the goal
+        if (np.linalg.norm(self.cur_pos[:2] - self.goal_pose[:2]) <= self.goal_tolerance): #and (self.cur_vel[1] < self.params['v_goal_threshold']):
+            self.done_cause = 'arrived_at_goal'
+            return True
         # Getting stuck (i.e. there is no safe vel_cmd)
         if self.stuck:
+            self.done_cause = 'got_stuck'
             return True
-
         # Driving outside map limit
         cur_pos_point = Point(self.cur_pos[0], self.cur_pos[1])
         if not self.map_bounds_polygon.contains(cur_pos_point):
             if not self.map_bounds_polygon.boundary.contains(cur_pos_point):
+                self.done_cause = 'out_of_bound'
                 return True
-
-        # When none of the done conditions are met
+        # When non of the done conditions are met
         else:
             return False
 
@@ -323,15 +278,16 @@ class CustomEnv(Supervisor, gym.Env):
             self.ax.append(self.fig.add_subplot(gs[0, 1]))
             self.ax.append(self.fig.add_subplot(gs[1, :]))
 
-            # ax[0] - Lidar data     #NOTE: plots full discretisation (very heavy)
-            # for i in range(len(self.precomputed['radii'])):
-            #     for j in self.precomputed['rough_idx_matrix'][i]:
-            #         point = self.precomputed['points'][i][j]
-            #         self.ax[0].scatter(point[0], point[1], c='grey')
-
-            #         polygon = self.precomputed['polygons'][i][j]
-            #         patch = plt_polygon(np.array(polygon.exterior.coords), alpha=0.075, closed=True, facecolor='grey')
-            #         self.ax[0].add_patch(patch)
+            if self.plot_trajectories:
+                # ax[0] - Lidar data     #NOTE: plots full discretisation (very heavy)
+                for i in range(len(self.precomputed['radii'])):
+                    for j in range(0, len(self.precomputed['points'][i]), self.step_size):
+                        point = self.precomputed['points'][i][j]
+                        self.ax[0].scatter(point[0], point[1], c='grey')
+                    # for j in range(0, len(self.precomputed['polygons'][i]), self.step_size):
+                    #     polygon = self.precomputed['polygons'][i][j]
+                    #     patch = plt_polygon(np.array(polygon.exterior.coords), alpha=0.075, closed=True, facecolor='grey')
+                    #     self.ax[0].add_patch(patch)
 
             # ax[0] - Lidar data     #NOTE: plots footprint polygon only
             polygon = self.precomputed['polygons'][0][0]
@@ -340,8 +296,8 @@ class CustomEnv(Supervisor, gym.Env):
 
             self.ax[0].set_xlim([-1.5,1.5])
             self.ax[0].set_ylim([-1.5,1.5])
-            self.ax[0].set_xlabel('x [m]')
-            self.ax[0].set_ylabel('y [m]')
+            self.ax[0].set_xlabel('x (m)')
+            self.ax[0].set_ylabel('y (m)')
             self.ax[0].set_aspect('equal')
             self.ax[0].grid()
 
@@ -357,8 +313,8 @@ class CustomEnv(Supervisor, gym.Env):
 
             # ax[1] - Path, init pose and goal pose data
             self.ax[1].set_aspect('equal', adjustable='box')
-            self.ax[1].set_xlabel('x [m]')
-            self.ax[1].set_ylabel('y [m]')
+            self.ax[1].set_xlabel('x (m)')
+            self.ax[1].set_ylabel('y (m)')
 
         elif self.render_init == False:
             if self.render_mode == 'position' or self.render_mode == 'full':

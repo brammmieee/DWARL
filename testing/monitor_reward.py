@@ -3,8 +3,8 @@
 
 # %%
 import os
-from environments.custom_env import CustomEnv
-from utils import custom_tools as ct
+from environments.obstacle_velocity_env import CustomEnv
+from utils import admin_tools as at
 import numpy as np
 from stable_baselines3.ppo import PPO
 import matplotlib.pyplot as plt
@@ -45,7 +45,7 @@ while True:
 
 # %%
 # NOTE: use the file_name of with the max ep idx
-reward_matrix = ct.read_pickle_file(file_name='rewards_ep_1', file_dir=os.path.join('training','rewards'))
+reward_matrix = at.read_pickle_file(file_name='rewards_ep_1', file_dir=os.path.join('training','rewards'))
 
 fig, ax = plt.subplots()
 ax.set_xlabel('timestep')

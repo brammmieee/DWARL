@@ -7,8 +7,8 @@
 import os 
 import matplotlib.pyplot as plt
 import numpy as np
-from utils import custom_tools as ct
-from environments.custom_test_env import CustomTestEnv
+from utils import admin_tools as at
+from environments.obstacle_velocity_test_env import CustomTestEnv
 from stable_baselines3.ppo import PPO
 import random
 
@@ -37,7 +37,7 @@ model = PPO.load('models' + '/' + model_name + '/' + model_name + '_' + str(n_st
 
 # =================================== # Running Tests # ================================== #
 # %% Testing variables
-map_nr_list = ct.read_pickle_file('train_map_nr_list', os.path.join('testing', 'map numbers'))
+map_nr_list = at.read_pickle_file('train_map_nr_list', os.path.join('testing', 'map numbers'))
 tests_per_map = 1       # how many itterations to run per map
 time_limit = 30         # terminates test when exceeded [s]
 goal_tolerance = 0.3   # [m]
@@ -91,8 +91,8 @@ for map_nr in map_nr_list:
 env.close()
 print('Testing complete')
 
-ct.write_pickle_file('avg_traversal_time_list', os.path.join('testing','results'), avg_traversal_time_list)
-ct.write_pickle_file('avg_succes_rate_list', os.path.join('testing','results'), avg_succes_rate_list)
+at.write_pickle_file('avg_traversal_time_list', os.path.join('testing','results'), avg_traversal_time_list)
+at.write_pickle_file('avg_succes_rate_list', os.path.join('testing','results'), avg_succes_rate_list)
 
 count = 0
 for item in avg_succes_rate_list:

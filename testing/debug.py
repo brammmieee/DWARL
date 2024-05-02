@@ -2,7 +2,7 @@
 %matplotlib qt
 
 # %%
-from environments.custom_env import CustomEnv
+from environments.obstacle_velocity_env import CustomEnv
 import numpy as np
 
 # %%

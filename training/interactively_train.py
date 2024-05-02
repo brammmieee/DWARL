@@ -1,19 +1,16 @@
 # %%
-# %load_ext autoreload
+%load_ext autoreload
 # %autoreload 2 # reloads custom modules into Ipython interpreter
-# %matplotlib qt
+%matplotlib qt
 
 # %%
 import os
 import yaml
-import tensorrt
-from datetime import datetime as dt
-import matplotlib.pyplot as plt
 import numpy as np
 from gym.wrappers import TimeLimit
 
-import utils.custom_tools as ct
-from environments.custom_env import CustomEnv
+import utils.admin_tools as at
+from environments.obstacle_velocity_env import CustomEnv
 
 from stable_baselines3.td3 import TD3
 from stable_baselines3.td3.policies import MultiInputPolicy
@@ -62,7 +59,7 @@ env = CustomEnv(render_mode=None, wb_open=True, wb_mode='training')
 
 # ====================================== # Training # ==================================== #
 # %% Model #NOTE: alternatively run the "Loading non-archived model section!"
-model_name = ct.get_file_name_with_date(test_nr_today=0, comment='01_09_24_test')
+model_name = at.get_file_name_with_date(test_nr_today=0, comment='01_09_24_test')
 
 # policy_kwargs = dict(net_arch=dict(pi=[120, 120, 120], vf=[120, 120, 120]))
 # Create the agent
@@ -132,3 +129,5 @@ model.learn(
 
 
 
+
+# %%

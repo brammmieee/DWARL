@@ -1,11 +1,11 @@
 #!/usr/bin/python3
 
-from utils import custom_tools as ct
+from utils import admin_tools as at
 import os
 
 # Loading training and testing map nr lists
-train_map_nr_list = ct.read_pickle_file('train_map_nr_list', 'parameters')
-test_map_nr_list = ct.read_pickle_file('test_map_nr_list', 'parameters')
+train_map_nr_list = at.read_pickle_file('train_map_nr_list', 'parameters')
+test_map_nr_list = at.read_pickle_file('test_map_nr_list', 'parameters')
 
 # Creating leveled dicts
 def create_level_dictionary(input_list):
@@ -24,8 +24,8 @@ train_map_nr_dict = create_level_dictionary(train_map_nr_list)
 test_map_nr_dict  = create_level_dictionary(test_map_nr_list)
 
 # Writing to file (NOTE: be cautious, overwrites old ones)
-ct.write_pickle_file('train_map_nr_dict', os.path.join('testing', 'map numbers'), train_map_nr_dict)
-ct.write_pickle_file('test_map_nr_dict', os.path.join('testing', 'map numbers'), test_map_nr_dict)
+at.write_pickle_file('train_map_nr_dict', os.path.join('testing', 'map numbers'), train_map_nr_dict)
+at.write_pickle_file('test_map_nr_dict', os.path.join('testing', 'map numbers'), test_map_nr_dict)
 
 
 
