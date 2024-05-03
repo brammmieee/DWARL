@@ -72,43 +72,41 @@ class ObstacleVelocityObservationWrapper(gym.ObservationWrapper):
         self.idx = self.env.render_init_plot(render_mode, add_plots=1)
         self.ax = self.env.ax
 
-        match render_mode:
-            case 'velocity' | 'full':                     
-                # ax[self.idx] - Observation, action and current velocity
-                self.ax[self.idx].plot([self.params['omega_max'], self.params['omega_max'], self.params['omega_min'], self.params['omega_min']],
-                    [self.params['v_min'], self.params['v_max'], self.params['v_max'], self.params['v_min']], c='blue')
-                self.ax[self.idx].set_xlim([self.precomputed['omega_window_min'],self.precomputed['omega_window_max']])
-                self.ax[self.idx].set_ylim([self.precomputed['v_window_min'],self.precomputed['v_window_max']])
-                self.ax[self.idx].set_xlabel('$\omega$ [rad/s]')
-                self.ax[self.idx].set_ylabel('v [m/s]')
-                self.ax[self.idx].set_aspect('equal')
-                self.ax[self.idx].grid()
+        if render_mode in ['velocity', 'full']:                     
+            # ax[self.idx] - Observation, action and current velocity
+            self.ax[self.idx].plot([self.params['omega_max'], self.params['omega_max'], self.params['omega_min'], self.params['omega_min']],
+                [self.params['v_min'], self.params['v_max'], self.params['v_max'], self.params['v_min']], c='blue')
+            self.ax[self.idx].set_xlim([self.precomputed['omega_window_min'],self.precomputed['omega_window_max']])
+            self.ax[self.idx].set_ylim([self.precomputed['v_window_min'],self.precomputed['v_window_max']])
+            self.ax[self.idx].set_xlabel('$\omega$ [rad/s]')
+            self.ax[self.idx].set_ylabel('v [m/s]')
+            self.ax[self.idx].set_aspect('equal')
+            self.ax[self.idx].grid()
     
     def render_remove_data(self, render_mode, method):
         self.env.render_remove_data(self, render_mode, method)
 
-        match render_mode:
-            case 'velocity' | 'full':
-                try:
-                    # ax[self.idx] - Clear observation, action and current velocity
-                    if self.vel_obs_mid.shape != (0,): # protect against invalid acces (when no obstacles present and vel_obs is empty)
-                        self.vel_obs_mid_plot.remove()
-                    self.dyn_window_plot.remove()
-                    self.goal_vel_plot.remove()
-                    # for list_item in self.goal_vel_line_plot:
-                    #     list_item.remove()
-                    # self.vel_obs_patch_plot.remove()
-                    self.dyn_win_patch_plot.remove()
-                    self.cur_vel_plot.remove()
-                    if method == 'step' and self.render_count >= 2:
-                        self.action_proj_plot.remove()
-                except AttributeError:
-                    print("render(): removing velocity plot not possible because it doesn't exist yet")
-                
+        if render_mode in ['velocity', 'full']:
+            try:
+                # ax[self.idx] - Clear observation, action and current velocity
+                if self.vel_obs_mid.shape != (0,): # protect against invalid acces (when no obstacles present and vel_obs is empty)
+                    self.vel_obs_mid_plot.remove()
+                self.dyn_window_plot.remove()
+                self.goal_vel_plot.remove()
+                # for list_item in self.goal_vel_line_plot:
+                #     list_item.remove()
+                # self.vel_obs_patch_plot.remove()
+                self.dyn_win_patch_plot.remove()
+                self.cur_vel_plot.remove()
+                if method == 'step' and self.render_count >= 2:
+                    self.action_proj_plot.remove()
+            except AttributeError:
+                print("render(): removing velocity plot not possible because it doesn't exist yet")
+            
     def render_add_data(self, render_mode, method):
         self.env.render_add_data(self, render_mode, method)
 
-        if render_mode == 'velocity' or render_mode == 'full':
+        if render_mode in ['velocity', 'full']:
             # ax[self.idx] - Observation, action and current velocity
             if self.vel_obs_mid.shape != (0,): # protect against invalid acces (when no obstacles present and vel_obs is empty)
                 self.vel_obs_mid_plot = self.ax[self.idx].scatter(self.vel_obs_mid[:,0], self.vel_obs_mid[:,1], c='black')

@@ -194,12 +194,11 @@ class BaseEnv(Supervisor, gym.Env):
             return
         
         # Create initial plot or remove data to prepare for new data
-        match self.render_init:
-            case True:
-                self.render_init_plot(self.render_mode)
-            case False:
-                self.render_remove_data(self.render_mode, method)
-                
+        if self.render_init:
+            self.render_init_plot(self.render_mode)
+        else:
+            self.render_remove_data(self.render_mode, method)
+            
         # Add new data to the plot
         self.render_add_data(self.render_mode, method)
         
@@ -229,63 +228,63 @@ class BaseEnv(Supervisor, gym.Env):
                 ax = self.fig.add_subplot(gs[i // 2, i % 2])
             self.ax.append(ax)
         
-        match render_mode:
-            case 'position' | 'full':
-                # ax[0] - Lidar data     #NOTE: plots footprint polygon only
-                polygon = Polygon(self.params['polygon_coords'])
-                patch = plt_polygon(np.array(polygon.exterior.coords), alpha=0.75, closed=True, facecolor='grey')
-                self.ax[0].add_patch(patch)
+        if render_mode in ['position','full']:
+            # ax[0] - Lidar data     #NOTE: plots footprint polygon only
+            polygon = Polygon(self.params['polygon_coords'])
+            patch = plt_polygon(np.array(polygon.exterior.coords), alpha=0.75, closed=True, facecolor='grey')
+            self.ax[0].add_patch(patch)
 
-                self.ax[0].set_xlim([-1.5,1.5])
-                self.ax[0].set_ylim([-1.5,1.5])
-                self.ax[0].set_xlabel('x [m]')
-                self.ax[0].set_ylabel('y [m]')
-                self.ax[0].set_aspect('equal')
-                self.ax[0].grid()
-            case 'trajectory' | 'full':
-                # ax[1] - Path, init pose and goal pose data
-                self.ax[1].set_aspect('equal', adjustable='box')
-                self.ax[1].set_xlabel('x [m]')
-                self.ax[1].set_ylabel('y [m]')
+            self.ax[0].set_xlim([-1.5,1.5])
+            self.ax[0].set_ylim([-1.5,1.5])
+            self.ax[0].set_xlabel('x [m]')
+            self.ax[0].set_ylabel('y [m]')
+            self.ax[0].set_aspect('equal')
+            self.ax[0].grid()
+            
+        if render_mode in ['trajectory', 'full']:
+            # ax[1] - Path, init pose and goal pose data
+            self.ax[1].set_aspect('equal', adjustable='box')
+            self.ax[1].set_xlabel('x [m]')
+            self.ax[1].set_ylabel('y [m]')
         
         return first_idx_add_plot
 
     def render_remove_data(self, render_mode, method):
-        match render_mode:
-            case 'position' | 'full':
-                try:
-                    # ax[0] - Clear lidar data
-                    self.lidar_plot.remove()
-                    self.local_goal_plot.remove()
-                except AttributeError:
-                    print("render(): removing position plot not possible because it doesn't exist yet")
-            case 'trajectory' | 'full':
-                try:
-                    # ax[1] - Clear path and poses
-                    self.cur_pos_plot.remove()
-                    if method == 'reset':
-                        self.grid_plot.remove()
-                        self.path_plot.remove()
-                        self.init_pose_plot.remove()
-                        self.goal_pose_plot.remove()
-                except AttributeError:
-                    print("render(): removing trajectory plot not possible because it doesn't exist yet")
+        if render_mode in ['position', 'full']:
+            try:
+                # ax[0] - Clear lidar data
+                self.lidar_plot.remove()
+                self.local_goal_plot.remove()
+            except AttributeError:
+                print("render(): removing position plot not possible because it doesn't exist yet")
+                
+        if render_mode in ['trajectory', 'full']:
+            try:
+                # ax[1] - Clear path and poses
+                self.cur_pos_plot.remove()
+                if method == 'reset':
+                    self.grid_plot.remove()
+                    self.path_plot.remove()
+                    self.init_pose_plot.remove()
+                    self.goal_pose_plot.remove()
+            except AttributeError:
+                print("render(): removing trajectory plot not possible because it doesn't exist yet")
                 
     def render_add_data(self, render_mode, method):
-        match render_mode:
-            case 'position' | 'full':
-                # ax[0] - Lidar data
-                self.lidar_plot = self.ax[0].scatter(self.lidar_points[:,0], self.lidar_points[:,1], alpha=1.0, c='black')
-                self.local_goal_plot = self.ax[0].scatter(self.local_goal_pos[0], self.local_goal_pos[1], alpha=1.0, c='purple')
-            case 'trajectory' | 'full':
-                # ax[1] - Path and poses
-                self.cur_pos_plot = self.ax[1].scatter(self.cur_pos[0], self.cur_pos[1], c='blue', alpha=0.33)
-                if method == 'reset':
-                    grid = np.load(os.path.join(self.grids_dir, 'grid_' + str(self.map_nr) + '.npy'))
-                    indices = np.argwhere(grid == 1)
-                    x, y = indices[:,0], indices[:,1]
-                    self.x_scaled, self.y_scaled = np.multiply(x, self.params['map_res']), np.multiply(y, self.params['map_res'])
-                    self.grid_plot = self.ax[1].scatter(self.x_scaled, self.y_scaled, marker='s', c='black')
-                    self.path_plot = self.ax[1].scatter(self.path[:,0], self.path[:,1], c='grey', alpha=0.5)
-                    self.init_pose_plot = self.ax[1].scatter(self.init_pose[0], self.init_pose[1], c='green')
-                    self.goal_pose_plot = self.ax[1].scatter(self.goal_pose[0], self.goal_pose[1], c='red')
+        if render_mode in ['position', 'full']:
+            # ax[0] - Lidar data
+            self.lidar_plot = self.ax[0].scatter(self.lidar_points[:,0], self.lidar_points[:,1], alpha=1.0, c='black')
+            self.local_goal_plot = self.ax[0].scatter(self.local_goal_pos[0], self.local_goal_pos[1], alpha=1.0, c='purple')
+            
+        if render_mode in ['trajectory', 'full']:
+            # ax[1] - Path and poses
+            self.cur_pos_plot = self.ax[1].scatter(self.cur_pos[0], self.cur_pos[1], c='blue', alpha=0.33)
+            if method == 'reset':
+                grid = np.load(os.path.join(self.grids_dir, 'grid_' + str(self.map_nr) + '.npy'))
+                indices = np.argwhere(grid == 1)
+                x, y = indices[:,0], indices[:,1]
+                self.x_scaled, self.y_scaled = np.multiply(x, self.params['map_res']), np.multiply(y, self.params['map_res'])
+                self.grid_plot = self.ax[1].scatter(self.x_scaled, self.y_scaled, marker='s', c='black')
+                self.path_plot = self.ax[1].scatter(self.path[:,0], self.path[:,1], c='grey', alpha=0.5)
+                self.init_pose_plot = self.ax[1].scatter(self.init_pose[0], self.init_pose[1], c='green')
+                self.goal_pose_plot = self.ax[1].scatter(self.goal_pose[0], self.goal_pose[1], c='red')
