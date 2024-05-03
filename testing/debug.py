@@ -2,11 +2,15 @@
 %matplotlib qt
 
 # %%
-from environments.base_env import BaseEnv
 import numpy as np
+from environments.base_env import BaseEnv
+from environments.wrappers.obstacle_velocity_observation_wrapper import ObstacleVelocityObservationWrapper as OVOWrapper
 
 # %%
 env = BaseEnv(render_mode='full', wb_open=True, wb_mode='testing', reward_monitoring=False)
+
+# %%
+env = OVOWrapper(BaseEnv(render_mode='full', wb_open=True, wb_mode='testing', reward_monitoring=False))
 
 # %%
 obs = env.reset() #options={"map_nr":40, "nominal_dist":1})

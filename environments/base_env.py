@@ -44,7 +44,7 @@ class BaseEnv(Supervisor, gym.Env):
         # NOTE: u must use an action wrapper to set self.action_space
         # NOTE: u must use an observation wrapper to set self.observation_space
 
-    def reset(self, seed=None):
+    def reset(self, seed=None, options=None):
         # TODO: super().reset(seed=seed) # RNG seeding only done once (i.e. when value is not None)
         
         # Setting map, path and init and goal pose
