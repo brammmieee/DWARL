@@ -65,15 +65,11 @@ class BaseEnv(Supervisor, gym.Env):
 
         return self.observation, {} # = info
 
-    def step(self, action, teleop=False):
+    def step(self, action):
         # Updating previous values before updating
         self.prev_pos = self.cur_pos
         self.prev_observation = self.observation
-
-        # Computing action projection
-        if teleop == True:
-            action = gt.get_teleop_action(self.keyboard)
-            
+           
         # NOTE: u must use an action wrapper for turning the action vector inot a cmd_vel
         self.cmd_vel = action
 
@@ -100,7 +96,7 @@ class BaseEnv(Supervisor, gym.Env):
         # Getting lidar data and converting to pointcloud
         super().step(self.basic_timestep) #NOTE: only after this timestep will the lidar data of the previous step be available
         observation = self.lidar_node.getRangeImage()
-        # NOTE - heavy operation now only used for rendering purposes (TODO check what to do with it since it's already in ov wrapper)
+        # NOTE - heavy operation, now only used for rendering purposes (TODO check what to do with it since it's already in ov wrapper)
         self.lidar_points = gt.lidar_to_point_cloud(self.params, self.precomputed_lidar_values, observation)
 
         return observation
