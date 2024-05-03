@@ -1,0 +1,19 @@
+# Precomputations
+num_radii: 30 # !!! check visualisation -> should be some overlap between paths !!!
+delta_dist: 0.02
+polygon_coords: [[0.16, 0.08], [0.16, -0.24], [0.0, -0.4], [-0.16, -0.24], [-0.16, 0.08]]
+num_lidar_rays: 200
+max_lidar_range: 10.0
+gamma_rad_max: 17.5
+new_discretisation: True
+r_quick_check: 0.17888543819998318 #np.linalg.norm([0.16, 0.08])
+
+# Kinodynamic constraint
+v_max: 0.2
+v_min: 0
+a_max: 0.3
+a_min: -0.3
+omega_max: 0.6
+omega_min: -0.6
+alpha_max: 0.8
+alpha_min: -0.8

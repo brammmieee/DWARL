@@ -10,8 +10,7 @@ def write_pickle_file(file_name, file_dir, value):
         pickle.dump(value, file, protocol=pickle.HIGHEST_PROTOCOL)
     
 def read_pickle_file(file_name, file_dir):
-    package_dir = os.path.abspath(os.pardir)
-    pickle_file_path = os.path.join(package_dir, file_dir, file_name + '.pickle')
+    pickle_file_path = os.path.join(file_dir, file_name + '.pickle')
     with open(pickle_file_path, "rb") as file:
         pickle_file = pickle.load(file)
         return pickle_file

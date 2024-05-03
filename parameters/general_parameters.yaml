@@ -1,0 +1,15 @@
+v_goal_threshold: 0.1
+wp_tolerance: 0.15
+goal_tolerance: 0.15
+min_init2goal_dist: 0.5  # min euclid dist betw. init and goal pos. [m]
+
+map_res: 0.1 # m/pxl
+map_width: 30 #NOTE: in pixels (don't change when using BARN dataset)
+map_bound_buffer: 0.2
+
+sample_time: 0.05
+
+lidar_y_pos: -0.07075
+z_pos: 0.05 # For kinematic robot movement
+
+max_ep_time: 30

@@ -1,0 +1,135 @@
+import os
+import yaml
+import numpy as np
+import gymnasium as gym
+from matplotlib.patches import Polygon as plt_polygon
+
+from environments.base_env import BaseEnv
+import utils.general_tools as gt
+import utils.wrappers.obstacle_velocity_observation_tools as ovt
+
+class ObstacleVelocityObservationWrapper(gym.ObservationWrapper):
+    '''
+    This enviroment wrapper does the following:
+    - Converts the lidar range image observation from BaseEnv to the observation described in the paper.
+    - Adjust the rendering of the observation accordingly.
+    
+    '''
+    def __init__(self, env):
+        super().__init__(env)
+        
+        # Wrapper specific parameters
+        parameters_file = os.path.join(
+            BaseEnv.package_dir, 
+            'parameters', 
+            'wrapper_specific', 
+            'obstacle_velocity_observation_wrapper.yml'
+        )
+        with open(parameters_file, "r") as file:
+            self.params = yaml.safe_load(file)
+        
+        # Precomputations
+        self.precomputed = ovt.precomputations(self.params, visualize=False)
+        
+        # Obstacle velocity observation space
+        self.observation_space = gym.spaces.Dict({
+            "vel_obs": gym.spaces.Box(
+                low=np.array([(self.precomputed['omega_window_min'], self.precomputed['v_window_min'])]*self.params['num_radii']),
+                high=np.array([(self.precomputed['omega_window_max'], self.precomputed['v_window_max'])]*self.params['num_radii']),
+                shape=(self.params['num_radii'], 2),
+                dtype=np.float64
+            ),
+            "cur_vel": gym.spaces.Box(
+                low=np.array([self.params['omega_min'], self.params['v_min']]),
+                high=np.array([self.params['omega_max'], self.params['v_max']]),
+                shape=(2,),
+                dtype=np.float64
+            ),
+            "dyn_win": gym.spaces.Box(
+                low=np.array([(self.params['omega_min'], self.params['v_min'])]*4),
+                high=np.array([(self.params['omega_max'], self.params['v_max'])]*4),
+                shape=(4, 2),
+                dtype=np.float64
+            ),
+            "goal_vel": gym.spaces.Box(
+                low=np.array([self.precomputed['omega_window_min'], self.precomputed['v_window_min']]),
+                high=np.array([self.precomputed['omega_window_max'], self.precomputed['v_window_max']]),
+                shape=(2,),
+                dtype=np.float64
+            ),
+        })
+        
+    def observation(self, obs):
+        # Converting lidar range image (=obs) to pointcloud
+        self.lidar_points = gt.lidar_to_point_cloud(
+            parameters=self.params, 
+            precomputed=self.precomputed, 
+            lidar_range_image=obs
+        )
+
+        # Computing observation components
+        self.vel_obs, self.vel_obs_mid = ovt.compute_velocity_obstacle(self.params, self.lidar_points, self.precomputed)
+        self.dyn_win = ovt.compute_dynamic_window(self.params, self.cur_vel)
+        self.goal_vel = ovt.compute_goal_vel_obs(self.params, self.local_goal_pos, self.cur_vel)
+
+        observation = {"vel_obs": self.vel_obs_mid, "cur_vel": self.cur_vel, "dyn_win": self.dyn_win, "goal_vel": self.goal_vel}
+        # print(f"{key} = {value}" for key, value in observation.items())
+
+        return observation
+    
+    def render_init_plot(self, render_mode):
+        self.idx = self.env.render_init_plot(render_mode, add_plots=1)
+        self.ax = self.env.ax
+
+        match render_mode:
+            case 'velocity' | 'full':                     
+                # ax[self.idx] - Observation, action and current velocity
+                self.ax[self.idx].plot([self.params['omega_max'], self.params['omega_max'], self.params['omega_min'], self.params['omega_min']],
+                    [self.params['v_min'], self.params['v_max'], self.params['v_max'], self.params['v_min']], c='blue')
+                self.ax[self.idx].set_xlim([self.precomputed['omega_window_min'],self.precomputed['omega_window_max']])
+                self.ax[self.idx].set_ylim([self.precomputed['v_window_min'],self.precomputed['v_window_max']])
+                self.ax[self.idx].set_xlabel('$\omega$ [rad/s]')
+                self.ax[self.idx].set_ylabel('v [m/s]')
+                self.ax[self.idx].set_aspect('equal')
+                self.ax[self.idx].grid()
+    
+    def render_remove_data(self, render_mode, method):
+        self.env.render_remove_data(self, render_mode, method)
+
+        match render_mode:
+            case 'velocity' | 'full':
+                try:
+                    # ax[self.idx] - Clear observation, action and current velocity
+                    if self.vel_obs_mid.shape != (0,): # protect against invalid acces (when no obstacles present and vel_obs is empty)
+                        self.vel_obs_mid_plot.remove()
+                    self.dyn_window_plot.remove()
+                    self.goal_vel_plot.remove()
+                    # for list_item in self.goal_vel_line_plot:
+                    #     list_item.remove()
+                    # self.vel_obs_patch_plot.remove()
+                    self.dyn_win_patch_plot.remove()
+                    self.cur_vel_plot.remove()
+                    if method == 'step' and self.render_count >= 2:
+                        self.action_proj_plot.remove()
+                except AttributeError:
+                    print("render(): removing velocity plot not possible because it doesn't exist yet")
+                
+    def render_add_data(self, render_mode, method):
+        self.env.render_add_data(self, render_mode, method)
+
+        if render_mode == 'velocity' or render_mode == 'full':
+            # ax[self.idx] - Observation, action and current velocity
+            if self.vel_obs_mid.shape != (0,): # protect against invalid acces (when no obstacles present and vel_obs is empty)
+                self.vel_obs_mid_plot = self.ax[self.idx].scatter(self.vel_obs_mid[:,0], self.vel_obs_mid[:,1], c='black')
+            self.dyn_window_plot = self.ax[self.idx].scatter(self.dyn_win[:,0], self.dyn_win[:,1], c='blue')
+            self.goal_vel_plot = self.ax[self.idx].scatter(self.observation['goal_vel'][0], self.observation['goal_vel'][1], c='purple')
+            # self.goal_vel_line_plot = self.ax[self.idx].plot([0.0, self.goal_vel_ub[0]], [0.0, self.goal_vel_ub[1]], c='purple')
+            # if self.vel_obs.shape != (0,): # protect against invalid acces (when no obstacles present and vel_obs is empty)
+            #     vel_obs_patch = plt_polygon(self.vel_obs, alpha=0.17, closed=True, facecolor='black')
+            dyn_win_patch = plt_polygon(self.dyn_win, alpha=0.17, closed=True, facecolor='blue')
+            # if self.vel_obs.shape != (0,): # protect against invalid acces (when no obstacles present and vel_obs is empty)
+            #     self.vel_obs_patch_plot = self.ax[self.idx].add_patch(vel_obs_patch)
+            self.dyn_win_patch_plot = self.ax[self.idx].add_patch(dyn_win_patch)
+            self.cur_vel_plot = self.ax[self.idx].scatter(self.cur_vel[0], self.cur_vel[1], c='blue', marker='+', alpha=0.99)
+            if method == 'step':
+                self.action_proj_plot = self.ax[self.idx].scatter(self.action_proj[0], self.action_proj[1], color='green', alpha=0.99)

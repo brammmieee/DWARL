@@ -3,7 +3,7 @@
 
 # %%
 import os
-from environments.obstacle_velocity_env import CustomEnv
+from environments.base_env import CustomEnv
 from utils import admin_tools as at
 import numpy as np
 from stable_baselines3.ppo import PPO

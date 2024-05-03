@@ -10,7 +10,7 @@ import numpy as np
 from gym.wrappers import TimeLimit
 
 import utils.admin_tools as at
-from environments.obstacle_velocity_env import CustomEnv
+from environments.base_env import CustomEnv
 
 from stable_baselines3.td3 import TD3
 from stable_baselines3.td3.policies import MultiInputPolicy

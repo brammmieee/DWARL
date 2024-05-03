@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 
-from environments.obstacle_velocity_env import CustomEnv
+from environments.base_env import CustomEnv
 import utils.admin_tools as at
 
 from stable_baselines3.ppo import PPO
