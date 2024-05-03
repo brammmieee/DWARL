@@ -15,6 +15,7 @@ max_ep_time: 30
 # Dimensions
 lidar_y_pos: -0.07075
 z_pos: 0.05 # For kinematic robot movement
+polygon_coords: [[0.16, 0.08], [0.16, -0.24], [0.0, -0.4], [-0.16, -0.24], [-0.16, 0.08]]
 
 # Kinodynamic parameters
 v_max: 0.2
@@ -25,3 +26,6 @@ omega_max: 0.6
 omega_min: -0.6
 alpha_max: 0.8
 alpha_min: -0.8
+
+# Lidar
+num_lidar_rays: 200 # check if can be removed

@@ -278,12 +278,6 @@ def precomputations(parameters, visualize=False):
                 patch = plt_polygon(np.array(polygon.exterior.coords), alpha=0.1, closed=True, facecolor=colors[color_idx % len(colors)]) 
                 ax.add_patch(patch)
             color_idx += 1
-
-    # ==================== Lidar pointcloud ==================== #
-    lidar_delta_psi = (2 * np.pi) / parameters['num_lidar_rays']
-    lidar_angles = np.arange(0, 2 * np.pi, lidar_delta_psi)
-    lidar_cosines = np.cos(lidar_angles)
-    lidar_sines = np.sin(lidar_angles)
     
     # =================== Precomputed values =================== #
     precomputed = {
@@ -297,8 +291,6 @@ def precomputations(parameters, visualize=False):
         "v_obs_init": v_obs_init,
         "omega_obs_init_mid": omega_obs_init_mid,
         "v_obs_init_mid": v_obs_init_mid,
-        "lidar_cosines": lidar_cosines,
-        "lidar_sines": lidar_sines,
         "rough_idx_matrix": rough_idx_matrix,
         "rough_step_size": rough_step_size,
         "omega_window_min": omega_window_min,

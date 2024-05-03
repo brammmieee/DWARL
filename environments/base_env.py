@@ -11,7 +11,7 @@ import utils.admin_tools as at
 import utils.wrappers.obstacle_velocity_observation_tools as ovt
 import gymnasium as gym
 from matplotlib.patches import Polygon as plt_polygon
-from shapely.geometry import Point
+from shapely.geometry import Point, Polygon
 from matplotlib import gridspec
 
 class BaseEnv(Supervisor, gym.Env):
@@ -28,12 +28,12 @@ class BaseEnv(Supervisor, gym.Env):
         
         # Parameters
         self.params = at.load_parameters("general_parameters.yaml")
+        
+        # Precomputations # TODO: Check if can be removed
+        self.precomputed_lidar_values = gt.precompute_lidar_values(self.params)
 
         # Training maps and map bounds
-        self.train_map_nr_list = at.read_pickle_file('train_map_nr_list', os.path.join(self.params_dir, 'map_number_lists'))
-# # Load dictionaries from JSON files
-# loaded_train_map_nr_dict = at.load_from_json('train_map_nr_dict.json')
-# loaded_test_map_nr_dict = at.load_from_json('test_map_nr_dict.json')
+        self.train_map_nr_list = at.load_from_json('train_map_nr_list.json', os.path.join(self.params_dir, 'map_nrs'))
         self.map_bounds_polygon = gt.compute_map_bound_polygon(self.params)
 
         self.set_render_mode(render_mode)
@@ -43,7 +43,7 @@ class BaseEnv(Supervisor, gym.Env):
         # Space definitions
         # NOTE: u must use an action wrapper to set self.action_space
         # NOTE: u must use an observation wrapper to set self.observation_space
-        
+
     def reset(self, seed=None):
         # TODO: super().reset(seed=seed) # RNG seeding only done once (i.e. when value is not None)
         
@@ -100,6 +100,8 @@ class BaseEnv(Supervisor, gym.Env):
         # Getting lidar data and converting to pointcloud
         super().step(self.basic_timestep) #NOTE: only after this timestep will the lidar data of the previous step be available
         observation = self.lidar_node.getRangeImage()
+        # NOTE - heavy operation now only used for rendering purposes (TODO check what to do with it since it's already in ov wrapper)
+        self.lidar_points = gt.lidar_to_point_cloud(self.params, self.precomputed_lidar_values, observation)
 
         return observation
 
@@ -230,7 +232,7 @@ class BaseEnv(Supervisor, gym.Env):
         match render_mode:
             case 'position' | 'full':
                 # ax[0] - Lidar data     #NOTE: plots footprint polygon only
-                polygon = self.precomputed['polygons'][0][0]
+                polygon = Polygon(self.params['polygon_coords'])
                 patch = plt_polygon(np.array(polygon.exterior.coords), alpha=0.75, closed=True, facecolor='grey')
                 self.ax[0].add_patch(patch)
 

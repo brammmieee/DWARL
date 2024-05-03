@@ -149,6 +149,17 @@ def get_cmd_vel(robot_node):
     lin_vel = np.sqrt(webots_vel[0]**2 + webots_vel[1]**2) # in plane global velocities (x and y) to forward vel
     return np.array([ang_vel, lin_vel])
 
+def precompute_lidar_values(parameters):
+    lidar_delta_psi = (2 * np.pi) / parameters['num_lidar_rays']
+    lidar_angles = np.arange(0, 2 * np.pi, lidar_delta_psi)
+    lidar_cosines = np.cos(lidar_angles)
+    lidar_sines = np.sin(lidar_angles)
+    
+    return {
+        "lidar_cosines": lidar_cosines,
+        "lidar_sines": lidar_sines,
+    }
+
 def lidar_to_point_cloud(parameters, precomputed, lidar_range_image):
     # NOTE: Webots axis conventions w.r.t. the conventions of this package
     with np.errstate(invalid='ignore'): # prevent runtime errors
