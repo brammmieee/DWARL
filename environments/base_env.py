@@ -20,19 +20,20 @@ class BaseEnv(Supervisor, gym.Env):
     
     def __init__(self, render_mode=None, wb_open=True, wb_mode='training', reward_monitoring=False):
         # Directories
-        self.params_dir = os.path.join(BaseEnv.package_dir, 'parameters')
         self.resources_dir = os.path.join(BaseEnv.package_dir, 'resources')
+        self.params_dir = os.path.join(BaseEnv.package_dir, 'parameters')
         self.paths_dir = os.path.join(self.resources_dir, 'paths')
         self.grids_dir = os.path.join(self.resources_dir, 'grids')
         self.worlds_dir = os.path.join(self.resources_dir, 'worlds')
         
         # Parameters
-        parameters_file = os.path.join(self.params_dir, 'general_parameters.yaml')
-        with open(parameters_file, "r") as file:
-            self.params = yaml.safe_load(file)
+        self.params = at.load_parameters("general_parameters.yaml")
 
         # Training maps and map bounds
         self.train_map_nr_list = at.read_pickle_file('train_map_nr_list', os.path.join(self.params_dir, 'map_number_lists'))
+# # Load dictionaries from JSON files
+# loaded_train_map_nr_dict = at.load_from_json('train_map_nr_dict.json')
+# loaded_test_map_nr_dict = at.load_from_json('test_map_nr_dict.json')
         self.map_bounds_polygon = gt.compute_map_bound_polygon(self.params)
 
         self.set_render_mode(render_mode)

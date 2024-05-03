@@ -3,6 +3,8 @@ import gymnasium as gym
 from shapely.geometry import Point, Polygon
 from shapely.ops import nearest_points
 
+import utils.admin_tools as at
+
 class DynamicWindowActionWrapper(gym.ActionWrapper):
     '''
     This enviroment wrapper does the following:
@@ -11,7 +13,8 @@ class DynamicWindowActionWrapper(gym.ActionWrapper):
     '''
     def __init__(self, env):
         super().__init__(env)
-        
+        self.params = at.load_parameters("general_parameters.yaml")
+
         # Define action space
         self.action_space = gym.spaces.Box(low=-1.0, high=1.0, shape=(2,), dtype=np.float32)
         

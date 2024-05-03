@@ -10,7 +10,7 @@ import numpy as np
 from gym.wrappers import TimeLimit
 
 import utils.admin_tools as at
-from environments.base_env import CustomEnv
+from environments.base_env import BaseEnv
 
 from stable_baselines3.td3 import TD3
 from stable_baselines3.td3.policies import MultiInputPolicy
@@ -37,7 +37,7 @@ with open(parameters_file, "r") as file:
 # ============================== # Creating the environment # ============================ #
 
 # %% Single envS
-env = CustomEnv(render_mode=None, wb_open=True, wb_mode='training')
+env = BaseEnv(render_mode=None, wb_open=True, wb_mode='training')
 # env = TimeLimit(env, max_episode_steps=(params['max_ep_time']/params['sample_time']))
 # env = Monitor(
 #     env=env,

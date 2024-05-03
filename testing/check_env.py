@@ -1,5 +1,5 @@
 from stable_baselines3.common.env_checker import check_env
-from environments.base_env import CustomEnv
+from environments.base_env import BaseEnv
 
-env = CustomEnv(render_mode=None, wb_open=True, wb_mode='training')
+env = BaseEnv(render_mode=None, wb_open=True, wb_mode='training')
 check_env(env)

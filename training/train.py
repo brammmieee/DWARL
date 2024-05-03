@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 
-from environments.base_env import CustomEnv
+from environments.base_env import BaseEnv
 import utils.admin_tools as at
 
 from stable_baselines3.ppo import PPO
@@ -31,7 +31,7 @@ def main():
     
     # Creating vectorized environment
     vec_env = make_vec_env(
-        env_id=CustomEnv, 
+        env_id=BaseEnv, 
         n_envs=n_envs, 
         vec_env_cls=SubprocVecEnv, 
         env_kwargs={

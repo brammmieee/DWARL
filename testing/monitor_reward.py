@@ -3,14 +3,14 @@
 
 # %%
 import os
-from environments.base_env import CustomEnv
+from environments.base_env import BaseEnv
 from utils import admin_tools as at
 import numpy as np
 from stable_baselines3.ppo import PPO
 import matplotlib.pyplot as plt
 
 # %% env
-env = CustomEnv(render_mode='trajectory', wb_open=True, wb_mode='testing', reward_monitoring=True)
+env = BaseEnv(render_mode='trajectory', wb_open=True, wb_mode='testing', reward_monitoring=True)
 nr_eps = 1
 
 # %% model

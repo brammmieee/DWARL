@@ -1,11 +1,9 @@
-import os
-import yaml
 import numpy as np
 import gymnasium as gym
 from matplotlib.patches import Polygon as plt_polygon
 
-from environments.base_env import BaseEnv
 import utils.general_tools as gt
+import utils.admin_tools as at
 import utils.wrappers.obstacle_velocity_observation_tools as ovt
 
 class ObstacleVelocityObservationWrapper(gym.ObservationWrapper):
@@ -18,15 +16,8 @@ class ObstacleVelocityObservationWrapper(gym.ObservationWrapper):
     def __init__(self, env):
         super().__init__(env)
         
-        # Wrapper specific parameters
-        parameters_file = os.path.join(
-            BaseEnv.package_dir, 
-            'parameters', 
-            'wrapper_specific', 
-            'obstacle_velocity_observation_wrapper.yml'
-        )
-        with open(parameters_file, "r") as file:
-            self.params = yaml.safe_load(file)
+        # Load wrapper specific and general parameters
+        self.params = at.load_parameters(["general_parameters.yaml", "obstacle_velocity_observation.yaml"])
         
         # Precomputations
         self.precomputed = ovt.precomputations(self.params, visualize=False)

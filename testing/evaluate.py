@@ -1,5 +1,5 @@
 # %%
-from environments.base_env import CustomEnv
+from environments.base_env import BaseEnv
 from stable_baselines3.common.evaluation import evaluate_policy
 from stable_baselines3.ppo import PPO
 
@@ -8,7 +8,7 @@ model_name = 'insert model name'
 n_steps_load = 00000000
 
 # Create env and load model
-env = CustomEnv(render_mode='full', wb_open=True, wb_mode='testing', reward_monitoring=False)
+env = BaseEnv(render_mode='full', wb_open=True, wb_mode='testing', reward_monitoring=False)
 model = PPO.load('./models' + '/' + model_name +  '/' + model_name + '_' + str(n_steps_load) + '_steps')
 model.set_env(env=env)
 
