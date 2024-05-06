@@ -4,7 +4,7 @@ from subprocess import Popen, PIPE
 from controller import Supervisor, Keyboard
 import numpy as np
 import matplotlib.pyplot as plt
-import utils.general_tools as gt
+import utils.base_tools as bt
 import utils.admin_tools as at
 import utils.wrappers.velocity_obstacle_tools as ovt
 import gymnasium as gym
@@ -25,14 +25,14 @@ class BaseEnv(Supervisor, gym.Env):
         self.worlds_dir = os.path.join(self.resources_dir, 'worlds')
         
         # Parameters
-        self.params = at.load_parameters("general_parameters.yaml")
+        self.params = at.load_parameters("base_parameters.yaml")
         
         # Precomputations # TODO: Check if can be removed
-        self.precomputed_lidar_values = gt.precompute_lidar_values(self.params)
+        self.precomputed_lidar_values = bt.precompute_lidar_values(self.params)
 
         # Training maps and map bounds
         self.train_map_nr_list = at.load_from_json('train_map_nr_list.json', os.path.join(self.params_dir, 'map_nrs'))
-        self.map_bounds_polygon = gt.compute_map_bound_polygon(self.params)
+        self.map_bounds_polygon = bt.compute_map_bound_polygon(self.params)
 
         self.set_render_mode(render_mode)
         self.open_webots(wb_open, wb_mode)
@@ -50,13 +50,13 @@ class BaseEnv(Supervisor, gym.Env):
         self.map_nr = self.train_map_nr_list[train_map_nr_idx]
         path = np.load(os.path.join(self.paths_dir, 'path_' + str(self.map_nr) + '.npy'))
         self.path = np.multiply(path, self.params['map_res']) # apply proper scaling
-        self.init_pose, self.goal_pose = gt.get_init_and_goal_pose_full_path(path=self.path) # pose -> [x,y,psi]
+        self.init_pose, self.goal_pose = bt.get_init_and_goal_pose_full_path(path=self.path) # pose -> [x,y,psi]
 
         # Reset simulation, current vel, cmd_vel, cur_pos and orient and get local_goal_pos
         self.cur_pos, self.cur_orient_matrix = self.reset_webots()
         self.cur_vel = np.array([0.0, 0.0])
         self.cmd_vel = np.array([0.0, 0.0])
-        self.local_goal_pos = gt.get_local_goal_pos(self.cur_pos, self.cur_orient_matrix, self.goal_pose)
+        self.local_goal_pos = bt.get_local_goal_pos(self.cur_pos, self.cur_orient_matrix, self.goal_pose)
 
         self.observation = self.get_obs()
         # NOTE: self.render(method='reset') must be called from observation wrapper
@@ -73,7 +73,7 @@ class BaseEnv(Supervisor, gym.Env):
 
         # Inacting the action
         self.cur_vel = self.cmd_vel
-        pos, orient = gt.compute_new_pose(self.params, self.cur_pos, self.cur_orient_matrix, self.cur_vel)
+        pos, orient = bt.compute_new_pose(self.params, self.cur_pos, self.cur_orient_matrix, self.cur_vel)
         self.robot_translation_field.setSFVec3f([pos[0], pos[1], pos[2]])
         self.robot_rotation_field.setSFRotation([0.0, 0.0, 1.0, orient])
         super().step(self.basic_timestep) # WEBOTS - Step()
@@ -81,7 +81,7 @@ class BaseEnv(Supervisor, gym.Env):
         # Updating prev_pos, cur_pos and cur_orient, and getting new local goal
         self.cur_pos = np.array(self.robot_node.getPosition())
         self.cur_orient_matrix = np.array(self.robot_node.getOrientation())
-        self.local_goal_pos = gt.get_local_goal_pos(self.cur_pos, self.cur_orient_matrix, self.goal_pose)
+        self.local_goal_pos = bt.get_local_goal_pos(self.cur_pos, self.cur_orient_matrix, self.goal_pose)
 
         self.observation = self.get_obs()
         self.reward = self.get_reward()
@@ -95,7 +95,7 @@ class BaseEnv(Supervisor, gym.Env):
         super().step(self.basic_timestep) #NOTE: only after this timestep will the lidar data of the previous step be available
         lidar_range_image = self.lidar_node.getRangeImage()
         # NOTE - heavy operation, now only used for rendering purposes (TODO check what to do with it since it's already in ov wrapper)
-        self.lidar_points = gt.lidar_to_point_cloud(self.params, self.precomputed_lidar_values, lidar_range_image)
+        self.lidar_points = bt.lidar_to_point_cloud(self.params, self.precomputed_lidar_values, lidar_range_image)
 
         return self.lidar_points
 

@@ -7,15 +7,11 @@ class DynamicWindowActionWrapper(gym.ActionWrapper):
     '''
     This enviroment wrapper does the following:
     - Projects the action output of the policy into the dynamic velocity window.
-    
-    This wrapper depends on the following other wrappers:
-    - ObstacleVelocityObservationWrapper since it set the vel_obs attribute use in the 
-      get action projection method.
-    
+    - Clips the action to the maximal velocity bounds.
     '''
     def __init__(self, env):
         super().__init__(env)
-        self.params = at.load_parameters("general_parameters.yaml")
+        self.params = at.load_parameters("base_parameters.yaml")
 
         # Define action space
         self.action_space = gym.spaces.Box(low=-1.0, high=1.0, shape=(2,), dtype=np.float32)

@@ -4,7 +4,7 @@ from matplotlib.patches import Polygon as plt_polygon
 from shapely.geometry import Point, Polygon
 from shapely.ops import nearest_points
 
-import utils.general_tools as gt
+import utils.base_tools as bt
 import utils.admin_tools as at
 import utils.wrappers.velocity_obstacle_tools as ovt
 
@@ -22,7 +22,7 @@ class VelocityObstacleWrapper(gym.Wrapper):
         super().__init__(env)
         
         # Load wrapper specific and general parameters
-        self.params = at.load_parameters(["general_parameters.yaml", "obstacle_velocity_observation.yaml"])
+        self.params = at.load_parameters(["base_parameters.yaml", "obstacle_velocity_observation.yaml"])
         
         # Precomputations
         self.precomputed = ovt.precomputations(self.params, visualize=False)
