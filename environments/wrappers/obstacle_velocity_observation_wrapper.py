@@ -6,7 +6,7 @@ import utils.general_tools as gt
 import utils.admin_tools as at
 import utils.wrappers.obstacle_velocity_observation_tools as ovt
 
-class ObstacleVelocityObservationWrapper(gym.ObservationWrapper):
+class ObstacleVelocityObservationWrapper(gym.Wrapper):
     '''
     This enviroment wrapper does the following:
     - Converts the lidar range image observation from BaseEnv to the observation described in the paper.
@@ -50,23 +50,57 @@ class ObstacleVelocityObservationWrapper(gym.ObservationWrapper):
             ),
         })
         
-    def observation(self, obs):
-        # Converting lidar_points (=obs) to velocity based observation
-        self.vel_obs, self.vel_obs_mid = ovt.compute_velocity_obstacle(self.params, self.lidar_points, self.precomputed)
-        self.dyn_win = ovt.compute_dynamic_window(self.params, self.cur_vel)
-        self.goal_vel = ovt.compute_goal_vel_obs(self.params, self.local_goal_pos, self.cur_vel)
-        observation = {"vel_obs": self.vel_obs_mid, "cur_vel": self.cur_vel, "dyn_win": self.dyn_win, "goal_vel": self.goal_vel}
+    def reset(self, seed=None, options=None):
+        self.unwrapped.reset()
+        obs = self.get_obs()
+        self.render(method='reset')
+        
+        return obs
+    
+    def step(self, action):
+        _, reward, done, truncated, info = self.unwrapped.step(action)
+        obs = self.get_obs()
+        self.render(method='step')
+        
+        return obs, reward, done, truncated, info
+    
+    def get_obs(self):
+        # Converting lidar_points set in base env's get_obs to the velocity based observation
+        self.vel_obs, self.vel_obs_mid = ovt.compute_velocity_obstacle(self.params, self.unwrapped.lidar_points, self.precomputed)
+        self.dyn_win = ovt.compute_dynamic_window(self.params, self.unwrapped.cur_vel)
+        self.goal_vel = ovt.compute_goal_vel_obs(self.params, self.unwrapped.local_goal_pos, self.unwrapped.cur_vel)
+        self.observation = {"vel_obs": self.vel_obs_mid, "cur_vel": self.unwrapped.cur_vel, "dyn_win": self.dyn_win, "goal_vel": self.goal_vel}
 
-        return observation
+        return self.observation
+    
+    def render(self, method=None):
+        render_mode = self.unwrapped.render_mode
+        if render_mode == None:
+            return
+        
+        # Create initial plot or remove data to prepare for new data
+        if self.unwrapped.render_init:
+            self.render_init_plot(render_mode)
+        else:
+            self.render_remove_data(render_mode, method)
+            
+        # Add new data to the plot
+        self.render_add_data(render_mode, method)
+        
+        # Plot graphs set flags and counter
+        self.unwrapped.fig.canvas.draw()
+        self.unwrapped.fig.canvas.flush_events()
+        self.unwrapped.render_init = False
+        self.unwrapped.render_count += 1 # counter for reduced rendering (e.g. every 2nd step)
     
     def render_init_plot(self, render_mode):
-        self.idx = self.env.render_init_plot(render_mode, add_plots=1)
-        self.ax = self.env.ax
+        self.idx = self.unwrapped.render_init_plot(render_mode, add_plots=1)
+        self.ax = self.unwrapped.ax
 
         if render_mode in ['velocity', 'full']:                     
             # ax[self.idx] - Observation, action and current velocity
             self.ax[self.idx].plot([self.params['omega_max'], self.params['omega_max'], self.params['omega_min'], self.params['omega_min']],
-                [self.params['v_min'], self.params['v_max'], self.params['v_max'], self.params['v_min']], c='blue')
+                                   [self.params['v_min'], self.params['v_max'], self.params['v_max'], self.params['v_min']], c='blue')
             self.ax[self.idx].set_xlim([self.precomputed['omega_window_min'],self.precomputed['omega_window_max']])
             self.ax[self.idx].set_ylim([self.precomputed['v_window_min'],self.precomputed['v_window_max']])
             self.ax[self.idx].set_xlabel('$\omega$ [rad/s]')
@@ -75,7 +109,7 @@ class ObstacleVelocityObservationWrapper(gym.ObservationWrapper):
             self.ax[self.idx].grid()
     
     def render_remove_data(self, render_mode, method):
-        self.env.render_remove_data(self, render_mode, method)
+        self.unwrapped.render_remove_data(render_mode, method)
 
         if render_mode in ['velocity', 'full']:
             try:
@@ -89,14 +123,14 @@ class ObstacleVelocityObservationWrapper(gym.ObservationWrapper):
                 # self.vel_obs_patch_plot.remove()
                 self.dyn_win_patch_plot.remove()
                 self.cur_vel_plot.remove()
-                if method == 'step' and self.render_count >= 2:
-                    self.action_proj_plot.remove()
+                if method == 'step' and self.unwrapped.render_count >= 2:
+                    self.cmd_vel_plot.remove()
             except AttributeError:
                 print("render(): removing velocity plot not possible because it doesn't exist yet")
             
     def render_add_data(self, render_mode, method):
-        self.env.render_add_data(self, render_mode, method)
-
+        self.unwrapped.render_add_data(render_mode, method)
+        
         if render_mode in ['velocity', 'full']:
             # ax[self.idx] - Observation, action and current velocity
             if self.vel_obs_mid.shape != (0,): # protect against invalid acces (when no obstacles present and vel_obs is empty)
@@ -110,6 +144,6 @@ class ObstacleVelocityObservationWrapper(gym.ObservationWrapper):
             # if self.vel_obs.shape != (0,): # protect against invalid acces (when no obstacles present and vel_obs is empty)
             #     self.vel_obs_patch_plot = self.ax[self.idx].add_patch(vel_obs_patch)
             self.dyn_win_patch_plot = self.ax[self.idx].add_patch(dyn_win_patch)
-            self.cur_vel_plot = self.ax[self.idx].scatter(self.cur_vel[0], self.cur_vel[1], c='blue', marker='+', alpha=0.99)
+            self.cur_vel_plot = self.ax[self.idx].scatter(self.unwrapped.cur_vel[0], self.unwrapped.cur_vel[1], c='blue', marker='+', alpha=0.99)
             if method == 'step':
-                self.action_proj_plot = self.ax[self.idx].scatter(self.action_proj[0], self.action_proj[1], color='green', alpha=0.99)
+                self.cmd_vel_plot = self.ax[self.idx].scatter(self.cmd_vel[0], self.cmd_vel[1], color='green', alpha=0.99)

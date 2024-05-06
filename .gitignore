@@ -8,3 +8,4 @@
 .ipynb_checkpoints
 .vscode
 __pycache__
+.webots_world_file.wbproj

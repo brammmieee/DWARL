@@ -61,7 +61,7 @@ class BaseEnv(Supervisor, gym.Env):
         self.local_goal_pos = gt.get_local_goal_pos(self.cur_pos, self.cur_orient_matrix, self.goal_pose)
 
         self.observation = self.get_obs()
-        self.render(method='reset')
+        # NOTE: self.render(method='reset') must be called from observation wrapper
 
         return self.observation, {} # = info
 
@@ -88,18 +88,18 @@ class BaseEnv(Supervisor, gym.Env):
         self.observation = self.get_obs()
         self.reward = self.get_reward()
         done = self.get_done()
-        self.render(method='step')
+        # NOTE: self.render(method='step') must be called from observation wrapper
 
         return self.observation, self.reward, done, False, {} # last 2: truncated, info
 
     def get_obs(self):
         # Getting lidar data and converting to pointcloud
         super().step(self.basic_timestep) #NOTE: only after this timestep will the lidar data of the previous step be available
-        observation = self.lidar_node.getRangeImage()
+        lidar_range_image = self.lidar_node.getRangeImage()
         # NOTE - heavy operation, now only used for rendering purposes (TODO check what to do with it since it's already in ov wrapper)
-        self.lidar_points = gt.lidar_to_point_cloud(self.params, self.precomputed_lidar_values, observation)
+        self.lidar_points = gt.lidar_to_point_cloud(self.params, self.precomputed_lidar_values, lidar_range_image)
 
-        return observation
+        return self.lidar_points
 
     def get_reward(self):
         # NOTE: u must use a reward wrapper to set a proper reward function
