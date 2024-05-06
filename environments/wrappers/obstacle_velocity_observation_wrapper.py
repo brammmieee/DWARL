@@ -1,6 +1,8 @@
 import numpy as np
 import gymnasium as gym
 from matplotlib.patches import Polygon as plt_polygon
+from shapely.geometry import Point, Polygon
+from shapely.ops import nearest_points
 
 import utils.general_tools as gt
 import utils.admin_tools as at
@@ -51,18 +53,42 @@ class ObstacleVelocityObservationWrapper(gym.Wrapper):
         })
         
     def reset(self, seed=None, options=None):
+        # Reset the environment
         self.unwrapped.reset()
+        
+        # Get the new observation and render it
         obs = self.get_obs()
         self.render(method='reset')
         
+        self.stuck = False
+
         return obs
     
     def step(self, action):
+        # Bound the action to the velocity observation space (i.e. the admissible velocity space)
+        action = self.get_velocity_bounded_action(action)
+        
+        # Execute the bounded action in the environment
         _, reward, done, truncated, info = self.unwrapped.step(action)
+        
+        # Get the new observation and check if the agent is stuck based on the velocity observation and render it
         obs = self.get_obs()
+        done = self.get_done()
         self.render(method='step')
         
         return obs, reward, done, truncated, info
+    
+    def get_velocity_bounded_action(self, action):
+        # If action inside vel_obs (and hence outside adm_vel_polygon), take closest safe point instead
+        adm_vel_polygon = Polygon(self.vel_obs)
+        action_point = Point(action[0], action[1])
+        if not adm_vel_polygon.contains(action_point):
+            if not adm_vel_polygon.boundary.contains(action_point):
+                with np.errstate(invalid='ignore'):
+                    closest_point, _ = nearest_points(adm_vel_polygon, action_point)
+                action = np.array([closest_point.x, closest_point.y])
+                
+        return action
     
     def get_obs(self):
         # Converting lidar_points set in base env's get_obs to the velocity based observation
@@ -70,8 +96,21 @@ class ObstacleVelocityObservationWrapper(gym.Wrapper):
         self.dyn_win = ovt.compute_dynamic_window(self.params, self.unwrapped.cur_vel)
         self.goal_vel = ovt.compute_goal_vel_obs(self.params, self.unwrapped.local_goal_pos, self.unwrapped.cur_vel)
         self.observation = {"vel_obs": self.vel_obs_mid, "cur_vel": self.unwrapped.cur_vel, "dyn_win": self.dyn_win, "goal_vel": self.goal_vel}
+        
+        # Check if the agent is stuck based on the velocity observation
+        if np.all(self.vel_obs == 0):
+            self.stuck = True
 
         return self.observation
+    
+    def get_done(self):
+        done = self.unwrapped.get_done()
+
+        # Additional done case, i.e. getting stuck, obtained from the observation computation
+        if self.stuck:
+            return True
+        else:
+            return done
     
     def render(self, method=None):
         render_mode = self.unwrapped.render_mode
@@ -146,4 +185,4 @@ class ObstacleVelocityObservationWrapper(gym.Wrapper):
             self.dyn_win_patch_plot = self.ax[self.idx].add_patch(dyn_win_patch)
             self.cur_vel_plot = self.ax[self.idx].scatter(self.unwrapped.cur_vel[0], self.unwrapped.cur_vel[1], c='blue', marker='+', alpha=0.99)
             if method == 'step':
-                self.cmd_vel_plot = self.ax[self.idx].scatter(self.cmd_vel[0], self.cmd_vel[1], color='green', alpha=0.99)
+                self.cmd_vel_plot = self.ax[self.idx].scatter(self.unwrapped.unwrapped.cmd_vel[0], self.unwrapped.unwrapped.cmd_vel[1], color='green', alpha=0.99)

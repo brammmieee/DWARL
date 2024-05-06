@@ -4,19 +4,24 @@
 # %%
 import numpy as np
 from environments.base_env import BaseEnv
-from environments.wrappers.obstacle_velocity_observation_wrapper import ObstacleVelocityObservationWrapper as OVOWrapper
+from environments.wrappers.obstacle_velocity_observation_wrapper import ObstacleVelocityObservationWrapper as OVObsWrapper
+from environments.wrappers.dynamic_window_action_wrapper import DynamicWindowActionWrapper as DWAActWrapper
 
 # %%
 # env = BaseEnv(render_mode='full', wb_open=True, wb_mode='testing', reward_monitoring=False)
 
 # %%
-env = OVOWrapper(BaseEnv(render_mode='full', wb_open=True, wb_mode='testing', reward_monitoring=False))
+env = DWAActWrapper(OVObsWrapper(BaseEnv(render_mode='full', wb_open=True, wb_mode='testing', reward_monitoring=False)))
 
 # %%
 obs = env.reset() #options={"map_nr":40, "nominal_dist":1})
 
 # %%
-action = np.array([1.0, 1.0])
+action = np.array([-1.0, 1.0])
+obs, reward, done, _, _ = env.step(action)
+
+# %%
+action = env.action_space.sample()
 obs, reward, done, _, _ = env.step(action)
 
 # %%
@@ -27,7 +32,7 @@ import time
 n_steps = 100000000
 for i in range(n_steps):
     action = env.action_space.sample()
-    obs, reward, done, info = env.step(action)
+    obs, reward, done, truncated, info = env.step(action)
     # time.sleep(0.4)
     if done:
         obs = env.reset()

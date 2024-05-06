@@ -1,6 +1,4 @@
-import sys
 import os
-import yaml
 import random
 from subprocess import Popen, PIPE
 from controller import Supervisor, Keyboard
@@ -87,10 +85,10 @@ class BaseEnv(Supervisor, gym.Env):
 
         self.observation = self.get_obs()
         self.reward = self.get_reward()
-        done = self.get_done()
+        # NOTE: done = self.get_done() must be called from observation wrapper
         # NOTE: self.render(method='step') must be called from observation wrapper
 
-        return self.observation, self.reward, done, False, {} # last 2: truncated, info
+        return self.observation, self.reward, False, False, {} # last 3: done, truncated, info
 
     def get_obs(self):
         # Getting lidar data and converting to pointcloud
