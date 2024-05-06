@@ -6,7 +6,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import utils.general_tools as gt
 import utils.admin_tools as at
-import utils.wrappers.obstacle_velocity_observation_tools as ovt
+import utils.wrappers.velocity_obstacle_tools as ovt
 import gymnasium as gym
 from matplotlib.patches import Polygon as plt_polygon
 from shapely.geometry import Point, Polygon

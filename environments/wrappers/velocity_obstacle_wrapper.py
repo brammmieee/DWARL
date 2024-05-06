@@ -6,13 +6,16 @@ from shapely.ops import nearest_points
 
 import utils.general_tools as gt
 import utils.admin_tools as at
-import utils.wrappers.obstacle_velocity_observation_tools as ovt
+import utils.wrappers.velocity_obstacle_tools as ovt
 
-class ObstacleVelocityObservationWrapper(gym.Wrapper):
+class VelocityObstacleWrapper(gym.Wrapper):
     '''
     This enviroment wrapper does the following:
     - Converts the lidar range image observation from BaseEnv to the observation described in the paper.
     - Adjust the rendering of the observation accordingly.
+    - Ads a stuck monitor based on the available admissible velocity space 
+      (i.e. the inverse of the calculated velocity obstacle)
+    - Bounds the action to the admiss
     
     '''
     def __init__(self, env):
@@ -24,7 +27,7 @@ class ObstacleVelocityObservationWrapper(gym.Wrapper):
         # Precomputations
         self.precomputed = ovt.precomputations(self.params, visualize=False)
         
-        # Obstacle velocity observation space
+        # velocity obstacle observation space
         self.observation_space = gym.spaces.Dict({
             "vel_obs": gym.spaces.Box(
                 low=np.array([(self.precomputed['omega_window_min'], self.precomputed['v_window_min'])]*self.params['num_radii']),

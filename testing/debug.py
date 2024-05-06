@@ -4,14 +4,14 @@
 # %%
 import numpy as np
 from environments.base_env import BaseEnv
-from environments.wrappers.obstacle_velocity_observation_wrapper import ObstacleVelocityObservationWrapper as OVObsWrapper
+from environments.wrappers.velocity_obstacle_wrapper import VelocityObstacleWrapper as VOWrapper
 from environments.wrappers.dynamic_window_action_wrapper import DynamicWindowActionWrapper as DWAActWrapper
 
 # %%
 # env = BaseEnv(render_mode='full', wb_open=True, wb_mode='testing', reward_monitoring=False)
 
 # %%
-env = DWAActWrapper(OVObsWrapper(BaseEnv(render_mode='full', wb_open=True, wb_mode='testing', reward_monitoring=False)))
+env = DWAActWrapper(VOWrapper(BaseEnv(render_mode='full', wb_open=True, wb_mode='testing', reward_monitoring=False)))
 
 # %%
 obs = env.reset() #options={"map_nr":40, "nominal_dist":1})
