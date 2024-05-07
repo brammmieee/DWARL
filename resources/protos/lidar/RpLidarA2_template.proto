@@ -46,18 +46,18 @@ PROTO RpLidarA2 [
       }
     ]
     
-    fieldOfView 6.283185307
-    horizontalResolution 200
-    numberOfLayers 1
-    near 0.05
-    minRange 0.05
-    maxRange 12.0
-    noise 0.0
-    resolution 0.005
-    type "fixed"
-    defaultFrequency 20
-    minFrequency 20
-    maxFrequency 40
+    fieldOfView {{fieldOfView}}
+    horizontalResolution {{horizontalResolution}}
+    numberOfLayers {{numberOfLayers}}
+    near {{near}}
+    minRange {{minRange}}
+    maxRange {{maxRange}}
+    noise {{noise}}
+    resolution {{resolution}}
+    type "{{type}}"
+    defaultFrequency {{defaultFrequency}}
+    minFrequency {{minFrequency}}
+    maxFrequency {{maxFrequency}}
 
     rotatingHead Solid{
       translation 0.000000 0.000000 -0.0314

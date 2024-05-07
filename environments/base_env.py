@@ -16,7 +16,7 @@ class BaseEnv(Supervisor, gym.Env):
     metadata = {"render_modes": ["full", "position", "velocity", "trajectory"], "render_fps": 4} # TODO: use fps in render methods
     package_dir = os.path.abspath(os.pardir)
     
-    def __init__(self, render_mode=None, wb_open=True, wb_mode='training', reward_monitoring=False):
+    def __init__(self, render_mode=None, wb_open=True, wb_mode='training', parameter_file='base_parameters.yaml', proto_config='default_proto_config.json'):
         # Directories
         self.resources_dir = os.path.join(BaseEnv.package_dir, 'resources')
         self.params_dir = os.path.join(BaseEnv.package_dir, 'parameters')
@@ -24,8 +24,9 @@ class BaseEnv(Supervisor, gym.Env):
         self.grids_dir = os.path.join(self.resources_dir, 'grids')
         self.worlds_dir = os.path.join(self.resources_dir, 'worlds')
         
-        # Parameters
-        self.params = at.load_parameters("base_parameters.yaml")
+        # Load parameters and set protos to configurations
+        self.params = at.load_parameters(parameter_file)
+        bt.update_protos(proto_config)
         
         # Precomputations # TODO: Check if can be removed
         self.precomputed_lidar_values = bt.precompute_lidar_values(self.params)

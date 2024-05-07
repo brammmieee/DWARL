@@ -8,52 +8,17 @@ import utils.base_tools as bt
 import utils.admin_tools as at
 import utils.wrappers.velocity_obstacle_tools as ovt
 
-class VelocityObstacleWrapper(gym.Wrapper):
-    '''
-    This enviroment wrapper does the following:
-    - Converts the lidar range image observation from BaseEnv to the observation described in the paper.
-    - Adjust the rendering of the observation accordingly.
-    - Ads a stuck monitor based on the available admissible velocity space 
-      (i.e. the inverse of the calculated velocity obstacle)
-    - Bounds the action to the admiss
-    
-    '''
+class SparseLidarObservationWrapper(gym.Wrapper):
     def __init__(self, env):
         super().__init__(env)
-        
-        # Load wrapper specific and general parameters
-        self.params = at.load_parameters(["base_parameters.yaml", "obstacle_velocity_observation.yaml"]) #TODO: list can be directly parsed to init of base env
-        
-        # Precomputations
-        self.precomputed = ovt.precomputations(self.params, visualize=False)
-        
+                
         # velocity obstacle observation space
-        self.observation_space = gym.spaces.Dict({
-            "vel_obs": gym.spaces.Box(
-                low=np.array([(self.precomputed['omega_window_min'], self.precomputed['v_window_min'])]*self.params['num_radii']),
-                high=np.array([(self.precomputed['omega_window_max'], self.precomputed['v_window_max'])]*self.params['num_radii']),
-                shape=(self.params['num_radii'], 2),
-                dtype=np.float64
-            ),
-            "cur_vel": gym.spaces.Box(
-                low=np.array([self.params['omega_min'], self.params['v_min']]),
-                high=np.array([self.params['omega_max'], self.params['v_max']]),
-                shape=(2,),
-                dtype=np.float64
-            ),
-            "dyn_win": gym.spaces.Box(
-                low=np.array([(self.params['omega_min'], self.params['v_min'])]*4),
-                high=np.array([(self.params['omega_max'], self.params['v_max'])]*4),
-                shape=(4, 2),
-                dtype=np.float64
-            ),
-            "goal_vel": gym.spaces.Box(
-                low=np.array([self.precomputed['omega_window_min'], self.precomputed['v_window_min']]),
-                high=np.array([self.precomputed['omega_window_max'], self.precomputed['v_window_max']]),
-                shape=(2,),
-                dtype=np.float64
-            ),
-        })
+        self.observation_space = gym.spaces.Box(
+            low=np.array([(self.precomputed['omega_window_min'], self.precomputed['v_window_min'])],
+            high=np.array([(self.precomputed['omega_window_max'], self.precomputed['v_window_max'])],
+            shape=(, 2),
+            dtype=np.float64
+        )
         
     def reset(self, seed=None, options=None):
         # Reset the environment

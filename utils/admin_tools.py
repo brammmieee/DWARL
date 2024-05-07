@@ -38,19 +38,40 @@ def get_file_name_with_date_testing(test_nr_today, comment):
     formatted_date = current_date.strftime("%B_%d")
     return f'{formatted_date}_V{str(test_nr_today)}_{comment}'
 
-def load_parameters(file_name_list: Union[str, List[str]]):
+def find_file(filename, start_dir=os.path.abspath(os.pardir)):
+    for root, _, files in os.walk(start_dir):
+        if filename in files:
+            return os.path.join(root, filename)
+    
+    raise FileNotFoundError(f"File '{filename}' not found starting from directory '{start_dir}'.")
+
+def load_parameters(file_name_list: Union[str, List[str]], start_dir=os.path.abspath(os.pardir)):
+    """
+    Load parameters from YAML files based on the given file names, searching from a specific start directory or default directory.
+
+    Args:
+        file_name_list (Union[str, List[str]]): A single file name or a list of file names.
+        start_dir (str, optional): The directory from which to start the search for files.
+
+    Returns:
+        dict: A dictionary containing the loaded parameters.
+
+    """
     if isinstance(file_name_list, str):
         file_name_list = [file_name_list]
 
     parameters = {}
-    for root, dirs, files in os.walk(os.path.join(os.path.abspath(os.pardir), "parameters")):
-        for file in files:
-            if file.endswith(".yaml") and any(name in file for name in file_name_list):
-                with open(os.path.join(root, file), 'r') as stream:
-                    try:
-                        parameters.update(yaml.safe_load(stream))
-                    except yaml.YAMLError as exc:
-                        print(exc)
+    for file_name in file_name_list:
+        try:
+            file_path = find_file(file_name, start_dir)
+            with open(file_path, 'r') as stream:
+                try:
+                    parameters.update(yaml.safe_load(stream))
+                except yaml.YAMLError as exc:
+                    print(f"Error loading YAML from {file_path}: {exc}")
+        except FileNotFoundError as e:
+            print(e)
+
     return parameters
 
 def save_to_json(data: Dict[str, Any], filename: str, file_dir: str) -> None:

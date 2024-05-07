@@ -1,7 +1,11 @@
+import os
+import json
 import numpy as np
 import random
 from typing import Tuple, List, Dict
 from shapely.geometry import Polygon
+
+from utils.admin_tools import find_file
 
 import warnings
 warnings.simplefilter("error", RuntimeWarning)
@@ -292,3 +296,62 @@ def sample_maps(train_map_nr_dict, test_map_nr_dict, maps_per_level, lowest_leve
                 test_map_nr_list.extend(sorted(random.sample(map_nr_list, maps_per_level)))
                 
     return train_map_nr_list, test_map_nr_list
+
+def replace_placeholders(content, substitutions):
+    """
+    Replace placeholders in the content with values from the substitutions dictionary.
+
+    Args:
+    content (str): The content string to be modified.
+    substitutions (dict): A dictionary containing the placeholder-value pairs.
+
+    Returns:
+    str: The modified content string.
+    """
+    for key, value in substitutions.items():
+        placeholder = f"{{{{{key}}}}}"
+        if placeholder not in content:
+            content = content.replace(placeholder, str(value))
+            print(f"Replacing '{placeholder}' with '{value}' in the proto file.")
+        content = content.replace(placeholder, str(value))
+    return content
+
+def update_protos(config_file_name, package_dir=os.path.abspath(os.pardir)):
+    """
+    Update the proto files based on the provided configuration.
+
+    Args:
+    config_file_name (str): The name of the configuration file.
+    package_dir (str, optional): The directory of the config file. Defaults to the parent directory of the current directory.
+
+    Raises:
+    FileNotFoundError: If the config file or template proto file is not found.
+    """
+    try:
+        # Load the config file
+        config_folder = os.path.join(package_dir, 'parameters', 'proto_configs')
+        config_file_path = find_file(filename=config_file_name, start_dir=config_folder)
+        with open(config_file_path, 'r') as file:
+            config = json.load(file)
+    except FileNotFoundError:
+        raise FileNotFoundError("Config file not found.")
+
+    try:
+        template_proto_file_name = config['template_name']
+        output_proto_file_name = config['output_name']
+        
+        # Load the template proto file
+        proto_folder = os.path.join(package_dir, 'resources', 'protos')
+        template_proto_file_path = find_file(filename=template_proto_file_name, start_dir=proto_folder)
+        with open(template_proto_file_path, 'r') as file:
+            template_proto_content = file.read()
+    except FileNotFoundError:
+        raise FileNotFoundError("Template proto file not found.")
+
+    # Replace placeholders in the content with values from the config
+    output_proto_content = replace_placeholders(template_proto_content, config['substitutions'])
+
+    # Write the updated content to the output file
+    output_proto_file_path = template_proto_file_path.replace(template_proto_file_name, output_proto_file_name)
+    with open(output_proto_file_path, 'w') as file:
+        file.write(output_proto_content)
