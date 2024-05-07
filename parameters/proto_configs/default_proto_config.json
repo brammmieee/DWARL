@@ -2,7 +2,7 @@
 {
     "template_name": "RpLidarA2_template.proto",
     "output_name": "RpLidarA2.proto",
-    "substitutions": {
+    "proto_substitutions": {
         "fieldOfView": 6.283185307,
         "horizontalResolution": 200,
         "numberOfLayers": 1,

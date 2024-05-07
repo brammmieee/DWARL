@@ -36,3 +36,9 @@ for i in range(n_steps):
     # time.sleep(0.4)
     if done:
         obs = env.reset()
+
+# %%
+import utils.admin_tools as at
+params = at.load_parameters(["base_parameters.yaml", "sparse_lidar_proto_config.json"]) #TODO: list can be directly parsed to init of base env
+
+# %%

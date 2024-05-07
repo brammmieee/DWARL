@@ -45,9 +45,14 @@ def find_file(filename, start_dir=os.path.abspath(os.pardir)):
     
     raise FileNotFoundError(f"File '{filename}' not found starting from directory '{start_dir}'.")
 
+import yaml
+import json
+from typing import Union, List
+import os
+
 def load_parameters(file_name_list: Union[str, List[str]], start_dir=os.path.abspath(os.pardir)):
     """
-    Load parameters from YAML files based on the given file names, searching from a specific start directory or default directory.
+    Load parameters from YAML or JSON files based on the given file names, searching from a specific start directory or default directory.
 
     Args:
         file_name_list (Union[str, List[str]]): A single file name or a list of file names.
@@ -64,11 +69,21 @@ def load_parameters(file_name_list: Union[str, List[str]], start_dir=os.path.abs
     for file_name in file_name_list:
         try:
             file_path = find_file(file_name, start_dir)
+            _, file_extension = os.path.splitext(file_path)
             with open(file_path, 'r') as stream:
-                try:
-                    parameters.update(yaml.safe_load(stream))
-                except yaml.YAMLError as exc:
-                    print(f"Error loading YAML from {file_path}: {exc}")
+                if file_extension == '.yaml' or file_extension == '.yml':
+                    try:
+                        parameters.update(yaml.safe_load(stream))
+                    except yaml.YAMLError as exc:
+                        print(f"Error loading YAML from {file_path}: {exc}")
+                elif file_extension == '.json':
+                    try:
+                        json_dict = json.load(stream)
+                        parameters.update(json_dict)
+                    except json.JSONDecodeError as exc:
+                        print(f"Error loading JSON from {file_path}: {exc}")
+                else:
+                    print(f"Unsupported file format for {file_path}")
         except FileNotFoundError as e:
             print(e)
 

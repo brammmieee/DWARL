@@ -349,7 +349,7 @@ def update_protos(config_file_name, package_dir=os.path.abspath(os.pardir)):
         raise FileNotFoundError("Template proto file not found.")
 
     # Replace placeholders in the content with values from the config
-    output_proto_content = replace_placeholders(template_proto_content, config['substitutions'])
+    output_proto_content = replace_placeholders(template_proto_content, config['proto_substitutions'])
 
     # Write the updated content to the output file
     output_proto_file_path = template_proto_file_path.replace(template_proto_file_name, output_proto_file_name)

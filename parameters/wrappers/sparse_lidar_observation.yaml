@@ -1,0 +1,4 @@
+goal_pos_dist_min: -30
+goal_pos_dist_max: 30
+goal_pos_angle_min: -pi
+goal_pos_angle_max: pi
