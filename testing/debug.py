@@ -11,10 +11,10 @@ from environments.wrappers.sparse_lidar_observation_wrapper import SparseLidarOb
 # env = BaseEnv(render_mode='full', wb_open=True, wb_mode='testing')
 
 # %%
-# env = DWAActWrapper(VOWrapper(BaseEnv(render_mode='full', wb_open=True, wb_mode='testing')))
+env = DWAActWrapper(VOWrapper(BaseEnv(render_mode='full', wb_open=True, wb_mode='testing')))
 
 # %%
-env = SLObsWrapper(BaseEnv(render_mode='full', wb_open=True, wb_mode='testing', proto_config='sparse_lidar_proto_config.json'))
+# env = SLObsWrapper(BaseEnv(render_mode='full', wb_open=True, wb_mode='testing', proto_config='sparse_lidar_proto_config.json'))
 
 # %%
 obs = env.reset() #options={"map_nr":40, "nominal_dist":1})

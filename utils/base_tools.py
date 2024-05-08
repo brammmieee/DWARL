@@ -25,6 +25,9 @@ def get_teleop_action(keyboard):
     return action
 
 def get_local_goal_pos(cur_pos, cur_orient_matrix, goal_pose): #TODO: remove 3rd dimension for efficiency
+    '''
+    Get the goal position in the local frame of reference of the robot.
+    '''
     # Convert inputs to numpy arrays with the right dimensions
     cur_pos = np.array([cur_pos[0], cur_pos[1], 1])
     goal_pos = np.array([goal_pose[0], goal_pose[1], 1]) #NOTE: pose vs pos here
@@ -44,6 +47,9 @@ def get_local_goal_pos(cur_pos, cur_orient_matrix, goal_pose): #TODO: remove 3rd
     return local_goal_pos
 
 def compute_new_pose(parameters, cur_pos, cur_orient_matrix, cur_vel):
+    '''
+    Kinematic compution of the new pose based on the current pose and velocity.
+    '''
     # Computing the orientation
     psi = (np.arctan2(cur_orient_matrix[3], cur_orient_matrix[0])) % (2*np.pi)
     local_rotation = cur_vel[0]*parameters['sample_time']
@@ -72,80 +78,70 @@ def compute_new_pose(parameters, cur_pos, cur_orient_matrix, cur_vel):
 
     return position, orientation
 
-def get_init_and_goal_pose(path, nom_dist=1.0, sign=None, index=None): 
-    # (NOTE: assumes nom_dist < 0.5 path_len)
-    # Choose a random initial location on the path
-    if index == None: # non-recursive call
-        rand_index = np.random.randint(0, len(path))
-    else:
-        rand_index = index
+def calculate_orientation(p1, p2):
+    """ Calculate orientation angle from point p1 to p2. """
+    align = p2 - p1
+    return np.arctan2(align[1], align[0])
 
-    # Choose a random direction sign at the initial position
-    if sign == None: # non-recursive call
-        sign = np.random.choice([-1, 1])    
+def create_pose(point, orientation=0.0):
+    """ Create a pose from a point and an orientation. """
+    return np.array([point[0], point[1], 0.0, orientation])
 
-    # Loop through the path points in sign direction keeping track of the traveled distance
-    i = rand_index
-    dist_traveled = 0
-    while (i < len(path)) and (i >= 0):
-        if (i + sign < len(path)) and (i + sign >= 0):
-            segment_dist = np.linalg.norm(path[i+sign] - path[i])
-            if (dist_traveled + segment_dist < nom_dist):
-                dist_traveled += segment_dist
-                i += sign 
-            elif (dist_traveled + segment_dist >= nom_dist):
-                # init_pose
-                init_pose = np.array([path[rand_index][0], path[rand_index][1], 0.0, 0.0])  # x, y, z, rotation
-                init_align = path[rand_index + sign] - init_pose[:2]
-                init_pose[3] = np.arctan2(init_align[1], init_align[0])   
-                # goal_pose
-                goal_pose = path[i]
-                goal_align = goal_pose - init_pose[:2]
-                goal_pose = np.array([goal_pose[0], goal_pose[1], 0.0, np.arctan2(goal_align[1], goal_align[0])])
-                return init_pose, goal_pose
-        else: # Recursive call with opposite direction (NOTE: assumes nom_dist < 0.5 path_len)
-            return get_init_and_goal_pose(path, nom_dist, sign=(-1)*sign, index=rand_index)
-        
-def get_init_and_goal_pose_full_path(path):
-    # Randomly invert the path 
+def get_init_and_goal_poses(path, parameters=None):
+    """
+    General function to get initial and goal poses on a path.
+    
+    Args:
+        path: List or array of points defining the path.
+        mode: Type of mode to determine poses ('random', 'full_path', 'random_distance').
+        parameters: Dictionary containing parameters like nominal distance, sign, etc.
 
-    # Init pose as first path pose
-    init_pose = np.array([path[0][0], path[0][1], 0.0, 0.0])  # x, y, z, rotation
-    init_align = path[2] - init_pose[:2]
-    init_pose[3] = np.arctan2(init_align[1], init_align[0]) 
+    Returns:
+        A tuple of numpy arrays (init_pose, goal_pose).
+    """
+    mode = parameters.get('init_and_goal_pose_mode')
+    if mode is None:
+        raise ValueError("Missing 'init_and_goal_pose_mode' parameter.")
 
-    # Goal pose as final path POSition
-    goal_index = int(len(path)-1)
-    goal_pose = np.array([path[goal_index][0], path[goal_index][1], 0.0, 0.0]) #NOTE: goal_pose only holds positional information -> the rest is not used to also not set here!
-
-    return init_pose, goal_pose
-
-def get_init_and_goal_pose_random_nom_dist(parameters, path):
-    # Initialising init and goal pose
-    init_pose = np.array([0.0, 0.0, 0.0, 0.0]) # x,y,z,orient_angle
-    goal_pose = np.array([0.0, 0.0, 0.0, 0.0])
-
-    # Getting random path indices
-    init_path_index = np.random.randint(0, len(path)-1)
-    goal_path_index = np.random.randint(0, len(path)-1)
-
-    # Setting random positions
-    init_pose[:2] = path[init_path_index]
-    goal_pose[:2] = path[goal_path_index]
-
-    # Checking if minimal dist constrained is met
-    if np.linalg.norm(init_pose[:2] - goal_pose[:2]) >= parameters['min_init2goal_dist']:
-        # Seting init pose orientation (NOTE: goal pose orient is not necessary)
-        if goal_path_index > init_path_index:
-            init_align = path[init_path_index + 1] - init_pose[:2]
-        elif goal_path_index < init_path_index:
-            init_align = path[init_path_index - 1] - init_pose[:2]
-        else:
-            print('get_init_goal_pose..(): index fault')
-        init_pose[3] = np.arctan2(init_align[1], init_align[0])
+    if mode == 'full_path':
+        init_pose = create_pose(path[0], calculate_orientation(path[0], path[min(2, len(path) - 1)]))
+        goal_pose = create_pose(path[-1])
         return init_pose, goal_pose
-    else:        
-        return get_init_and_goal_pose_random_nom_dist(parameters, path)
+
+    elif mode == 'random':
+        if 'nominal_distance' is None:
+            raise ValueError("Missing 'nominal_distance' parameter for init_and_goal_pose_mode: 'random'.")
+        nom_dist = parameters['nominal_distance']
+        sign = np.random.choice([-1, 1])
+        rand_index = np.random.randint(0, len(path))
+
+        i = rand_index
+        dist_traveled = 0
+        while 0 <= i + sign < len(path):
+            segment_dist = np.linalg.norm(path[i + sign] - path[i])
+            if dist_traveled + segment_dist >= nom_dist:
+                init_pose = create_pose(path[rand_index], calculate_orientation(path[rand_index], path[rand_index + sign]))
+                goal_pose = create_pose(path[i], calculate_orientation(path[i], path[i + sign]))
+                return init_pose, goal_pose
+            dist_traveled += segment_dist
+            i += sign
+
+        # Recursive call fallback for cases when distance is not met
+        sign *= -1
+        return get_init_and_goal_poses(path, parameters={'init_and_goal_pose_mode': mode, 'nominal_distance': nom_dist, 'sign': sign, 'index': rand_index})
+
+    elif mode == 'random_distance':
+        init_path_index = np.random.randint(0, len(path) - 1)
+        goal_path_index = np.random.randint(0, len(path) - 1)
+        if np.linalg.norm(path[init_path_index] - path[goal_path_index]) < parameters['min_init2goal_dist']:
+            return get_init_and_goal_poses(path, parameters=parameters)
+        else:
+            init_pose = create_pose(path[init_path_index], calculate_orientation(path[init_path_index], path[goal_path_index]))
+            goal_pose = create_pose(path[goal_path_index], calculate_orientation(path[goal_path_index], path[init_path_index]))
+            return init_pose, goal_pose
+        
+    else:
+        raise ValueError("Unsupported mode provided.")
 
 def get_cmd_vel(robot_node):
     webots_vel = robot_node.getVelocity()

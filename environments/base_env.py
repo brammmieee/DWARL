@@ -50,13 +50,15 @@ class BaseEnv(Supervisor, gym.Env):
         self.reset_map_path_and_poses()
         self.reset_webots()
 
-        # Reset current vel, cmd_vel, cur_pos and orient and get local_goal_pos
+        # Reset current pos, orient, vel, cmd_vel
         self.cur_pos = np.array(self.robot_node.getPosition())
         self.cur_orient_matrix = np.array(self.robot_node.getOrientation())
         self.cur_vel = np.array([0.0, 0.0])
         self.cmd_vel = np.array([0.0, 0.0])
-        self.local_goal_pos = bt.get_local_goal_pos(self.cur_pos, self.cur_orient_matrix, self.goal_pose)
 
+        # Gett local goal position
+        self.local_goal_pos = bt.get_local_goal_pos(self.cur_pos, self.cur_orient_matrix, self.goal_pose)
+        
         self.observation = self.get_obs()
         # NOTE: self.render(method='..') must be called from observation wrapper
 
@@ -173,7 +175,7 @@ class BaseEnv(Supervisor, gym.Env):
         self.map_nr = self.train_map_nr_list[train_map_nr_idx]
         path = np.load(os.path.join(self.paths_dir, 'path_' + str(self.map_nr) + '.npy'))
         self.path = np.multiply(path, self.params['map_res']) # apply scaling
-        self.init_pose, self.goal_pose = bt.get_init_and_goal_pose_full_path(path=self.path) # pose -> [x,y,psi]
+        self.init_pose, self.goal_pose = bt.get_init_and_goal_poses(path=self.path, parameters=self.params) # pose -> [x,y,psi]
 
     def set_render_mode(self, render_mode):
         assert render_mode is None or render_mode in self.metadata["render_modes"]

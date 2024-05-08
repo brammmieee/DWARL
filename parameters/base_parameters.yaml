@@ -1,12 +1,16 @@
 # Tolerances
-v_goal_threshold: 0.1
-goal_tolerance: 0.15
-min_init2goal_dist: 0.5  # min euclid dist betw. init and goal pos. [m]
+# v_goal_threshold: 0.1 # m/s
+goal_tolerance: 0.15 # m
 
 # Map
 map_res: 0.1 # m/pxl
-map_width: 30 #NOTE: in pixels (don't change when using BARN dataset)
-map_bound_buffer: 0.2
+map_width: 30 # NOTE: in pixels (don't change when using BARN dataset)
+map_bound_buffer: 0.2 # m
+
+
+init_and_goal_pose_mode: 'random_distance' # full_path, random (uses nominal distance), random_distance (uses min_init2goal_dist)
+min_init2goal_dist: 0.5  # min euclid dist betw. init and goal pos. [m]
+nominal_distance: 1.0  # nominal distance between init and goal pos. [m]
 
 # Time
 sample_time: 0.05
@@ -15,7 +19,7 @@ max_ep_time: 30
 # Dimensions
 lidar_y_pos: -0.07075
 z_pos: 0.05 # For kinematic robot movement
-polygon_coords: [[0.16, 0.08], [0.16, -0.24], [0.0, -0.4], [-0.16, -0.24], [-0.16, 0.08]]
+polygon_coords: [[0.16, 0.08], [0.16, -0.24], [0.0, -0.4], [-0.16, -0.24], [-0.16, 0.08]] # robot footprint
 
 # Kinodynamic parameters
 v_max: 0.2
