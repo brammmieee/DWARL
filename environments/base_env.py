@@ -94,11 +94,10 @@ class BaseEnv(Supervisor, gym.Env):
     def get_obs(self):
         # Getting lidar data and converting to pointcloud
         super().step(self.basic_timestep) #NOTE: only after this timestep will the lidar data of the previous step be available
-        lidar_range_image = self.lidar_node.getRangeImage()
+        self.lidar_range_image = self.lidar_node.getRangeImage()
         # NOTE - heavy operation, now only used for rendering purposes (TODO check what to do with it since it's already in ov wrapper)
-        self.lidar_points = bt.lidar_to_point_cloud(self.params, self.precomputed_lidar_values, lidar_range_image)
 
-        return self.lidar_points
+        return self.lidar_range_image
 
     def get_reward(self):
         # NOTE: u must use a reward wrapper to set a proper reward function
@@ -268,6 +267,7 @@ class BaseEnv(Supervisor, gym.Env):
     def render_add_data(self, render_mode, method):
         if render_mode in ['position', 'full']:
             # ax[0] - Lidar data
+            self.lidar_points = bt.lidar_to_point_cloud(self.params, self.precomputed_lidar_values, self.lidar_range_image) #NOTE: double computation in case of e.g vo observation wrapper
             self.lidar_plot = self.ax[0].scatter(self.lidar_points[:,0], self.lidar_points[:,1], alpha=1.0, c='black')
             self.local_goal_plot = self.ax[0].scatter(self.local_goal_pos[0], self.local_goal_pos[1], alpha=1.0, c='purple')
             

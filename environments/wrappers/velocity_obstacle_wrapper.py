@@ -94,8 +94,11 @@ class VelocityObstacleWrapper(gym.Wrapper):
         return action
     
     def get_obs(self):
+        # Converting the lidar_range_image to the lidar_points pointcloud
+        self.lidar_points = bt.lidar_to_point_cloud(self.params, self.precomputed_lidar_values, self.unwrapped.lidar_range_image)
+
         # Converting lidar_points set in base env's get_obs to the velocity based observation
-        self.vel_obs, self.vel_obs_mid = ovt.compute_velocity_obstacle(self.params, self.unwrapped.lidar_points, self.precomputed)
+        self.vel_obs, self.vel_obs_mid = ovt.compute_velocity_obstacle(self.params, self.lidar_points, self.precomputed)
         self.dyn_win = ovt.compute_dynamic_window(self.params, self.unwrapped.cur_vel)
         self.goal_vel = ovt.compute_goal_vel_obs(self.params, self.unwrapped.local_goal_pos, self.unwrapped.cur_vel)
         self.observation = {"vel_obs": self.vel_obs_mid, "cur_vel": self.unwrapped.cur_vel, "dyn_win": self.dyn_win, "goal_vel": self.goal_vel}
