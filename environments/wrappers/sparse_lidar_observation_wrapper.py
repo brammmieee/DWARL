@@ -11,24 +11,24 @@ class SparseLidarObservationWrapper(gym.Wrapper):
             "base_parameters.yaml", 
             "sparse_lidar_proto_config.json",
             "sparse_lidar_observation.yaml"
-        ]) 
+        ])
         
         # Observation space definition
         num_lidar_rays = self.params['proto_substitutions']['horizontalResolution']
         low_array = np.concatenate([
-            np.full(self.params['proto_substitutions']['minRange'], num_lidar_rays),
+            np.array([float(self.params['proto_substitutions']['minRange'])]*num_lidar_rays),
             np.array([
-                self.params['goal_pos_dist_min'],
-                self.params['goal_pos_angle_min'],
-                self.params['v_min']
+            float(self.params['goal_pos_dist_min']),
+            float(self.params['goal_pos_angle_min']),
+            float(self.params['v_min'])
             ])
         ])
         high_array = np.concatenate([
-            np.full(self.params['proto_substitutions']['maxRange'], num_lidar_rays),
+            np.array([float(self.params['proto_substitutions']['maxRange'])]*num_lidar_rays),
             np.array([
-                self.params['goal_pos_dist_max'],
-                self.params['goal_pos_angle_max'],
-                self.params['v_max']
+            float(self.params['goal_pos_dist_max']),
+            float(self.params['goal_pos_angle_max']),
+            float(self.params['v_max'])
             ])
         ])
         self.observation_space = gym.spaces.Box(
@@ -37,3 +37,6 @@ class SparseLidarObservationWrapper(gym.Wrapper):
             shape=np.shape(low_array),
             dtype=np.float64
         )
+
+    # def get_obs(self):
+    #     np.array(self.unwrapped.lidar_range_image)

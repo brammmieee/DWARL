@@ -46,8 +46,8 @@ PROTO RpLidarA2 [
       }
     ]
     
-    fieldOfView 6.283185307
-    horizontalResolution 200
+    fieldOfView 3.141592653589793
+    horizontalResolution 10
     numberOfLayers 1
     near 0.05
     minRange 0.05
