@@ -9,3 +9,6 @@
 .vscode
 __pycache__
 .webots_world_file.wbproj
+
+# Proto's that are overwritten by proto_config based configurations on env init
+RpLidarA2.proto

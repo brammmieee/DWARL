@@ -38,5 +38,6 @@ class SparseLidarObservationWrapper(gym.Wrapper):
             dtype=np.float64
         )
 
-    # def get_obs(self):
-    #     np.array(self.unwrapped.lidar_range_image)
+    def get_obs(self):
+        np.array(self.unwrapped.lidar_range_image)
+        
