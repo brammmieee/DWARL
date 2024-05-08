@@ -7,14 +7,16 @@ from environments.base_env import BaseEnv
 from environments.wrappers.velocity_obstacle_wrapper import VelocityObstacleWrapper as VOWrapper
 from environments.wrappers.dynamic_window_action_wrapper import DynamicWindowActionWrapper as DWAActWrapper
 from environments.wrappers.sparse_lidar_observation_wrapper import SparseLidarObservationWrapper as SLObsWrapper
+from environments.wrappers.command_velocity_action_wrapper import CommandVelocityActionWrapper as CVActWrapper
+
 # %%
 # env = BaseEnv(render_mode='full', wb_open=True, wb_mode='testing')
 
 # %%
-env = DWAActWrapper(VOWrapper(BaseEnv(render_mode='full', wb_open=True, wb_mode='testing')))
+# env = DWAActWrapper(VOWrapper(BaseEnv(render_mode='full', wb_open=True, wb_mode='testing')))
 
 # %%
-# env = SLObsWrapper(BaseEnv(render_mode='full', wb_open=True, wb_mode='testing', proto_config='sparse_lidar_proto_config.json'))
+env = CVActWrapper(SLObsWrapper(BaseEnv(render_mode='full', wb_open=True, wb_mode='testing', proto_config='sparse_lidar_proto_config.json')))
 
 # %%
 obs = env.reset() #options={"map_nr":40, "nominal_dist":1})

@@ -3,7 +3,28 @@ import gymnasium as gym
 
 import utils.admin_tools as at
 
-class SparseLidarObservationWrapper(gym.Wrapper):
+def normalize_lidar_range_image(lidar_range_image, min_range, max_range):
+    '''
+    Normalizes the lidar range image to be between 0 and 1 and convert it from a list to a numpy array.
+    '''
+    lidar_range_image_array = np.array(lidar_range_image)
+    min_range = float(min_range)
+    max_range = float(max_range)
+    normalized_array = (lidar_range_image_array - min_range) / (max_range - min_range)
+
+    return normalized_array
+
+def convert_local_goal_to_polar_coords(local_goal, agent_pos):
+    '''
+    Converts the local goal to polar coordinates with respect to the agent position.
+    '''
+    goal_pos = np.array(local_goal) + np.array(agent_pos)
+    goal_pos_dist = np.linalg.norm(goal_pos)
+    goal_pos_angle = np.arctan2(goal_pos[1], goal_pos[0])
+
+    return goal_pos_dist, goal_pos_angle
+
+class SparseLidarObservationWrapper(gym.ObservationWrapper):
     def __init__(self, env):
         super().__init__(env)
         
@@ -18,17 +39,17 @@ class SparseLidarObservationWrapper(gym.Wrapper):
         low_array = np.concatenate([
             np.array([float(self.params['proto_substitutions']['minRange'])]*num_lidar_rays),
             np.array([
-            float(self.params['goal_pos_dist_min']),
-            float(self.params['goal_pos_angle_min']),
-            float(self.params['v_min'])
+                float(self.params['goal_pos_dist_min']),
+                float(self.params['goal_pos_angle_min']),
+                float(self.params['v_min'])
             ])
         ])
         high_array = np.concatenate([
             np.array([float(self.params['proto_substitutions']['maxRange'])]*num_lidar_rays),
             np.array([
-            float(self.params['goal_pos_dist_max']),
-            float(self.params['goal_pos_angle_max']),
-            float(self.params['v_max'])
+                float(self.params['goal_pos_dist_max']),
+                float(self.params['goal_pos_angle_max']),
+                float(self.params['v_max'])
             ])
         ])
         self.observation_space = gym.spaces.Box(
@@ -38,6 +59,26 @@ class SparseLidarObservationWrapper(gym.Wrapper):
             dtype=np.float64
         )
 
-    def get_obs(self):
-        np.array(self.unwrapped.lidar_range_image)
+    def observation(self, obs):
+        lidar_range_image_array = normalize_lidar_range_image(
+            lidar_range_image=obs,
+            min_range=self.params['proto_substitutions']['minRange'],
+            max_range=self.params['proto_substitutions']['maxRange'],
+        )
+        goal_pos_dist, goal_pos_angle = convert_local_goal_to_polar_coords(
+            local_goal=self.unwrapped.local_goal_pos,
+            agent_pos=self.unwrapped.cur_pos
+        )
+        obs = np.concatenate([
+            lidar_range_image_array,
+            np.array([
+                goal_pos_dist, goal_pos_angle, 
+                self.unwrapped.cur_vel[0], 
+                self.unwrapped.cur_vel[1]
+            ])
+        ])
+
+        return obs
+
+
         

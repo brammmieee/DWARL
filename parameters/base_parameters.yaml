@@ -7,8 +7,7 @@ map_res: 0.1 # m/pxl
 map_width: 30 # NOTE: in pixels (don't change when using BARN dataset)
 map_bound_buffer: 0.2 # m
 
-
-init_and_goal_pose_mode: 'random_distance' # full_path, random (uses nominal distance), random_distance (uses min_init2goal_dist)
+init_and_goal_pose_mode: 'random' # full_path, random (nominal distance apart), random_distance (min. min_init2goal_dist apart)
 min_init2goal_dist: 0.5  # min euclid dist betw. init and goal pos. [m]
 nominal_distance: 1.0  # nominal distance between init and goal pos. [m]
 
@@ -23,7 +22,7 @@ polygon_coords: [[0.16, 0.08], [0.16, -0.24], [0.0, -0.4], [-0.16, -0.24], [-0.1
 
 # Kinodynamic parameters
 v_max: 0.2
-v_min: 0
+v_min: -0.2
 a_max: 0.3
 a_min: -0.3
 omega_max: 0.6
