@@ -28,7 +28,7 @@ class BaseEnv(Supervisor, gym.Env):
         self.params = at.load_parameters(parameter_file)
         bt.update_protos(proto_config)
         
-        # Precomputations # TODO: Check if can be removed
+        # Precomputations
         self.precomputed_lidar_values = bt.precompute_lidar_values(self.params)
 
         # Training maps and map bounds
@@ -44,23 +44,21 @@ class BaseEnv(Supervisor, gym.Env):
         # NOTE: u must use an observation wrapper to set self.observation_space
 
     def reset(self, seed=None, options=None):
-        # TODO: super().reset(seed=seed) # RNG seeding only done once (i.e. when value is not None)
+        super().reset(seed=seed) # RNG seeding only done once (i.e. when value is not None)
         
-        # Setting map, path and init and goal pose
-        train_map_nr_idx = random.randint(0, len(self.train_map_nr_list)-1)
-        self.map_nr = self.train_map_nr_list[train_map_nr_idx]
-        path = np.load(os.path.join(self.paths_dir, 'path_' + str(self.map_nr) + '.npy'))
-        self.path = np.multiply(path, self.params['map_res']) # apply proper scaling
-        self.init_pose, self.goal_pose = bt.get_init_and_goal_pose_full_path(path=self.path) # pose -> [x,y,psi]
+        # Reset map, path, init/goal pose and simulation
+        self.reset_map_path_and_poses()
+        self.reset_webots()
 
-        # Reset simulation, current vel, cmd_vel, cur_pos and orient and get local_goal_pos
-        self.cur_pos, self.cur_orient_matrix = self.reset_webots()
+        # Reset current vel, cmd_vel, cur_pos and orient and get local_goal_pos
+        self.cur_pos = np.array(self.robot_node.getPosition())
+        self.cur_orient_matrix = np.array(self.robot_node.getOrientation())
         self.cur_vel = np.array([0.0, 0.0])
         self.cmd_vel = np.array([0.0, 0.0])
         self.local_goal_pos = bt.get_local_goal_pos(self.cur_pos, self.cur_orient_matrix, self.goal_pose)
 
         self.observation = self.get_obs()
-        # NOTE: self.render(method='reset') must be called from observation wrapper
+        # NOTE: self.render(method='..') must be called from observation wrapper
 
         return self.observation, {} # = info
 
@@ -95,7 +93,6 @@ class BaseEnv(Supervisor, gym.Env):
         # Getting lidar data and converting to pointcloud
         super().step(self.basic_timestep) #NOTE: only after this timestep will the lidar data of the previous step be available
         self.lidar_range_image = self.lidar_node.getRangeImage()
-        # NOTE - heavy operation, now only used for rendering purposes (TODO check what to do with it since it's already in ov wrapper)
 
         return self.lidar_range_image
 
@@ -170,12 +167,13 @@ class BaseEnv(Supervisor, gym.Env):
         self.robot_translation_field.setSFVec3f([self.init_pose[0], self.init_pose[1], self.params['z_pos']]) #TODO: add z_pos to init_pose[2]
         self.robot_rotation_field.setSFRotation([0.0, 0.0, 1.0, self.init_pose[3]])
         super().step(2*self.basic_timestep) #NOTE: 2 timesteps needed in order to succesfully set the init position
-
-        # Return values
-        cur_pos = np.array(self.robot_node.getPosition())
-        cur_orient_matrix = np.array(self.robot_node.getOrientation())
-
-        return cur_pos, cur_orient_matrix
+    
+    def reset_map_path_and_poses(self):
+        train_map_nr_idx = random.randint(0, len(self.train_map_nr_list)-1)
+        self.map_nr = self.train_map_nr_list[train_map_nr_idx]
+        path = np.load(os.path.join(self.paths_dir, 'path_' + str(self.map_nr) + '.npy'))
+        self.path = np.multiply(path, self.params['map_res']) # apply scaling
+        self.init_pose, self.goal_pose = bt.get_init_and_goal_pose_full_path(path=self.path) # pose -> [x,y,psi]
 
     def set_render_mode(self, render_mode):
         assert render_mode is None or render_mode in self.metadata["render_modes"]
