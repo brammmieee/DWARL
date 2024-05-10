@@ -36,8 +36,8 @@ import time
 # obs = env.reset()
 n_steps = 100000000
 for i in range(n_steps):
-    # action = env.action_space.sample()
-    action = np.array([-1.0, 1.0])
+    action = env.action_space.sample()
+    # action = np.array([-1.0, 1.0])
     obs, reward, done, truncated, info = env.step(action)
     # time.sleep(0.4)
     if done:
