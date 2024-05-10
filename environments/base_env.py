@@ -1,18 +1,17 @@
 import os
 import random
-from subprocess import Popen, PIPE
-from controller import Supervisor, Keyboard
 import numpy as np
 import math as m
-import matplotlib.pyplot as plt
-import utils.base_tools as bt
-import utils.admin_tools as at
-import utils.wrappers.velocity_obstacle_tools as ovt
 import gymnasium as gym
+from subprocess import Popen, PIPE
+from controller import Supervisor, Keyboard
+import matplotlib.pyplot as plt
 from matplotlib.patches import Polygon as plt_polygon
 from shapely.geometry import Point, Polygon
 from shapely.affinity import translate, rotate
-from matplotlib import gridspec
+
+import utils.base_tools as bt
+import utils.admin_tools as at
 
 class BaseEnv(Supervisor, gym.Env):
     metadata = {"render_modes": ["full", "position", "velocity", "trajectory"], "render_fps": 4} # TODO: use fps in render methods

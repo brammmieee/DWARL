@@ -41,6 +41,7 @@ class SparseLidarObservationWrapper(gym.ObservationWrapper):
             np.array([
                 float(self.params['goal_pos_dist_min']),
                 float(self.params['goal_pos_angle_min']),
+                float(self.params['omega_min']),
                 float(self.params['v_min'])
             ])
         ])
@@ -49,6 +50,7 @@ class SparseLidarObservationWrapper(gym.ObservationWrapper):
             np.array([
                 float(self.params['goal_pos_dist_max']),
                 float(self.params['goal_pos_angle_max']),
+                float(self.params['omega_max']),
                 float(self.params['v_max'])
             ])
         ])

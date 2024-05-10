@@ -23,21 +23,17 @@ from stable_baselines3.common.env_util import make_vec_env
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
 from stable_baselines3.common.noise import NormalActionNoise, OrnsteinUhlenbeckActionNoise
+from environments.wrappers.sparse_lidar_observation_wrapper import SparseLidarObservationWrapper as SLObsWrapper
+from environments.wrappers.command_velocity_action_wrapper import CommandVelocityActionWrapper as CVActWrapper
 
 np.set_printoptions(precision=5, suppress=True)
-
-package_dir = os.path.abspath(os.pardir)
-params_dir = os.path.join(package_dir, 'parameters')
-monitor_dir = os.path.join(os.getcwd(), 'monitor')
-
-parameters_file = os.path.join(params_dir, 'parameters.yml')
-with open(parameters_file, "r") as file:
-    params = yaml.safe_load(file)
 
 # ============================== # Creating the environment # ============================ #
 
 # %% Single envS
-env = BaseEnv(render_mode=None, wb_open=True, wb_mode='training')
+# env = BaseEnv(render_mode=None, wb_open=True, wb_mode='training')
+env = CVActWrapper(SLObsWrapper(BaseEnv(render_mode=None, wb_open=True, wb_mode='training', proto_config='sparse_lidar_proto_config.json')))
+
 # env = TimeLimit(env, max_episode_steps=(params['max_ep_time']/params['sample_time']))
 # env = Monitor(
 #     env=env,
@@ -64,7 +60,7 @@ model_name = at.get_file_name_with_date(test_nr_today=0, comment='01_09_24_test'
 # policy_kwargs = dict(net_arch=dict(pi=[120, 120, 120], vf=[120, 120, 120]))
 # Create the agent
 model = PPO(
-    policy=MultiInputPolicy,
+    policy="MlpPolicy",
     env=env,
     tensorboard_log = "./logs/" + model_name,
     # policy_kwargs = policy_kwargs,
@@ -114,20 +110,5 @@ model.learn(
     reset_num_timesteps=False,
     progress_bar=True
 )
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 # %%

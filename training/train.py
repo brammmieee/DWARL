@@ -1,37 +1,46 @@
 #!/usr/bin/python3
 
-from environments.base_env import BaseEnv
-import utils.admin_tools as at
-
 from stable_baselines3.ppo import PPO
-from stable_baselines3.ppo.policies import MultiInputPolicy
-
+from stable_baselines3.ppo.policies import MultiInputPolicy, MlpPolicy
 from stable_baselines3.common.env_util import make_vec_env
 from stable_baselines3.common.vec_env import SubprocVecEnv
 from stable_baselines3.common.callbacks import CheckpointCallback, EvalCallback, CallbackList
 
+import utils.admin_tools as at
+from environments.base_env import BaseEnv
+from environments.wrappers.sparse_lidar_observation_wrapper import SparseLidarObservationWrapper as SLObsWrapper
+from environments.wrappers.command_velocity_action_wrapper import CommandVelocityActionWrapper as CVActWrapper
+
+def chain_wrappers(env, wrapper_classes):
+    for wrapper_class in wrapper_classes:
+        env = wrapper_class(env)
+    return env
+
 def main():
     # Environment settings
-    n_envs = 10
+    n_envs = 2
     env_render_mode = None
     env_wb_open = True
     env_wb_mode = 'training'
+    env_class = BaseEnv
+    wrapper_class = [SLObsWrapper, CVActWrapper]
     
     # Model settings
     test_nr_today = 0
-    comment = '01_09_24_test'
+    comment = 'test'
     model_name = at.get_file_name_with_date(test_nr_today, comment)
+    policy_type = MlpPolicy
     
-    model_save_freq = 1000 # [steps]
+    # Train and callback settings
+    total_training_steps = 1e3
+    model_save_freq = 5000 # [steps]
     model_eval_freq = 10000 # [steps]
     model_n_eval_episodes = 25 
     
-    # Training settings
-    total_training_steps = 1e4
-    
     # Creating vectorized environment
     vec_env = make_vec_env(
-        env_id=BaseEnv, 
+        env_id=env_class,
+        wrapper_class=lambda env: chain_wrappers(env, wrapper_class),
         n_envs=n_envs, 
         vec_env_cls=SubprocVecEnv, 
         env_kwargs={
@@ -43,7 +52,7 @@ def main():
     
     # Creating PPO model with callbacks
     model = PPO(
-        policy=MultiInputPolicy,
+        policy=policy_type,
         env=vec_env,
         tensorboard_log = "./logs/" + model_name,
     )
