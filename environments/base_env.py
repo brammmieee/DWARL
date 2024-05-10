@@ -27,11 +27,13 @@ class BaseEnv(Supervisor, gym.Env):
         self.worlds_dir = os.path.join(self.resources_dir, 'worlds')
         
         # Load parameters and set protos to configurations
-        self.params = at.load_parameters(parameter_file)
+        self.params = at.load_parameters([parameter_file, proto_config])
         bt.update_protos(proto_config)
         
         # Precomputations
-        self.precomputed_lidar_values = bt.precompute_lidar_values(self.params)
+        self.precomputed_lidar_values = bt.precompute_lidar_values(
+            num_lidar_rays=self.params['proto_substitutions']['horizontalResolution']
+        )
 
         # Training maps and map bounds
         self.train_map_nr_list = at.load_from_json('train_map_nr_list.json', os.path.join(self.params_dir, 'map_nrs'))
@@ -55,17 +57,14 @@ class BaseEnv(Supervisor, gym.Env):
         # Compute collision tree for efficient collision detection (depends on new grid)
         self.collision_tree = bt.precompute_collision_detection(self.grid, self.params['map_res'])
 
-        # Reset current pos, orient, vel, cmd_vel
-        self.cur_pos = np.array(self.robot_node.getPosition())
-        self.cur_orient_matrix = np.array(self.robot_node.getOrientation())
+        # Updating prev_pos, cur_pos, cur_orient, footprint in global frame, and getting new local goal
+        self.update_robot_state_and_local_goal(method='reset')
+
         self.cur_vel = np.array([0.0, 0.0])
         self.cmd_vel = np.array([0.0, 0.0])
-
-        # Gett local goal position
-        self.local_goal_pos = bt.get_local_goal_pos(self.cur_pos, self.cur_orient_matrix, self.goal_pose)
         
+        self.method = 'reset' # used for rendering
         self.observation = self.get_obs()
-        # NOTE: self.render(method='..') must be called from observation wrapper
 
         return self.observation, {} # = info
 
@@ -85,15 +84,13 @@ class BaseEnv(Supervisor, gym.Env):
         
         super().step(self.basic_timestep) # WEBOTS - Step()
 
-        # Updating prev_pos, cur_pos and cur_orient, and getting new local goal
-        self.cur_pos = np.array(self.robot_node.getPosition())
-        self.cur_orient_matrix = np.array(self.robot_node.getOrientation())
-        self.local_goal_pos = bt.get_local_goal_pos(self.cur_pos, self.cur_orient_matrix, self.goal_pose)
+        # Updating prev_pos, cur_pos, cur_orient, footprint in global frame, and getting new local goal
+        self.update_robot_state_and_local_goal(method='step')
 
+        self.method = 'step'
         self.observation = self.get_obs()
         self.reward = self.get_reward()
         self.done = self.get_done()
-        # NOTE: self.render(method='step') must be called from observation wrapper
 
         return self.observation, self.reward, self.done, False, {} # last 3: done, truncated, info
 
@@ -101,6 +98,7 @@ class BaseEnv(Supervisor, gym.Env):
         # Getting lidar data and converting to pointcloud
         super().step(self.basic_timestep) #NOTE: only after this timestep will the lidar data of the previous step be available
         self.lidar_range_image = self.lidar_node.getRangeImage()
+        self.render(method=self.method)
 
         return self.lidar_range_image
 
@@ -120,58 +118,48 @@ class BaseEnv(Supervisor, gym.Env):
             return True
         
         if self.check_collision():
-            print("Imminent collision detected!")
             return True
 
         # When none of the done conditions are met
         return False
     
-    def check_collision(self):
+    def update_robot_state_and_local_goal(self, method):
+        # Update previous position, current position, current orientation, and global footprint location
+        if method == 'step':
+            self.prev_pos = np.array(self.cur_pos)
+        self.cur_pos = np.array(self.robot_node.getPosition())
+        self.cur_orient_matrix = np.array(self.robot_node.getOrientation())
+        self.footprint_glob = self.get_global_footprint_location(
+            self.cur_pos, self.cur_orient_matrix, self.params['polygon_coords']
+        )
+        
+        # Calculate local goal position
+        self.local_goal_pos = bt.get_local_goal_pos(self.cur_pos, self.cur_orient_matrix, self.goal_pose)
+
+    def get_global_footprint_location(self, cur_pos, cur_orient_matrix, polygon_coords):
         # Get position and orientation
-        position = self.cur_pos[:2]
-        orientation_matrix = self.cur_orient_matrix
+        position = cur_pos[:2]
+        orientation_matrix = cur_orient_matrix
 
         # Construct translated and rotated polygon
-        footprint = Polygon(self.params['polygon_coords'])
+        footprint = Polygon(polygon_coords)
         translated_footprint = translate(footprint, position[0], position[1])
         angle_rad = m.atan2(orientation_matrix[3], orientation_matrix[0])  # atan2(sin, cos)
-
         rotated_footprint = rotate(
             translated_footprint, 
             angle_rad-0.5*np.pi,
             origin=Point(position[0], position[1]), 
             use_radians=True
         )
-
-
-        # # Plotting
-        # res = self.params['map_res']
-        # # Visualize the gridmap
-        # plt.figure(figsize=(8, 8))
-        # for x in range(len(self.grid)):
-        #     for y in range(len(self.grid[0])):
-        #         color = 'black' if self.grid[x][y] == 1 else 'white'
-        #         plt.fill([res*x, res*x+res, res*x+res, res*x], [res*y, res*y, res*y+res, res*y+res], color=color, edgecolor='black')
         
-        # # Visualize the robot's footprint
-        # x, y = rotated_footprint.exterior.xy
-        # plt.fill(x, y, color='blue', alpha=0.5)
-
-        # plt.xlim(0, len(self.grid[0])*res)
-        # plt.ylim(0, len(self.grid)*res)
-        # plt.gca().set_aspect('equal', adjustable='box')
-        # plt.xlabel('x location [m]')
-        # plt.ylabel('y location [m]')
-        # plt.title('Gridmap with Robot Footprint and Collisions')
-        # plt.show()
-
-
+        return rotated_footprint
+    
+    def check_collision(self):
         # Use the STRTree to find any intersecting boxes
-        result = self.collision_tree.query(rotated_footprint)
+        result = self.collision_tree.query(self.footprint_glob)
         collision_detected = len(result) > 0
 
         if collision_detected:
-            print("Collision detected!")
             return True
         
         return collision_detected
@@ -241,15 +229,14 @@ class BaseEnv(Supervisor, gym.Env):
     def set_render_mode(self, render_mode):
         assert render_mode is None or render_mode in self.metadata["render_modes"]
         self.render_mode = render_mode
-        self.render_init = True
         self.render_count = 0
 
     def render(self, method=None):
         if self.render_mode == None:
             return
         
-        # Create initial plot or remove data to prepare for new data
-        if self.render_init:
+        # Create initial plot or remove data
+        if self.render_count == 0:
             self.render_init_plot(self.render_mode)
         else:
             self.render_remove_data(self.render_mode, method)
@@ -260,86 +247,77 @@ class BaseEnv(Supervisor, gym.Env):
         # Plot graphs set flags and counter
         self.fig.canvas.draw()
         self.fig.canvas.flush_events()
-        self.render_init = False
         self.render_count += 1 # counter for reduced rendering (e.g. every 2nd step)
         
-    def render_init_plot(self, render_mode, add_plots: int = 0):
+    def render_init_plot(self, render_mode):
         plt.ion()
-        self.fig = plt.figure() 
-        
-        num_plots = add_plots + (2 if render_mode == 'full' else 1)
-        num_rows = (num_plots + 1) // 2  # ensures at least two columns if more than one plot
-        first_idx_add_plot = num_plots - 1
-        
-        gs = gridspec.GridSpec(num_rows, 2)
-        
-        # Create subplots dynamically and add to the list
-        self.ax = []
-        for i in range(num_plots):
-            # For the last plot, if odd number, it should span both columns
-            if i == num_plots - 1 and num_plots % 2 != 0:
-                ax = self.fig.add_subplot(gs[i // 2, :])
-            else:
-                ax = self.fig.add_subplot(gs[i // 2, i % 2])
-            self.ax.append(ax)
+        self.fig, (self.ax1, self.ax2) = plt.subplots(2, 1)
         
         if render_mode in ['position','full']:
-            # ax[0] - Lidar data     #NOTE: plots footprint polygon only
+            # ax1 - Lidar data and footprint (axis fixed to base_link)
             polygon = Polygon(self.params['polygon_coords'])
             patch = plt_polygon(np.array(polygon.exterior.coords), alpha=0.75, closed=True, facecolor='grey')
-            self.ax[0].add_patch(patch)
+            self.ax1.add_patch(patch)
 
-            self.ax[0].set_xlim([-1.5,1.5])
-            self.ax[0].set_ylim([-1.5,1.5])
-            self.ax[0].set_xlabel('x [m]')
-            self.ax[0].set_ylabel('y [m]')
-            self.ax[0].set_aspect('equal')
-            self.ax[0].grid()
+            self.ax1.set_xlim([-1.5,1.5])
+            self.ax1.set_ylim([-1.5,1.5])
+            self.ax1.set_xlabel('x [m]')
+            self.ax1.set_ylabel('y [m]')
+            self.ax1.set_aspect('equal')
+            self.ax1.grid()
             
         if render_mode in ['trajectory', 'full']:
-            # ax[1] - Path, init pose and goal pose data
-            self.ax[1].set_aspect('equal', adjustable='box')
-            self.ax[1].set_xlabel('x [m]')
-            self.ax[1].set_ylabel('y [m]')
+            # ax2 - Path, init pose and goal pose data (axis fixed to map)
+            self.ax2.set_aspect('equal', adjustable='box')
+            self.ax2.set_xlabel('x [m]')
+            self.ax2.set_ylabel('y [m]')
         
-        return first_idx_add_plot
-
     def render_remove_data(self, render_mode, method):
         if render_mode in ['position', 'full']:
             try:
-                # ax[0] - Clear lidar data
+                # ax1 - Clear lidar data
                 self.lidar_plot.remove()
                 self.local_goal_plot.remove()
             except AttributeError:
-                print("render(): removing position plot not possible because it doesn't exist yet")
-                
+                pass
+
         if render_mode in ['trajectory', 'full']:
             try:
-                # ax[1] - Clear path and poses
+                # ax2 - Clear path and poses
                 self.cur_pos_plot.remove()
+                for patch in self.footprint_plot:
+                    patch.remove()
                 if method == 'reset':
-                    self.grid_plot.remove()
+                    for patch in self.grid_plots:
+                        patch.remove()
+                    self.grid_plots.clear()
                     self.path_plot.remove()
                     self.init_pose_plot.remove()
                     self.goal_pose_plot.remove()
             except AttributeError:
-                print("render(): removing trajectory plot not possible because it doesn't exist yet")
-                
+                pass
+
     def render_add_data(self, render_mode, method):
         if render_mode in ['position', 'full']:
-            # ax[0] - Lidar data
+            # ax1 - Lidar data
             self.lidar_points = bt.lidar_to_point_cloud(self.params, self.precomputed_lidar_values, self.lidar_range_image) #NOTE: double computation in case of e.g vo observation wrapper
-            self.lidar_plot = self.ax[0].scatter(self.lidar_points[:,0], self.lidar_points[:,1], alpha=1.0, c='black')
-            self.local_goal_plot = self.ax[0].scatter(self.local_goal_pos[0], self.local_goal_pos[1], alpha=1.0, c='purple')
+            self.lidar_plot = self.ax1.scatter(self.lidar_points[:,0], self.lidar_points[:,1], alpha=1.0, c='black')
+            self.local_goal_plot = self.ax1.scatter(self.local_goal_pos[0], self.local_goal_pos[1], alpha=1.0, c='purple')
             
         if render_mode in ['trajectory', 'full']:
-            # ax[1] - Path and poses
-            self.cur_pos_plot = self.ax[1].scatter(self.cur_pos[0], self.cur_pos[1], c='blue', alpha=0.33)
+            # ax2 - Path and poses
+            self.cur_pos_plot = self.ax2.scatter(self.cur_pos[0], self.cur_pos[1], c='blue', alpha=0.33)
+            x, y = self.footprint_glob.exterior.xy
+            self.footprint_plot = self.ax2.fill(x, y, color='blue', alpha=0.5)
             if method == 'reset':
+                self.grid_plots = []  # Initialize a list to store all rectangle patches
                 indices = np.argwhere(self.grid == 1)
-                x, y = indices[:,0], indices[:,1]
-                self.x_scaled, self.y_scaled = np.multiply(x, self.params['map_res']), np.multiply(y, self.params['map_res'])
-                self.grid_plot = self.ax[1].scatter(self.x_scaled, self.y_scaled, marker='s', c='black')
-                self.path_plot = self.ax[1].scatter(self.path[:,0], self.path[:,1], c='grey', alpha=0.5)
-                self.init_pose_plot = self.ax[1].scatter(self.init_pose[0], self.init_pose[1], c='green')
-                self.goal_pose_plot = self.ax[1].scatter(self.goal_pose[0], self.goal_pose[1], c='red')
+                for index in indices:
+                    x, y = index
+                    x_scaled, y_scaled = x * self.params['map_res'], y * self.params['map_res']
+                    rect = plt.Rectangle((x_scaled, y_scaled), self.params['map_res'], self.params['map_res'], color='black')
+                    self.grid_plots.append(self.ax2.add_patch(rect))  # Add each patch to the list
+
+                self.path_plot = self.ax2.scatter(self.path[:,0], self.path[:,1], c='grey', alpha=0.5)
+                self.init_pose_plot = self.ax2.scatter(self.init_pose[0], self.init_pose[1], c='green')
+                self.goal_pose_plot = self.ax2.scatter(self.goal_pose[0], self.goal_pose[1], c='red')

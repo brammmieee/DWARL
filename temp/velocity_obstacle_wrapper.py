@@ -1,8 +1,6 @@
 import numpy as np
 import gymnasium as gym
 from matplotlib.patches import Polygon as plt_polygon
-from shapely.geometry import Point, Polygon
-from shapely.ops import nearest_points
 
 import utils.base_tools as bt
 import utils.admin_tools as at
@@ -20,7 +18,6 @@ class VelocityObstacleWrapper(gym.Wrapper):
     '''
     def __init__(self, env):
         super().__init__(env)
-        
         # Load wrapper specific and general parameters
         self.params = at.load_parameters(["base_parameters.yaml", "obstacle_velocity_observation.yaml"]) #TODO: list can be directly parsed to init of base env
         
@@ -63,8 +60,6 @@ class VelocityObstacleWrapper(gym.Wrapper):
         obs = self.get_obs()
         self.render(method='reset')
         
-        self.stuck = False
-
         return obs
     
     def step(self, action):
@@ -76,23 +71,10 @@ class VelocityObstacleWrapper(gym.Wrapper):
         
         # Get the new observation and check if the agent is stuck based on the velocity observation and render it
         obs = self.get_obs()
-        done = self.get_done(done)
         self.render(method='step')
         
         return obs, reward, done, truncated, info
-    
-    def get_velocity_bounded_action(self, action):
-        # If action inside vel_obs (and hence outside adm_vel_polygon), take closest safe point instead
-        adm_vel_polygon = Polygon(self.vel_obs)
-        action_point = Point(action[0], action[1])
-        if not adm_vel_polygon.contains(action_point):
-            if not adm_vel_polygon.boundary.contains(action_point):
-                with np.errstate(invalid='ignore'):
-                    closest_point, _ = nearest_points(adm_vel_polygon, action_point)
-                action = np.array([closest_point.x, closest_point.y])
-                
-        return action
-    
+
     def get_obs(self):
         # Converting the lidar_range_image to the lidar_points pointcloud
         self.lidar_points = bt.lidar_to_point_cloud(self.params, self.precomputed_lidar_values, self.unwrapped.lidar_range_image)
@@ -108,14 +90,7 @@ class VelocityObstacleWrapper(gym.Wrapper):
             self.stuck = True
 
         return self.observation
-    
-    def get_done(self, done):
-        # Additional done case, i.e. getting stuck, obtained from the observation computation
-        if self.stuck:
-            return True
-        else:
-            return done
-    
+
     def render(self, method=None):
         render_mode = self.unwrapped.render_mode
         if render_mode == None:

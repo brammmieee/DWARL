@@ -4,7 +4,7 @@
 # %%
 import numpy as np
 from environments.base_env import BaseEnv
-from environments.wrappers.velocity_obstacle_wrapper import VelocityObstacleWrapper as VOWrapper
+from environments.wrappers.velocity_obstacle_observation_wrapper import VelocityObstacleObservationWrapper as VObsWrapper
 from environments.wrappers.dynamic_window_action_wrapper import DynamicWindowActionWrapper as DWAActWrapper
 from environments.wrappers.sparse_lidar_observation_wrapper import SparseLidarObservationWrapper as SLObsWrapper
 from environments.wrappers.command_velocity_action_wrapper import CommandVelocityActionWrapper as CVActWrapper
@@ -13,10 +13,10 @@ from environments.wrappers.command_velocity_action_wrapper import CommandVelocit
 # env = BaseEnv(render_mode='full', wb_open=True, wb_mode='testing')
 
 # %%
-env = DWAActWrapper(VOWrapper(BaseEnv(render_mode='full', wb_open=True, wb_mode='testing')))
+# env = DWAActWrapper(VObsWrapper(BaseEnv(render_mode='full', wb_open=True, wb_mode='testing')))
 
 # %%
-# env = CVActWrapper(SLObsWrapper(BaseEnv(render_mode='full', wb_open=True, wb_mode='testing', proto_config='sparse_lidar_proto_config.json')))
+env = CVActWrapper(SLObsWrapper(BaseEnv(render_mode='full', wb_open=True, wb_mode='testing', proto_config='sparse_lidar_proto_config.json')))
 
 # %%
 obs = env.reset() #options={"map_nr":40, "nominal_dist":1})
@@ -36,7 +36,8 @@ import time
 # obs = env.reset()
 n_steps = 100000000
 for i in range(n_steps):
-    action = env.action_space.sample()
+    # action = env.action_space.sample()
+    action = np.array([-1.0, 1.0])
     obs, reward, done, truncated, info = env.step(action)
     # time.sleep(0.4)
     if done:

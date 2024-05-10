@@ -151,8 +151,8 @@ def get_cmd_vel(robot_node):
     lin_vel = np.sqrt(webots_vel[0]**2 + webots_vel[1]**2) # in plane global velocities (x and y) to forward vel
     return np.array([ang_vel, lin_vel])
 
-def precompute_lidar_values(parameters):
-    lidar_delta_psi = (2 * np.pi) / parameters['num_lidar_rays']
+def precompute_lidar_values(num_lidar_rays):
+    lidar_delta_psi = (2 * np.pi) / num_lidar_rays
     lidar_angles = np.arange(0, 2 * np.pi, lidar_delta_psi)
     lidar_cosines = np.cos(lidar_angles)
     lidar_sines = np.sin(lidar_angles)

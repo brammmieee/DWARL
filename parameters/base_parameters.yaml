@@ -29,6 +29,3 @@ omega_max: 0.6
 omega_min: -0.6
 alpha_max: 0.8
 alpha_min: -0.8
-
-# Lidar
-num_lidar_rays: 200 # check if can be removed

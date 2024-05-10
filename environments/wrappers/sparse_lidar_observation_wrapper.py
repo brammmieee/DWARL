@@ -69,7 +69,7 @@ class SparseLidarObservationWrapper(gym.ObservationWrapper):
             local_goal=self.unwrapped.local_goal_pos,
             agent_pos=self.unwrapped.cur_pos
         )
-        obs = np.concatenate([
+        self.obs = np.concatenate([
             lidar_range_image_array,
             np.array([
                 goal_pos_dist, goal_pos_angle, 
@@ -78,7 +78,7 @@ class SparseLidarObservationWrapper(gym.ObservationWrapper):
             ])
         ])
 
-        return obs
+        return self.obs
 
 
         
