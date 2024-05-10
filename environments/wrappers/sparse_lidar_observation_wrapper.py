@@ -29,9 +29,9 @@ class SparseLidarObservationWrapper(gym.ObservationWrapper):
         super().__init__(env)
         
         self.params = at.load_parameters([ #TODO: list can be directly parsed to init of base env
-            "base_parameters.yaml", 
-            "sparse_lidar_proto_config.json",
-            "sparse_lidar_observation.yaml"
+            'base_parameters.yaml', 
+            'sparse_lidar_proto_config.json',
+            'sparse_lidar_observation.yaml'
         ])
         
         # Observation space definition
