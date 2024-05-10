@@ -76,7 +76,7 @@ class VelocityObstacleWrapper(gym.Wrapper):
         
         # Get the new observation and check if the agent is stuck based on the velocity observation and render it
         obs = self.get_obs()
-        done = self.get_done()
+        done = self.get_done(done)
         self.render(method='step')
         
         return obs, reward, done, truncated, info
@@ -109,9 +109,7 @@ class VelocityObstacleWrapper(gym.Wrapper):
 
         return self.observation
     
-    def get_done(self):
-        done = self.unwrapped.get_done()
-
+    def get_done(self, done):
         # Additional done case, i.e. getting stuck, obtained from the observation computation
         if self.stuck:
             return True

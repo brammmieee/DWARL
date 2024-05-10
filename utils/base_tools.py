@@ -4,6 +4,8 @@ import numpy as np
 import random
 from typing import Tuple, List, Dict
 from shapely.geometry import Polygon
+from shapely.geometry import box
+from shapely.strtree import STRtree
 
 from utils.admin_tools import find_file
 
@@ -109,7 +111,7 @@ def get_init_and_goal_poses(path, parameters=None):
         return init_pose, goal_pose
 
     elif mode == 'random':
-        if 'nominal_distance' is None:
+        if 'nominal_distance' == None:
             raise ValueError("Missing 'nominal_distance' parameter for init_and_goal_pose_mode: 'random'.")
         nom_dist = parameters['nominal_distance']
         sign = np.random.choice([-1, 1])
@@ -174,6 +176,34 @@ def lidar_to_point_cloud(parameters, precomputed, lidar_range_image):
     # Add lidar position offset
     lidar_points[:,1] += parameters['lidar_y_pos']
     return lidar_points
+
+def precompute_collision_detection(gridmap, resolution):
+    """
+    Precomputes the collision detection data structure.
+
+    Args:
+    gridmap (list of list of int): Occupancy grid (2D array) where 1 indicates an occupied cell and 0 an empty one.
+    resolution (float): The size of each grid cell in meters.
+
+    Returns:
+    shapely.strtree.STRTree: The constructed STRTree.
+    """
+    occupied_boxes = []
+    
+    # Create a shapely box for each occupied cell in the gridmap
+    for x in range(len(gridmap)):
+        for y in range(len(gridmap[0])):
+            if gridmap[x][y] == 1:
+                # Convert grid indices to spatial coordinates based on the resolution
+                min_x = x * resolution
+                min_y = y * resolution
+                max_x = min_x + resolution
+                max_y = min_y + resolution
+                # Create a box for the occupied cell
+                occupied_boxes.append(box(min_x, min_y, max_x, max_y))
+    
+    # Create an STRTree from all occupied boxes
+    return STRtree(occupied_boxes)
 
 def compute_map_bound_polygon(parameters):
     map_res = parameters['map_res']

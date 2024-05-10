@@ -3,6 +3,7 @@ import random
 from subprocess import Popen, PIPE
 from controller import Supervisor, Keyboard
 import numpy as np
+import math as m
 import matplotlib.pyplot as plt
 import utils.base_tools as bt
 import utils.admin_tools as at
@@ -10,6 +11,7 @@ import utils.wrappers.velocity_obstacle_tools as ovt
 import gymnasium as gym
 from matplotlib.patches import Polygon as plt_polygon
 from shapely.geometry import Point, Polygon
+from shapely.affinity import translate, rotate
 from matplotlib import gridspec
 
 class BaseEnv(Supervisor, gym.Env):
@@ -50,6 +52,9 @@ class BaseEnv(Supervisor, gym.Env):
         self.reset_map_path_and_poses()
         self.reset_webots()
 
+        # Compute collision tree for efficient collision detection (depends on new grid)
+        self.collision_tree = bt.precompute_collision_detection(self.grid, self.params['map_res'])
+
         # Reset current pos, orient, vel, cmd_vel
         self.cur_pos = np.array(self.robot_node.getPosition())
         self.cur_orient_matrix = np.array(self.robot_node.getOrientation())
@@ -77,6 +82,7 @@ class BaseEnv(Supervisor, gym.Env):
         pos, orient = bt.compute_new_pose(self.params, self.cur_pos, self.cur_orient_matrix, self.cur_vel)
         self.robot_translation_field.setSFVec3f([pos[0], pos[1], pos[2]])
         self.robot_rotation_field.setSFRotation([0.0, 0.0, 1.0, orient])
+        
         super().step(self.basic_timestep) # WEBOTS - Step()
 
         # Updating prev_pos, cur_pos and cur_orient, and getting new local goal
@@ -86,10 +92,10 @@ class BaseEnv(Supervisor, gym.Env):
 
         self.observation = self.get_obs()
         self.reward = self.get_reward()
-        # NOTE: done = self.get_done() must be called from observation wrapper
+        self.done = self.get_done()
         # NOTE: self.render(method='step') must be called from observation wrapper
 
-        return self.observation, self.reward, False, False, {} # last 3: done, truncated, info
+        return self.observation, self.reward, self.done, False, {} # last 3: done, truncated, info
 
     def get_obs(self):
         # Getting lidar data and converting to pointcloud
@@ -112,10 +118,64 @@ class BaseEnv(Supervisor, gym.Env):
         cur_pos_point = Point(self.cur_pos[0], self.cur_pos[1])
         if not (self.map_bounds_polygon.contains(cur_pos_point) or self.map_bounds_polygon.boundary.contains(cur_pos_point)):
             return True
+        
+        if self.check_collision():
+            print("Imminent collision detected!")
+            return True
 
         # When none of the done conditions are met
         return False
+    
+    def check_collision(self):
+        # Get position and orientation
+        position = self.cur_pos[:2]
+        orientation_matrix = self.cur_orient_matrix
 
+        # Construct translated and rotated polygon
+        footprint = Polygon(self.params['polygon_coords'])
+        translated_footprint = translate(footprint, position[0], position[1])
+        angle_rad = m.atan2(orientation_matrix[3], orientation_matrix[0])  # atan2(sin, cos)
+
+        rotated_footprint = rotate(
+            translated_footprint, 
+            angle_rad-0.5*np.pi,
+            origin=Point(position[0], position[1]), 
+            use_radians=True
+        )
+
+
+        # # Plotting
+        # res = self.params['map_res']
+        # # Visualize the gridmap
+        # plt.figure(figsize=(8, 8))
+        # for x in range(len(self.grid)):
+        #     for y in range(len(self.grid[0])):
+        #         color = 'black' if self.grid[x][y] == 1 else 'white'
+        #         plt.fill([res*x, res*x+res, res*x+res, res*x], [res*y, res*y, res*y+res, res*y+res], color=color, edgecolor='black')
+        
+        # # Visualize the robot's footprint
+        # x, y = rotated_footprint.exterior.xy
+        # plt.fill(x, y, color='blue', alpha=0.5)
+
+        # plt.xlim(0, len(self.grid[0])*res)
+        # plt.ylim(0, len(self.grid)*res)
+        # plt.gca().set_aspect('equal', adjustable='box')
+        # plt.xlabel('x location [m]')
+        # plt.ylabel('y location [m]')
+        # plt.title('Gridmap with Robot Footprint and Collisions')
+        # plt.show()
+
+
+        # Use the STRTree to find any intersecting boxes
+        result = self.collision_tree.query(rotated_footprint)
+        collision_detected = len(result) > 0
+
+        if collision_detected:
+            print("Collision detected!")
+            return True
+        
+        return collision_detected
+    
     def close(self):
         self.close_webots()
                 
@@ -173,6 +233,7 @@ class BaseEnv(Supervisor, gym.Env):
     def reset_map_path_and_poses(self):
         train_map_nr_idx = random.randint(0, len(self.train_map_nr_list)-1)
         self.map_nr = self.train_map_nr_list[train_map_nr_idx]
+        self.grid = np.load(os.path.join(self.grids_dir, 'grid_' + str(self.map_nr) + '.npy'))
         path = np.load(os.path.join(self.paths_dir, 'path_' + str(self.map_nr) + '.npy'))
         self.path = np.multiply(path, self.params['map_res']) # apply scaling
         self.init_pose, self.goal_pose = bt.get_init_and_goal_poses(path=self.path, parameters=self.params) # pose -> [x,y,psi]
@@ -275,8 +336,7 @@ class BaseEnv(Supervisor, gym.Env):
             # ax[1] - Path and poses
             self.cur_pos_plot = self.ax[1].scatter(self.cur_pos[0], self.cur_pos[1], c='blue', alpha=0.33)
             if method == 'reset':
-                grid = np.load(os.path.join(self.grids_dir, 'grid_' + str(self.map_nr) + '.npy'))
-                indices = np.argwhere(grid == 1)
+                indices = np.argwhere(self.grid == 1)
                 x, y = indices[:,0], indices[:,1]
                 self.x_scaled, self.y_scaled = np.multiply(x, self.params['map_res']), np.multiply(y, self.params['map_res'])
                 self.grid_plot = self.ax[1].scatter(self.x_scaled, self.y_scaled, marker='s', c='black')
