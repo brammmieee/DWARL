@@ -1,0 +1,16 @@
+comment: test
+environment:
+  env_proto_config: sparse_lidar_proto_config.json
+  n_envs: 1
+  wrapper_classes:
+  - SparseLidarObservationWrapper
+  - CommandVelocityActionWrapper
+  - ParameterizedRewardWrapper
+model:
+  policy_type: MlpPolicy
+train_and_callback:
+  log_interval: 10
+  model_eval_freq: 10000
+  model_n_eval_episodes: 25
+  model_save_freq: 5000
+  total_training_steps: 1000

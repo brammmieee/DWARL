@@ -17,26 +17,11 @@ def read_pickle_file(file_name, file_dir):
     with open(pickle_file_path, "rb") as file:
         pickle_file = pickle.load(file)
         return pickle_file
-    
-def create_day_folder(file_dir):
-    # NOTE: file_dir is the dir relative to the 
-    package_dir = os.path.abspath(os.pardir)
-    current_date = datetime.datetime.now()
-    day_folder = current_date.strftime('%d')  # Format: DD
-    directory = os.path.join(package_dir, file_dir, day_folder)
 
-    if not os.path.exists(directory):
-        os.makedirs(directory)
-
-def get_file_name_with_date(test_nr_today, comment=''):
-    current_date = datetime.date.today()
-    formatted_date = current_date.strftime("%B%d")
-    return f'{formatted_date}V{str(test_nr_today)}{comment}'
-
-def get_file_name_with_date_testing(test_nr_today, comment):
-    current_date = datetime.date.today()
-    formatted_date = current_date.strftime("%B_%d")
-    return f'{formatted_date}_V{str(test_nr_today)}_{comment}'
+def get_date():
+    current_date = datetime.datetime.now()  # Returns current date and time
+    formatted_date = current_date.strftime("%y_%m_%d__%H_%M_%S")
+    return formatted_date
 
 def find_file(filename, start_dir=os.path.abspath(os.pardir)):
     for root, _, files in os.walk(start_dir):
@@ -44,11 +29,6 @@ def find_file(filename, start_dir=os.path.abspath(os.pardir)):
             return os.path.join(root, filename)
     
     raise FileNotFoundError(f"File '{filename}' not found starting from directory '{start_dir}'.")
-
-import yaml
-import json
-from typing import Union, List
-import os
 
 def load_parameters(file_name_list: Union[str, List[str]], start_dir=os.path.abspath(os.pardir)):
     """
