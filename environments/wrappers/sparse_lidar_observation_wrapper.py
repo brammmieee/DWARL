@@ -14,6 +14,13 @@ def normalize_lidar_range_image(lidar_range_image, min_range, max_range):
 
     return normalized_array
 
+def remove_infinite_values(lidar_range_image_array, replace_value):
+    '''
+    Removes infinite values from the lidar range image array and replaces them with a specified value.
+    '''
+    lidar_range_image_array[np.isinf(lidar_range_image_array)] = replace_value
+    return lidar_range_image_array
+
 def convert_local_goal_to_polar_coords(local_goal, agent_pos):
     '''
     Converts the local goal to polar coordinates with respect to the agent position.
@@ -66,6 +73,10 @@ class SparseLidarObservationWrapper(gym.ObservationWrapper):
             lidar_range_image=obs,
             min_range=self.params['proto_substitutions']['minRange'],
             max_range=self.params['proto_substitutions']['maxRange'],
+        )
+        lidar_range_image_array = remove_infinite_values( #NOTE: could also be set to 0 instead!
+            lidar_range_image_array=lidar_range_image_array,
+            replace_value=float(self.params['proto_substitutions']['maxRange'])
         )
         goal_pos_dist, goal_pos_angle = convert_local_goal_to_polar_coords(
             local_goal=self.unwrapped.local_goal_pos,

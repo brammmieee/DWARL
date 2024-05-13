@@ -44,8 +44,7 @@ class CommandVelocityActionWrapper(gym.ActionWrapper):
             high=np.array([v_max, omega_max]),
             shape=(2,), 
             dtype=np.float32
-        )
-        
+        )        
     
     def action(self, act):
         # Convert the 2D action vector to the dynamic window

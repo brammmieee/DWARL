@@ -1,7 +1,7 @@
 # %%
-%load_ext autoreload
-# %autoreload 2 # reloads custom modules into Ipython interpreter
-%matplotlib qt
+# %load_ext autoreload
+# # %autoreload 2 # reloads custom modules into Ipython interpreter
+# %matplotlib qt
 
 # %%
 import os
@@ -13,19 +13,18 @@ import utils.admin_tools as at
 from environments.base_env import BaseEnv
 
 from stable_baselines3.td3 import TD3
-from stable_baselines3.td3.policies import MultiInputPolicy
 from stable_baselines3.ppo import PPO
-from stable_baselines3.ppo.policies import MultiInputPolicy
 
 from stable_baselines3.common.evaluation import evaluate_policy
 from stable_baselines3.common.callbacks import CheckpointCallback, EvalCallback, CallbackList, StopTrainingOnNoModelImprovement
-from stable_baselines3.common.env_util import make_vec_env
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
 from stable_baselines3.common.noise import NormalActionNoise, OrnsteinUhlenbeckActionNoise
 
 from environments.wrappers.sparse_lidar_observation_wrapper import SparseLidarObservationWrapper as SLObsWrapper
+from environments.wrappers.velocity_obstacle_observation_wrapper import VelocityObstacleObservationWrapper as VObsWrapper
 from environments.wrappers.command_velocity_action_wrapper import CommandVelocityActionWrapper as CVActWrapper
+from environments.wrappers.dynamic_window_action_wrapper import DynamicWindowActionWrapper as DWActWrapper
 from environments.wrappers.parameterized_reward_wrapper import ParameterizedRewardWrapper as PrewWrapper
 
 np.set_printoptions(precision=5, suppress=True)
@@ -35,6 +34,7 @@ np.set_printoptions(precision=5, suppress=True)
 # %% Single envS
 # env = BaseEnv(render_mode=None, wb_open=True, wb_mode='training')
 env = PrewWrapper(CVActWrapper(SLObsWrapper(BaseEnv(render_mode=None, wb_open=True, wb_mode='training', proto_config='sparse_lidar_proto_config.json'))))
+# env = PrewWrapper(DWActWrapper(VObsWrapper(BaseEnv(render_mode=None, wb_open=True, wb_mode='training', proto_config='sparse_lidar_proto_config.json'))))
 
 # env = TimeLimit(env, max_episode_steps=(params['max_ep_time']/params['sample_time']))
 # env = Monitor(
