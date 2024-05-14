@@ -20,12 +20,12 @@ from environments.wrappers.parameterized_reward_wrapper import ParameterizedRewa
 
 def chain_wrappers(env, wrapper_classes):
     for wrapper_classes in wrapper_classes:
-        env = wrapper_classes(env)
+        env=wrapper_classes(env)
         
     return env
 
 def parse_args():
-    parser = argparse.ArgumentParser(description='Training script')
+    parser=argparse.ArgumentParser(description='Training script')
     
     # Environment settings
     parser.add_argument('--n_envs', type=int, default=1, help='Number of environments to run in parallel')
@@ -43,12 +43,12 @@ def parse_args():
     parser.add_argument('--model_n_eval_episodes', type=int, default=25, help='Number of evaluation episodes')
     parser.add_argument('--log_interval', type=int, default=10, help='Log interval')
     
-    args = parser.parse_args()
+    args=parser.parse_args()
     return args
 
 def save_args_to_yaml(args, dir):
     # Group arguments under the specified categories
-    config = {
+    config={
         'comment': args.comment,
         'environment': {
             'n_envs': args.n_envs,
@@ -69,7 +69,7 @@ def save_args_to_yaml(args, dir):
 
     # Create the directory if it doesn't exist
     os.makedirs(dir, exist_ok=True)
-    config_file = os.path.join(dir, "args.yaml")
+    config_file=os.path.join(dir, "args.yaml")
 
     # Save the grouped args to a yaml file
     with open(config_file, "w") as f:
@@ -77,22 +77,22 @@ def save_args_to_yaml(args, dir):
 
 def train(args, model_dir, log_dir):
     # Environment settings
-    n_envs = args.n_envs
-    env_proto_config = args.env_proto_config
-    wrapper_classes = [globals()[wrapper] for wrapper in args.wrapper_classes]
+    n_envs=args.n_envs
+    env_proto_config=args.env_proto_config
+    wrapper_classes=[globals()[wrapper] for wrapper in args.wrapper_classes]
     
     # Model settings
-    policy_type = args.policy_type
+    policy_type=args.policy_type
     
     # Train and callback settings
-    total_training_steps = args.total_training_steps
-    model_save_freq = args.model_save_freq
-    model_eval_freq = args.model_eval_freq
-    model_n_eval_episodes = args.model_n_eval_episodes
-    log_interval = args.log_interval
+    total_training_steps=args.total_training_steps
+    model_save_freq=args.model_save_freq
+    model_eval_freq=args.model_eval_freq
+    model_n_eval_episodes=args.model_n_eval_episodes
+    log_interval=args.log_interval
 
     # Creating vectorized environment
-    vec_env = make_vec_env(
+    vec_env=make_vec_env(
         env_id=BaseEnv,
         wrapper_class=lambda env: chain_wrappers(env, wrapper_classes),
         n_envs=n_envs, 
@@ -103,30 +103,30 @@ def train(args, model_dir, log_dir):
     )
     
     # Creating PPO model with callbacks
-    model = PPO(
+    model=PPO(
         policy=policy_type,
         env=vec_env,
-        tensorboard_log = log_dir,
+        tensorboard_log=log_dir,
     )
-    checkpoint_callback = CheckpointCallback(
-        save_freq = model_save_freq,
-        save_path = model_dir,
-        save_replay_buffer = False,
-        save_vecnormalize = False,
-        verbose = 0,
+    checkpoint_callback=CheckpointCallback(
+        save_freq=model_save_freq,
+        save_path=model_dir,
+        save_replay_buffer=False,
+        save_vecnormalize=False,
+        verbose=0,
     )
-    eval_callback = EvalCallback(
-        eval_env = vec_env,
-        callback_on_new_best = None,
-        callback_after_eval = None,
-        n_eval_episodes = model_n_eval_episodes,
-        eval_freq = model_eval_freq,
-        log_path = None,
-        best_model_save_path = model_dir,
-        deterministic = False,
-        render = False,
-        verbose = 0,
-        warn = True,
+    eval_callback=EvalCallback(
+        eval_env=vec_env,
+        callback_on_new_best=None,
+        callback_after_eval=None,
+        n_eval_episodes=model_n_eval_episodes,
+        eval_freq=model_eval_freq,
+        log_path=None,
+        best_model_save_path=model_dir,
+        deterministic=False,
+        render=False,
+        verbose=0,
+        warn=True,
     )
 
     # Train model
@@ -134,20 +134,19 @@ def train(args, model_dir, log_dir):
         total_timesteps=total_training_steps,
         callback=[checkpoint_callback, eval_callback],
         log_interval=log_interval,
-        tb_log_name=log_dir,
         reset_num_timesteps=False,
         progress_bar=True
     )
 
 def main():
     # Parse training arguments
-    args = parse_args()
+    args=parse_args()
 
     # Directories for bookkeeping
-    date_time = at.get_date()
-    config_dir = f'./archive/configs/{date_time}'
-    model_dir = f'./archive/models/{date_time}'
-    log_dir = f'./archive/logs/{date_time}'
+    date_time=at.get_date()
+    config_dir=f'./archive/configs/{date_time}'
+    model_dir=f'./archive/models/{date_time}'
+    log_dir=f'./archive/logs/{date_time}'
 
     # Save args to yaml file
     save_args_to_yaml(args, config_dir)
