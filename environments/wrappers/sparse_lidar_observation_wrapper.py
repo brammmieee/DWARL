@@ -44,7 +44,7 @@ class SparseLidarObservationWrapper(gym.ObservationWrapper):
         # Observation space definition
         num_lidar_rays = self.params['proto_substitutions']['horizontalResolution']
         low_array = np.concatenate([
-            np.array([float(self.params['proto_substitutions']['minRange'])]*num_lidar_rays),
+            np.array([0]*num_lidar_rays), #NOTE: since the lidar range image is normalized
             np.array([
                 float(self.params['goal_pos_dist_min']),
                 float(self.params['goal_pos_angle_min']),
@@ -53,7 +53,7 @@ class SparseLidarObservationWrapper(gym.ObservationWrapper):
             ])
         ])
         high_array = np.concatenate([
-            np.array([float(self.params['proto_substitutions']['maxRange'])]*num_lidar_rays),
+            np.array([1]*num_lidar_rays), #NOTE: since the lidar range image is normalized
             np.array([
                 float(self.params['goal_pos_dist_max']),
                 float(self.params['goal_pos_angle_max']),
@@ -74,9 +74,9 @@ class SparseLidarObservationWrapper(gym.ObservationWrapper):
             min_range=self.params['proto_substitutions']['minRange'],
             max_range=self.params['proto_substitutions']['maxRange'],
         )
-        lidar_range_image_array = remove_infinite_values( #NOTE: could also be set to 0 instead!
+        lidar_range_image_array = remove_infinite_values( 
             lidar_range_image_array=lidar_range_image_array,
-            replace_value=float(self.params['proto_substitutions']['maxRange'])
+            replace_value=1 #NOTE: could also be set to 0 instead! (1 is max normalized range)
         )
         goal_pos_dist, goal_pos_angle = convert_local_goal_to_polar_coords(
             local_goal=self.unwrapped.local_goal_pos,

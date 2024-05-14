@@ -17,4 +17,4 @@ sudo nvidia-ctk runtime configure --runtime=docker
 sudo systemctl restart docker
 
 # Build docker image (check if build exists with `docker images`)
-docker build -t dwarl_container ..
+sudo docker build -t dwarl_container ..

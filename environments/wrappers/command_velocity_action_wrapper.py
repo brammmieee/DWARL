@@ -3,6 +3,18 @@ import gymnasium as gym
 
 import utils.admin_tools as at
 
+def map_normalized_action_to_cmd_vel(action, params):
+    omega_min = params['omega_min']
+    omega_max = params['omega_max']
+    v_max = params['v_max']
+    v_min = params['v_min']
+
+    omega = (action[1] + 1) * (0.5*(omega_max - omega_min)) + omega_min
+    v = (action[0] + 1) * (0.5*(v_max - v_min)) + v_min
+    cmd_vel = np.array([omega, v])
+
+    return cmd_vel
+
 def apply_kinematic_constraints(params, cur_vel, target_vel):
     omega_max = params['omega_max']
     omega_min = params['omega_min']
@@ -33,21 +45,18 @@ class CommandVelocityActionWrapper(gym.ActionWrapper):
     def __init__(self, env):
         super().__init__(env)
         self.params = at.load_parameters("base_parameters.yaml")
-        v_max = self.params['v_max']
-        v_min = self.params['v_min']
-        omega_min = self.params['omega_min']
-        omega_max = self.params['omega_max']
+
 
         # Define action space
         self.action_space = gym.spaces.Box(
-            low=np.array([v_min, omega_min]), 
-            high=np.array([v_max, omega_max]),
-            shape=(2,), 
+            low=-1.0,
+            high=1.0,
+            shape=(2,),
             dtype=np.float32
-        )        
-    
-    def action(self, act):
-        # Convert the 2D action vector to the dynamic window
-        cmd_vel = apply_kinematic_constraints(self.params, self.unwrapped.cur_vel, act)
+        )
 
+    def action(self, act):
+        cmd_vel = map_normalized_action_to_cmd_vel(act, self.params)
+        cmd_vel = apply_kinematic_constraints(self.params, self.unwrapped.cur_vel, cmd_vel)
+    
         return cmd_vel # = action

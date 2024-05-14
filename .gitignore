@@ -1,6 +1,7 @@
 /training/models
 /training/logs
 /training/monitor
+/training/archive/*
 /testing/models
 /testing/logs
 /testing/results

@@ -3,6 +3,7 @@
 
 # %%
 import numpy as np
+from stable_baselines3.common.env_checker import check_env
 from environments.base_env import BaseEnv
 from environments.wrappers.velocity_obstacle_observation_wrapper import VelocityObstacleObservationWrapper as VObsWrapper
 from environments.wrappers.dynamic_window_action_wrapper import DynamicWindowActionWrapper as DWAActWrapper
@@ -20,7 +21,10 @@ from environments.wrappers.parameterized_reward_wrapper import ParameterizedRewa
 env = PRewWrapper(CVActWrapper(SLObsWrapper(BaseEnv(render_mode='full', wb_open=True, wb_mode='testing', proto_config='sparse_lidar_proto_config.json'))))
 
 # %%
-obs = env.reset() #options={"map_nr":40, "nominal_dist":1})
+check_env(env)
+
+# %%
+obs = env.reset(seed=0) #options={"map_nr":40, "nominal_dist":1})
 
 # %%
 action = np.array([-1.0, 1.0])

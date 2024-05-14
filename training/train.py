@@ -5,6 +5,7 @@ import os
 import yaml
 
 from stable_baselines3.ppo import PPO
+from stable_baselines3.common.env_checker import check_env
 from stable_baselines3.common.env_util import make_vec_env
 from stable_baselines3.common.vec_env import SubprocVecEnv
 from stable_baselines3.common.callbacks import CheckpointCallback, EvalCallback, CallbackList
@@ -18,8 +19,8 @@ from environments.wrappers.dynamic_window_action_wrapper import DynamicWindowAct
 from environments.wrappers.parameterized_reward_wrapper import ParameterizedRewardWrapper
 
 def chain_wrappers(env, wrapper_classes):
-    for wrapper_class in wrapper_classes:
-        env = wrapper_class(env)
+    for wrapper_classes in wrapper_classes:
+        env = wrapper_classes(env)
         
     return env
 
@@ -78,7 +79,7 @@ def train(args, model_dir, log_dir):
     # Environment settings
     n_envs = args.n_envs
     env_proto_config = args.env_proto_config
-    wrapper_class = [globals()[wrapper] for wrapper in args.wrapper_classes]
+    wrapper_classes = [globals()[wrapper] for wrapper in args.wrapper_classes]
     
     # Model settings
     policy_type = args.policy_type
@@ -93,7 +94,7 @@ def train(args, model_dir, log_dir):
     # Creating vectorized environment
     vec_env = make_vec_env(
         env_id=BaseEnv,
-        wrapper_class=lambda env: chain_wrappers(env, wrapper_class),
+        wrapper_class=lambda env: chain_wrappers(env, wrapper_classes),
         n_envs=n_envs, 
         vec_env_cls=SubprocVecEnv, 
         env_kwargs={
