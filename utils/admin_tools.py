@@ -18,10 +18,11 @@ def read_pickle_file(file_name, file_dir):
         pickle_file = pickle.load(file)
         return pickle_file
 
-def get_date():
+def get_date_time():
     current_date = datetime.datetime.now()  # Returns current date and time
-    formatted_date = current_date.strftime("%y_%m_%d__%H_%M_%S")
-    return formatted_date
+    formatted_date = current_date.strftime("%y_%m_%d")
+    formatted_time = current_date.strftime("%H_%M_%S")
+    return formatted_date, formatted_time
 
 def find_file(filename, start_dir=os.path.abspath(os.pardir)):
     for root, _, files in os.walk(start_dir):

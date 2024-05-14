@@ -12,6 +12,12 @@ from utils.admin_tools import find_file
 import warnings
 warnings.simplefilter("error", RuntimeWarning)
 
+def chain_wrappers(env, wrapper_classes):
+    for wrapper_class in wrapper_classes:
+        env=wrapper_class(env)
+        
+    return env
+
 def get_teleop_action(keyboard):
     key = float(keyboard.getKey())
     if key == 315.0: # up arrow

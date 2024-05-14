@@ -11,18 +11,13 @@ from stable_baselines3.common.vec_env import SubprocVecEnv
 from stable_baselines3.common.callbacks import CheckpointCallback, EvalCallback, CallbackList
 
 import utils.admin_tools as at
+import utils.base_tools as bt
 from environments.base_env import BaseEnv
 from environments.wrappers.sparse_lidar_observation_wrapper import SparseLidarObservationWrapper
 from environments.wrappers.command_velocity_action_wrapper import CommandVelocityActionWrapper
 from environments.wrappers.velocity_obstacle_observation_wrapper import VelocityObstacleObservationWrapper
 from environments.wrappers.dynamic_window_action_wrapper import DynamicWindowActionWrapper
 from environments.wrappers.parameterized_reward_wrapper import ParameterizedRewardWrapper
-
-def chain_wrappers(env, wrapper_classes):
-    for wrapper_classes in wrapper_classes:
-        env=wrapper_classes(env)
-        
-    return env
 
 def parse_args():
     parser=argparse.ArgumentParser(description='Training script')
@@ -37,7 +32,7 @@ def parse_args():
     parser.add_argument('--policy_type', type=str, default='MlpPolicy', help='Policy type used for configuring the model')
     
     # Train and callback settings
-    parser.add_argument('--total_training_steps', type=int, default=1000, help='Total training steps')
+    parser.add_argument('--steps', type=int, default=1000, help='Total training steps')
     parser.add_argument('--model_save_freq', type=int, default=5000, help='Model save frequency')
     parser.add_argument('--model_eval_freq', type=int, default=10000, help='Model evaluation frequency')
     parser.add_argument('--model_n_eval_episodes', type=int, default=25, help='Number of evaluation episodes')
@@ -46,7 +41,7 @@ def parse_args():
     args=parser.parse_args()
     return args
 
-def save_args_to_yaml(args, dir):
+def save_args_to_yaml(args, dir, date, time):
     # Group arguments under the specified categories
     config={
         'comment': args.comment,
@@ -59,7 +54,7 @@ def save_args_to_yaml(args, dir):
             'policy_type': args.policy_type,
         },
         'train_and_callback': {
-            'total_training_steps': args.total_training_steps,
+            'steps': args.steps,
             'model_save_freq': args.model_save_freq,
             'model_eval_freq': args.model_eval_freq,
             'model_n_eval_episodes': args.model_n_eval_episodes,
@@ -69,13 +64,13 @@ def save_args_to_yaml(args, dir):
 
     # Create the directory if it doesn't exist
     os.makedirs(dir, exist_ok=True)
-    config_file=os.path.join(dir, "args.yaml")
+    config_file=os.path.join(dir, "training_config.yaml")
 
     # Save the grouped args to a yaml file
     with open(config_file, "w") as f:
         yaml.dump(config, f, default_flow_style=False)
 
-def train(args, model_dir, log_dir):
+def train(args, model_dir, log_dir, date, time):
     # Environment settings
     n_envs=args.n_envs
     env_proto_config=args.env_proto_config
@@ -85,7 +80,7 @@ def train(args, model_dir, log_dir):
     policy_type=args.policy_type
     
     # Train and callback settings
-    total_training_steps=args.total_training_steps
+    steps=args.steps
     model_save_freq=args.model_save_freq
     model_eval_freq=args.model_eval_freq
     model_n_eval_episodes=args.model_n_eval_episodes
@@ -94,7 +89,7 @@ def train(args, model_dir, log_dir):
     # Creating vectorized environment
     vec_env=make_vec_env(
         env_id=BaseEnv,
-        wrapper_class=lambda env: chain_wrappers(env, wrapper_classes),
+        wrapper_class=lambda env: bt.chain_wrappers(env, wrapper_classes),
         n_envs=n_envs, 
         vec_env_cls=SubprocVecEnv, 
         env_kwargs={
@@ -131,7 +126,7 @@ def train(args, model_dir, log_dir):
 
     # Train model
     model.learn(
-        total_timesteps=total_training_steps,
+        total_timesteps=steps,
         callback=[checkpoint_callback, eval_callback],
         log_interval=log_interval,
         reset_num_timesteps=False,
@@ -143,16 +138,16 @@ def main():
     args=parse_args()
 
     # Directories for bookkeeping
-    date_time=at.get_date()
-    config_dir=f'./archive/configs/{date_time}'
-    model_dir=f'./archive/models/{date_time}'
-    log_dir=f'./archive/logs/{date_time}'
+    date, time=at.get_date_time()
+    config_dir=f'./archive/configs/{date}__{time}'
+    model_dir=f'./archive/models/{date}__{time}'
+    log_dir=f'./archive/logs/{date}__{time}'
 
     # Save args to yaml file
-    save_args_to_yaml(args, config_dir)
+    save_args_to_yaml(args, config_dir, date, time)
 
     # Train using parameters parsed
-    train(args, model_dir, log_dir)
+    train(args, model_dir, log_dir, date, time)
     
 if __name__=='__main__':
     main()

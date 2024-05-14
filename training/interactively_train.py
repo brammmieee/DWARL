@@ -1,7 +1,7 @@
 # %%
-# %load_ext autoreload
-# # %autoreload 2 # reloads custom modules into Ipython interpreter
-# %matplotlib qt
+%load_ext autoreload
+# %autoreload 2 # reloads custom modules into Ipython interpreter
+%matplotlib qt
 
 # %%
 import os
