@@ -68,11 +68,11 @@ def main():
     prefix = os.path.join(package_dir, f'training/archive/models/{date_time}/')
     if training_steps:
         # Load model based on training steps
-        model = PPO.load(prefix + f'rl_model_{training_steps}')
+        model = PPO.load(prefix + f'rl_model_{training_steps}_steps', env=env)
     else:
         # Load best model
         model = PPO.load(prefix + 'best_model', env=env)
-    model.set_env(env=env)
+    # model.set_env(env=env)
 
     # Evaluation runs
     mean_reward, std_reward = evaluate_policy(
