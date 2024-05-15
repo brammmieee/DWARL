@@ -1,4 +1,5 @@
 import os
+import sys
 import json
 import numpy as np
 import random
@@ -9,14 +10,15 @@ from shapely.strtree import STRtree
 
 from utils.admin_tools import find_file
 
-import warnings
-warnings.simplefilter("error", RuntimeWarning)
-
 def chain_wrappers(env, wrapper_classes):
     for wrapper_class in wrapper_classes:
         env=wrapper_class(env)
         
     return env
+
+def killall_webots():
+    command = "ps aux | grep webots | grep -v grep | awk '{print $2}' | xargs -r kill"
+    os.system(command)
 
 def get_teleop_action(keyboard):
     key = float(keyboard.getKey())

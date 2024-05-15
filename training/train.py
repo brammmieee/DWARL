@@ -2,6 +2,7 @@
 
 import argparse
 import os
+import sys
 import yaml
 
 from stable_baselines3.ppo import PPO
@@ -149,5 +150,10 @@ def main():
     # Train using parameters parsed
     train(args, model_dir, log_dir, date, time)
     
-if __name__=='__main__':
-    main()
+if __name__ == '__main__':
+    try:
+        main()
+    except KeyboardInterrupt:
+        # Kill all webots processes when user interrupts the program
+        bt.killall_webots()
+        sys.exit(0)
