@@ -17,7 +17,9 @@ class BaseEnv(Supervisor, gym.Env):
     metadata = {"render_modes": ["full", "position", "velocity", "trajectory"], "render_fps": 4} # TODO: use fps in render methods
     package_dir = os.path.abspath(os.pardir)
     
-    def __init__(self, render_mode=None, wb_open=True, wb_mode='training', parameter_file='base_parameters.yaml', proto_config='default_proto_config.json'):
+    def __init__(self, render_mode=None, wb_open=True, 
+                 wb_mode='training', parameter_file='base_parameters.yaml', 
+                 proto_config='default_proto_config.json', wb_headless=False):
         # Directories
         self.resources_dir = os.path.join(BaseEnv.package_dir, 'resources')
         self.params_dir = os.path.join(BaseEnv.package_dir, 'parameters')
@@ -39,7 +41,7 @@ class BaseEnv(Supervisor, gym.Env):
         self.map_bounds_polygon = bt.compute_map_bound_polygon(self.params)
 
         self.set_render_mode(render_mode)
-        self.open_webots(wb_open, wb_mode)
+        self.open_webots(wb_open, wb_mode, wb_headless)
         self.init_webots()
 
         # Space definitions
@@ -166,16 +168,28 @@ class BaseEnv(Supervisor, gym.Env):
     def close(self):
         self.close_webots()
                 
-    def open_webots(self, wb_open, wb_mode):
+    def open_webots(self, wb_open, wb_mode, wb_headless):
         if not wb_open:
             return
+        
+        # Create Webots command with specified mode and world file
         world_file = os.path.join(self.worlds_dir, 'webots_world_file.wbt')
         if wb_mode == 'training':
-            wb_process = Popen(['webots','--extern-urls', '--no-rendering', '--mode=fast', world_file], stdout=PIPE)
+            cmd = ['webots','--extern-urls', '--no-rendering', '--mode=fast', world_file]
         elif wb_mode == 'testing':
-            wb_process = Popen(['webots','--extern-urls', world_file], stdout=PIPE)
+            cmd = ['webots','--extern-urls', world_file]
         else:
             print(f'init(): recieved invalid mode "{wb_mode}", should be either "training" or "testing"')
+            return
+        
+        # Use X virtual framebuffer (Xvfb) to Webots in headless mode
+        if wb_headless:
+            cmd = ['xvfb-run', '--auto-servernum'] + cmd
+
+        # Open Webots
+        wb_process = Popen(cmd, stdout=PIPE)
+
+        # Set the environment variable for the controller to connect to the supervisor
         output = wb_process.stdout.readline().decode("utf-8")
         ipc_prefix = 'ipc://'
         start_index = output.find(ipc_prefix)

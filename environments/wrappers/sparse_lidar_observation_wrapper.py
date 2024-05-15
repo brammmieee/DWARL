@@ -91,6 +91,8 @@ class SparseLidarObservationWrapper(gym.ObservationWrapper):
             ])
         ])
 
+        print(f"observation: {self.obs}")
+
         return self.obs
 
 

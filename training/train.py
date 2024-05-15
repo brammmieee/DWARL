@@ -22,6 +22,9 @@ from environments.wrappers.parameterized_reward_wrapper import ParameterizedRewa
 
 def parse_args():
     parser=argparse.ArgumentParser(description='Training script')
+
+    # Webots settings
+    parser.add_argument('--headless', action='store_true', default=False, help='Run Webots in headless mode')
     
     # Environment settings
     parser.add_argument('--n_envs', type=int, default=1, help='Number of environments to run in parallel')
@@ -95,6 +98,7 @@ def train(args, model_dir, log_dir, date, time):
         vec_env_cls=SubprocVecEnv, 
         env_kwargs={
             'proto_config': env_proto_config,
+            'wb_headless': args.headless,
         }
     )
     
