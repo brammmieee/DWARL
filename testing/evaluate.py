@@ -11,6 +11,7 @@ from environments.wrappers.command_velocity_action_wrapper import CommandVelocit
 from environments.wrappers.velocity_obstacle_observation_wrapper import VelocityObstacleObservationWrapper
 from environments.wrappers.dynamic_window_action_wrapper import DynamicWindowActionWrapper
 from environments.wrappers.parameterized_reward_wrapper import ParameterizedRewardWrapper
+import matplotlib.pyplot as plt
 
 import utils.admin_tools as at
 import utils.base_tools as bt
@@ -20,7 +21,7 @@ training_date = '24_05_14'  # Set the training date in the format YY_MM_DD
 training_time = '15_44_37'  # Set the training time in the format HH_MM_SS
 training_steps = 3280000  # Set the number of training steps (optional)
 
-evaluation_episodes = 10  # Set the number of episodes to evaluate the model
+evaluation_episodes = 1  # Set the number of episodes to evaluate the model
 deterministic = False  # Set whether to use deterministic policy or not
 webots_mode = 'testing'  # Set the Webots mode ('testing' or 'training')
 render_mode = 'full'  # Set the render mode ('trajectory', 'full', 'velocity') or leave it as None for no rendering
@@ -62,7 +63,7 @@ mean_reward, std_reward = evaluate_policy(
     env=env,
     n_eval_episodes=evaluation_episodes,
     deterministic=deterministic,
-    render=True,
+    render=False,
     callback=None,
     reward_threshold=None,
     return_episode_rewards=False,
@@ -70,6 +71,7 @@ mean_reward, std_reward = evaluate_policy(
 )
 
 bt.killall_webots()
+plt.close('all')
 
 # Print results
 print(f'mean_reward:{mean_reward:.2f} +/- {std_reward:.2f}')
