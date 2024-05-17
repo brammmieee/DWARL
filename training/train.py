@@ -27,7 +27,7 @@ def parse_args():
     parser.add_argument('--headless', action='store_true', default=False, help='Run Webots in headless mode')
     
     # Environment settings
-    parser.add_argument('--n_envs', type=int, default=1, help='Number of environments to run in parallel')
+    parser.add_argument('--envs', type=int, default=1, help='Number of environments to run in parallel')
     parser.add_argument('--env_proto_config', type=str, default='sparse_lidar_proto_config.json', help='Proto config file to adjust proto settings')
     parser.add_argument('--wrapper_classes', nargs='+', default=['SparseLidarObservationWrapper', 'CommandVelocityActionWrapper', 'ParameterizedRewardWrapper'], help='List of wrapper classes around BaseEnv that are applied chronologically')
     
@@ -50,7 +50,7 @@ def save_args_to_yaml(args, dir, date, time):
     config={
         'comment': args.comment,
         'environment': {
-            'n_envs': args.n_envs,
+            'envs': args.envs,
             'env_proto_config': args.env_proto_config,
             'wrapper_classes': args.wrapper_classes,
         },
@@ -76,7 +76,7 @@ def save_args_to_yaml(args, dir, date, time):
 
 def train(args, model_dir, log_dir, date, time):
     # Environment settings
-    n_envs=args.n_envs
+    envs=args.envs
     env_proto_config=args.env_proto_config
     wrapper_classes=[globals()[wrapper] for wrapper in args.wrapper_classes]
     
@@ -94,7 +94,7 @@ def train(args, model_dir, log_dir, date, time):
     vec_env=make_vec_env(
         env_id=BaseEnv,
         wrapper_class=lambda env: bt.chain_wrappers(env, wrapper_classes),
-        n_envs=n_envs, 
+        n_envs=envs, 
         vec_env_cls=SubprocVecEnv, 
         env_kwargs={
             'proto_config': env_proto_config,

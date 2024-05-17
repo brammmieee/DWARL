@@ -5,6 +5,7 @@
 /testing/models
 /testing/logs
 /testing/results
+/.vscode/*
 
 .ipynb_checkpoints
 .vscode
