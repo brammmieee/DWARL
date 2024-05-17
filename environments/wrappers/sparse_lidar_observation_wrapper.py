@@ -14,12 +14,23 @@ def normalize_lidar_range_image(lidar_range_image, min_range, max_range):
 
     return normalized_array
 
-def remove_infinite_values(lidar_range_image_array, replace_value):
+def remove_invalid_values(lidar_range_image_array, replace_value):
     '''
-    Removes infinite values from the lidar range image array and replaces them with a specified value.
+    Removes infinite and NaN values from the lidar range image array and replaces them with a specified value.
+    
+    Parameters:
+        lidar_range_image_array (np.ndarray): The array containing lidar range image data.
+        replace_value (float): The value to use as a replacement for infinite and NaN values.
+
+    Returns:
+        np.ndarray: The modified array with no infinite or NaN values.
     '''
+    # Replace infinite values
     lidar_range_image_array[np.isinf(lidar_range_image_array)] = replace_value
+    # Replace NaN values
+    lidar_range_image_array[np.isnan(lidar_range_image_array)] = replace_value
     return lidar_range_image_array
+
 
 def convert_local_goal_to_polar_coords(local_goal, agent_pos):
     '''
@@ -74,7 +85,7 @@ class SparseLidarObservationWrapper(gym.ObservationWrapper):
             min_range=self.params['proto_substitutions']['minRange'],
             max_range=self.params['proto_substitutions']['maxRange'],
         )
-        lidar_range_image_array = remove_infinite_values( 
+        lidar_range_image_array = remove_invalid_values( 
             lidar_range_image_array=lidar_range_image_array,
             replace_value=1 #NOTE: could also be set to 0 instead! (1 is max normalized range)
         )
@@ -90,8 +101,6 @@ class SparseLidarObservationWrapper(gym.ObservationWrapper):
                 self.unwrapped.cur_vel[1]
             ])
         ])
-
-        print(f"observation: {self.obs}")
 
         return self.obs
 

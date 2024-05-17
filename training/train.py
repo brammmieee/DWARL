@@ -4,6 +4,7 @@ import argparse
 import os
 import sys
 import yaml
+import tensorrt
 
 from stable_baselines3.ppo import PPO
 from stable_baselines3.common.env_checker import check_env

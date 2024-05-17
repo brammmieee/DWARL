@@ -6,6 +6,7 @@
 /testing/logs
 /testing/results
 /.vscode/*
+/venv/*
 
 .ipynb_checkpoints
 .vscode
