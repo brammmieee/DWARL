@@ -10,6 +10,7 @@ from stable_baselines3.ppo import PPO
 from stable_baselines3.common.env_checker import check_env
 from stable_baselines3.common.env_util import make_vec_env
 from stable_baselines3.common.vec_env import SubprocVecEnv
+from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.callbacks import CheckpointCallback, EvalCallback, CallbackList
 
 import utils.admin_tools as at
@@ -80,6 +81,8 @@ def train(args, model_dir, log_dir, date, time):
     envs=args.envs
     env_proto_config=args.env_proto_config
     wrapper_classes=[globals()[wrapper] for wrapper in args.wrapper_classes]
+    # Add montior wrapper to know the episode reward, length, time and other data
+    wrapper_classes = wrapper_classes + [Monitor]
     
     # Model settings
     policy_type=args.policy_type
