@@ -17,10 +17,12 @@ class VelocityObstacleObservationWrapper(gym.ObservationWrapper):
     - Bounds the action to the admiss
     
     '''
+    params_file_name = "obstacle_velocity_observation.yaml"
+
     def __init__(self, env):
         super().__init__(env)
         # Load wrapper specific and general parameters
-        self.params = at.load_parameters(["base_parameters.yaml", "obstacle_velocity_observation.yaml"]) #TODO: list can be directly parsed to init of base env
+        self.params = at.load_parameters(["base_parameters.yaml", self.params_file_name]) #TODO: list can be directly parsed to init of base env
         
         # Precomputations
         self.precomputed = ovt.precomputations(self.params, visualize=False)

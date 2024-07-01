@@ -46,7 +46,6 @@ class CommandVelocityActionWrapper(gym.ActionWrapper):
         super().__init__(env)
         self.params = at.load_parameters("base_parameters.yaml")
 
-
         # Define action space
         self.action_space = gym.spaces.Box(
             low=-1.0,

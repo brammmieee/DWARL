@@ -4,7 +4,7 @@ import argparse
 import os
 import sys
 import yaml
-import tensorrt
+# import tensorrt
 
 from stable_baselines3.ppo import PPO
 from stable_baselines3.common.env_checker import check_env
@@ -46,9 +46,9 @@ def parse_args():
     args=parser.parse_args()
     return args
 
-def save_args_to_yaml(args, dir, date, time):
-    # Group arguments under the specified categories
-    config={
+def save_config(args, dir):
+    # Create config file from args and wrapper+base+proto parameters
+    train_args={
         'comment': args.comment,
         'environment': {
             'envs': args.envs,
@@ -66,16 +66,25 @@ def save_args_to_yaml(args, dir, date, time):
             'log_interval': args.log_interval,
         }
     }
+    wrapper_params = {}
+    for wrapper_class in args.wrapper_classes:
+        if hasattr(globals()[wrapper_class], 'params_file_name'):
+            wrapper_file_name = globals()[wrapper_class].params_file_name 
+            wrapper_params.update({wrapper_file_name: at.load_parameters([wrapper_file_name])})
+    config = {
+        'train_args': train_args,
+        'wrapper_params': wrapper_params,
+        'proto_params': at.load_parameters([args.env_proto_config]),
+        'base_params': at.load_parameters(['base_parameters.yaml']),
+    }
 
-    # Create the directory if it doesn't exist
+    # Save the config to a yaml file
     os.makedirs(dir, exist_ok=True)
     config_file=os.path.join(dir, "training_config.yaml")
-
-    # Save the grouped args to a yaml file
     with open(config_file, "w") as f:
         yaml.dump(config, f, default_flow_style=False)
 
-def train(args, model_dir, log_dir, date, time):
+def train(args, model_dir, log_dir):
     # Environment settings
     envs=args.envs
     env_proto_config=args.env_proto_config
@@ -149,11 +158,11 @@ def main():
     model_dir=f'./archive/models/{date}__{time}'
     log_dir=f'./archive/logs/{date}__{time}'
 
-    # Save args to yaml file
-    save_args_to_yaml(args, config_dir, date, time)
+    # Save args and other configs to yaml file
+    save_config(args, config_dir)
 
     # Train using parameters parsed
-    train(args, model_dir, log_dir, date, time)
+    train(args, model_dir, log_dir)
     
 if __name__ == '__main__':
     try:

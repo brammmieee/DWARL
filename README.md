@@ -6,7 +6,7 @@ DWARL is a comprehensive package designed for creating controller policies throu
 
 The package can be installed locally with Python packages in a virtual environment (venv) or containerized. For training on a remote desktop, it is recommended to use the local installation due to issues with X11 forwarding in containerized installations.
 
-### Local Installation
+### Local Installation (Recommended)
 
 To install the package locally, follow these steps:
 

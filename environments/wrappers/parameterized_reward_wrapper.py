@@ -9,10 +9,12 @@ class ParameterizedRewardWrapper(gym.RewardWrapper):
     - Converts (by adding to BaseEnv's 0 reward) the reward function to the one descripted in the paper.
     
     '''
+    params_file_name = 'parameterized_reward.yaml'
+
     def __init__(self, BaseEnv):
         super().__init__(BaseEnv)
 
-        self.params = at.load_parameters(['base_parameters.yaml', 'parameterized_reward.yaml'])
+        self.params = at.load_parameters(['base_parameters.yaml', self.params_file_name])
 
     def reward(self, r):
         # Adds the reward to the BaseEnv's 0 reward

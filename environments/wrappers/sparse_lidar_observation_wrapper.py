@@ -43,13 +43,15 @@ def convert_local_goal_to_polar_coords(local_goal, agent_pos):
     return goal_pos_dist, goal_pos_angle
 
 class SparseLidarObservationWrapper(gym.ObservationWrapper):
+    params_file_name = 'sparse_lidar_observation.yaml'
+
     def __init__(self, env):
         super().__init__(env)
         
         self.params = at.load_parameters([ #TODO: list can be directly parsed to init of base env
             'base_parameters.yaml', 
             'sparse_lidar_proto_config.json',
-            'sparse_lidar_observation.yaml'
+            self.params_file_name
         ])
         
         # Observation space definition
