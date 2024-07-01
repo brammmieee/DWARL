@@ -22,14 +22,14 @@ def killall_webots():
 
 def get_teleop_action(keyboard):
     key = float(keyboard.getKey())
-    if key == 315.0: # up arrow
-        action = np.array([0.0, 1.0])
+    if key == 315: # up arrow
+        action = np.array([0.0, 0.3])
     elif key == 317: # down arrow
-        action = np.array([0.0, -1.0])
+        action = np.array([0.0, -0.3])
     elif key == 314: # left array
-        action = np.array([-1.0, 0.0]) #.00001 to not get stuck on upper bounds
+        action = np.array([-0.3, 0.0]) #.00001 to not get stuck on upper bounds
     elif key == 316: # right arrow
-        action = np.array([1.0, 0.0]) #.00001 to not get stuck on upper bounds
+        action = np.array([0.3, 0.0]) #.00001 to not get stuck on upper bounds
     else:
         action = np.array([0.0, 0.0])
     return action

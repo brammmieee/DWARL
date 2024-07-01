@@ -6,5 +6,8 @@ r_collision: -10.0
 # Progress reward coefficients
 c_progress: 1000.0
 
+# Path proximity scale
+path_proximity_scale: 1.0
+
 # Time penalty
 r_not_arrived: -1.0

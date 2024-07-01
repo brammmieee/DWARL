@@ -7,6 +7,7 @@ from subprocess import Popen, PIPE
 from controller import Supervisor, Keyboard
 import matplotlib.pyplot as plt
 from matplotlib.patches import Polygon as plt_polygon
+from matplotlib.lines import Line2D
 from shapely.geometry import Point, Polygon
 from shapely.affinity import translate, rotate
 
@@ -19,7 +20,7 @@ class BaseEnv(Supervisor, gym.Env):
     def __init__(self, render_mode=None, wb_open=True, 
                  wb_mode='training', parameter_file='base_parameters.yaml', 
                  proto_config='default_proto_config.json',
-                 reward_config='parameterized_reward.yaml', wb_headless=False):
+                 reward_config='parameterized_reward.yaml', wb_headless=False, teleop=False):
         
         # Directories
         self.resources_dir = os.path.join(BaseEnv.package_dir, 'resources')
@@ -37,8 +38,31 @@ class BaseEnv(Supervisor, gym.Env):
             num_lidar_rays=self.params['proto_substitutions']['horizontalResolution']
         )
 
+        # Teleoperation
+        self.teleop = teleop
+
         # Reward buffer
-        self.reward_buffer = []
+        reward_components = ['r_at_goal', 'r_outside_map', 'r_collision', 'r_pogress', 'r_not_arrived', 'r_path_proximity', 'total_reward']
+        self.reward_buffers = {component: [] for component in reward_components}
+        self.reward_style_map = {
+            'r_at_goal': {'color': 'green', 'alpha': 1,'linestyle': '-'},
+            'r_outside_map': {'color': 'red', 'alpha': 1,'linestyle': '--'},
+            'r_collision': {'color': 'orange', 'alpha': 1,'linestyle': '-.'},
+            'r_pogress': {'color': 'blue', 'alpha': 1, 'linestyle': ':'},
+            'r_not_arrived': {'color': 'purple', 'alpha': 1,'linestyle': '-'},
+            'r_path_proximity': {'color': 'cyan', 'alpha': 1,'linestyle': '--'},
+            'total_reward': {'color': 'black', 'alpha': 1,'linestyle': '-'}
+        }
+        # Dict that assigns reward components to their respective plots (0, for no plotting, 1 for subplot 1, 2 for subplot 2)
+        self.reward_plot_map = {
+            'r_at_goal': 0,
+            'r_outside_map': 0,
+            'r_collision': 0,
+            'r_pogress': 2,
+            'r_not_arrived': 1,
+            'r_path_proximity': 2,
+            'total_reward': 1
+        }
 
         # Training maps and map bounds
         self.train_map_nr_list = at.load_from_json('train_map_nr_list.json', os.path.join(self.params_dir, 'map_nrs'))
@@ -78,6 +102,9 @@ class BaseEnv(Supervisor, gym.Env):
         self.prev_pos = self.cur_pos
         self.prev_observation = self.observation
            
+        if self.teleop == True:
+            action = bt.get_teleop_action(self.keyboard)
+
         # NOTE: u must use an action wrapper for turning the action vector inot a cmd_vel
         self.cmd_vel = action
 
@@ -108,32 +135,58 @@ class BaseEnv(Supervisor, gym.Env):
         return self.lidar_range_image
 
     def get_reward(self, done, done_cause):    
-        # Reward calculation    
+        # Initialize reward components dictionary with empty values
+        reward_components = {
+            'r_at_goal': 0,
+            'r_outside_map': 0,
+            'r_collision': 0,
+            'r_pogress': 0,
+            'r_not_arrived': 0,
+            'r_path_proximity': 0
+        }
+
         if done:
+            # Assign reward based on the done cause
             if done_cause == 'at_goal':
-                reward = self.params['r_at_goal']
+                reward_components['r_at_goal'] = self.params['r_at_goal']
             elif done_cause == 'outside_map':
-                reward = self.params['r_outside_map']
+                reward_components['r_outside_map'] = self.params['r_outside_map']
             elif done_cause == 'collision':
-                reward = self.params['r_collision']
+                reward_components['r_collision'] = self.params['r_collision']
             else:
                 raise ValueError(f'get_reward(): done_cause "{done_cause}" not recognized')
         else:
-            r_goal = self.params['c_progress']*(
+            # Calculate ongoing rewards
+            reward_components['r_pogress'] = self.params['c_progress'] * (
                 np.linalg.norm(self.goal_pose[:2] - self.prev_pos[:2]) - 
                 np.linalg.norm(self.goal_pose[:2] - self.cur_pos[:2])
             )
-            r_not_arrived = self.params['r_not_arrived']
+            reward_components['r_not_arrived'] = self.params['r_not_arrived']
+            nearest_path_distance = self.get_nearest_path_distance(self.cur_pos[:2])
+            reward_components['r_path_proximity'] = np.exp(-nearest_path_distance / self.params['path_proximity_scale'])
 
-            reward = r_goal + r_not_arrived
+        # Calculate total reward as the sum of all components
+        total_reward = sum(reward_components.values())
 
-        # Append reward to reward buffer
-        self.reward_buffer.append(reward)
-        if len(self.reward_buffer) > self.params['reward_buffer_size']:
-            self.reward_buffer.pop(0)
-        
-        return reward
+        if self.render_mode is not None:
+            # Update reward components buffers and ensure they don't exceed the maximum length
+            for key, value in reward_components.items():
+                self.reward_buffers[key].append(value)
+                if len(self.reward_buffers[key]) > self.params['reward_buffer_size']:
+                    self.reward_buffers[key].pop(0)
 
+            # Append total reward to its buffer and ensure it doesn't exceed the maximum length
+            self.reward_buffers['total_reward'].append(total_reward)
+            if len(self.reward_buffers['total_reward']) > self.params['reward_buffer_size']:
+                self.reward_buffers['total_reward'].pop(0)
+
+        return total_reward
+    
+    def get_nearest_path_distance(self, cur_pos):
+        distances = [np.linalg.norm(np.array(cur_pos) - np.array(point)) for point in self.path]
+        nearest_distance = min(distances)
+        return nearest_distance
+    
     def get_done(self):
         done_cause = None
 
@@ -245,7 +298,7 @@ class BaseEnv(Supervisor, gym.Env):
         self.lidar_node = self.getDevice('lidar')
         self.lidar_node.enable(int(self.getBasicTimeStep()))
         self.keyboard = Keyboard()
-        
+
     def reset_webots(self):
         self.simulationReset()
         super().step(self.basic_timestep) # super prevents confusion with self.step() defined below
@@ -316,12 +369,22 @@ class BaseEnv(Supervisor, gym.Env):
         self.ax3.set_xlabel('Step')
         self.ax3.set_ylabel('Reward')
         self.ax3.grid()
+        self.reward_plots_1 = {}
 
         # ax4 - dReward/dStep plot
         self.ax4.set_xlabel('Step')
-        self.ax4.set_ylabel('dReward/dStep')
+        self.ax4.set_ylabel('Reward')
         self.ax4.grid()
+        self.reward_plots_2 = {}
 
+        # Assuming self.reward_style_map is defined as before
+        legend_handles = [
+            Line2D([0], [0], color=style['color'], linestyle=style['linestyle'], label=label)
+            for label, style in self.reward_style_map.items()
+        ]
+
+        # Adjust the legend in your plotting method
+        self.fig.legend(handles=legend_handles, loc='upper right', bbox_to_anchor=(1, 1), bbox_transform=self.fig.transFigure)
     def render_add_data(self, method):
         # ax1 - Lidar data
         self.lidar_points = bt.lidar_to_point_cloud(self.params, self.precomputed_lidar_values, self.lidar_range_image) #NOTE: double computation in case of e.g vo observation wrapper
@@ -346,12 +409,18 @@ class BaseEnv(Supervisor, gym.Env):
             self.goal_pose_plot = self.ax2.scatter(self.goal_pose[0], self.goal_pose[1], c='red')
 
         # ax3 - Reward plot
-        self.reward_plot = self.ax3.plot(range(len(self.reward_buffer)), self.reward_buffer, color='orange')
+        for component, buffer in self.reward_buffers.items():
+            if self.reward_plot_map[component] != 1:
+                continue
+            style = self.reward_style_map.get(component, {'color': 'gray', 'linestyle': ':'})  # Default style
+            self.reward_plots_1[component] = self.ax3.plot(range(len(buffer)), buffer, label=component, **style)
 
         # ax4 - dReward/dStep plot
-        if len(self.reward_buffer) > 1:
-            dreward = np.diff(self.reward_buffer)
-            self.dreward_plot = self.ax4.plot(range(len(dreward)), dreward, color='orange')
+        for component, buffer in self.reward_buffers.items():
+            if self.reward_plot_map[component] != 2:
+                continue
+            style = self.reward_style_map.get(component, {'color': 'gray', 'linestyle': ':'})  # Default style
+            self.reward_plots_2[component] = self.ax4.plot(range(len(buffer)), buffer, label=component, **style)
 
     def render_remove_data(self, method):
         # ax1 - Clear lidar data
@@ -378,15 +447,16 @@ class BaseEnv(Supervisor, gym.Env):
 
         # ax3 - Clear reward plot
         try:
-            for plot in self.reward_plot:
-                plot.remove()
+            for reward_plot in self.reward_plots_1.values():
+                for plot in reward_plot:
+                    plot.remove()
         except AttributeError:
             pass
 
         # ax4 - Clear dReward/dStep plot
         try:
-            for plot in self.dreward_plot:
-                plot.remove()
+            for reward_plot in self.reward_plots_2.values():
+                for plot in reward_plot:
+                    plot.remove()
         except AttributeError:
             pass
-
