@@ -1,3 +1,10 @@
-c_at_goal: 15.0
-c_progr: 1000.0
-c_speed: 2.5 
+# Done rewards
+r_at_goal: 10.0
+r_outside_map: -10.0
+r_collision: -10.0
+
+# Progress reward coefficients
+c_progress: 1000.0
+
+# Time penalty
+r_not_arrived: -1.0

@@ -93,8 +93,8 @@ class BaseEnv(Supervisor, gym.Env):
         self.update_robot_state_and_local_goal(method='step')
 
         self.observation = self.get_obs()
-        self.reward = self.get_reward()
-        self.done = self.get_done()
+        self.done, done_cause = self.get_done()
+        self.reward = self.get_reward(self.done, done_cause)
 
         self.render(method='step')
 
@@ -107,33 +107,27 @@ class BaseEnv(Supervisor, gym.Env):
 
         return self.lidar_range_image
 
-    def get_reward(self):
-        # Adds the reward to the BaseEnv's 0 reward
-        
-        # Checking if @ goal with low velocity #NOTE: also used to terminate episode
-        arrived_at_goal = False
-        if (np.linalg.norm(self.cur_pos[:2] - 
-                           self.goal_pose[:2]) <= self.params['goal_tolerance']): #and (self.cur_vel[1] < self.params['v_goal_threshold']): #TODO: pass from DONE instead of recompute
-            arrived_at_goal = True #NOTE: arrived with low speed!!!
-
-        # Goal/Progress reward
-        if arrived_at_goal:
-            r_goal = self.params['c_at_goal']
+    def get_reward(self, done, done_cause):    
+        # Reward calculation    
+        if done:
+            if done_cause == 'at_goal':
+                reward = self.params['r_at_goal']
+            elif done_cause == 'outside_map':
+                reward = self.params['r_outside_map']
+            elif done_cause == 'collision':
+                reward = self.params['r_collision']
+            else:
+                raise ValueError(f'get_reward(): done_cause "{done_cause}" not recognized')
         else:
-            r_goal = self.params['c_progr']*(
+            r_goal = self.params['c_progress']*(
                 np.linalg.norm(self.goal_pose[:2] - self.prev_pos[:2]) - 
                 np.linalg.norm(self.goal_pose[:2] - self.cur_pos[:2])
             )
+            r_not_arrived = self.params['r_not_arrived']
 
-        # Time penalty
-        if arrived_at_goal == False:
-            r_speed = -1
-        else:
-            r_speed = 0
+            reward = r_goal + r_not_arrived
 
-        # Total reward
-        reward = r_goal + self.params['c_speed']*r_speed
-
+        # Append reward to reward buffer
         self.reward_buffer.append(reward)
         if len(self.reward_buffer) > self.params['reward_buffer_size']:
             self.reward_buffer.pop(0)
@@ -141,20 +135,25 @@ class BaseEnv(Supervisor, gym.Env):
         return reward
 
     def get_done(self):
+        done_cause = None
+
         # Arrived at the goal
         if (np.linalg.norm(self.cur_pos[:2] - self.goal_pose[:2]) <= self.params['goal_tolerance']): #and (self.cur_vel[1] < self.params['v_goal_threshold']):
-            return True
+            done_cause = 'at_goal'
+            return True, done_cause
             
         # Driving outside map limit
         cur_pos_point = Point(self.cur_pos[0], self.cur_pos[1])
         if not (self.map_bounds_polygon.contains(cur_pos_point) or self.map_bounds_polygon.boundary.contains(cur_pos_point)):
-            return True
+            done_cause = 'outside_map'
+            return True, done_cause
         
         if self.check_collision():
-            return True
+            done_cause = 'collision'
+            return True, done_cause
 
         # When none of the done conditions are met
-        return False
+        return False, done_cause
     
     def update_robot_state_and_local_goal(self, method):
         # Update previous position, current position, current orientation, and global footprint location

@@ -20,7 +20,7 @@ training_date = '24_05_15'  # Set the training date in the format YY_MM_DD
 training_time = '14_52_22'  # Set the training time in the format HH_MM_SS
 training_steps = 3280000  # Set the number of training steps (optional)
 
-evaluation_episodes = 10  # Set the number of episodes to evaluate the model
+evaluation_episodes = 25  # Set the number of episodes to evaluate the model
 deterministic = False  # Set whether to use deterministic policy or not
 webots_mode = 'testing'  # Set the Webots mode ('testing' or 'training')
 render_mode = 'full'  # Set the render mode ('trajectory', 'full', 'velocity') or leave it as None for no rendering
