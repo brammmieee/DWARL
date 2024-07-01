@@ -14,12 +14,13 @@ import utils.base_tools as bt
 import utils.admin_tools as at
 
 class BaseEnv(Supervisor, gym.Env):
-    metadata = {"render_modes": ["full", "position", "velocity", "trajectory"], "render_fps": 4} # TODO: use fps in render methods
     package_dir = os.path.abspath(os.pardir)
     
     def __init__(self, render_mode=None, wb_open=True, 
                  wb_mode='training', parameter_file='base_parameters.yaml', 
-                 proto_config='default_proto_config.json', wb_headless=False):
+                 proto_config='default_proto_config.json',
+                 reward_config='parameterized_reward.yaml', wb_headless=False):
+        
         # Directories
         self.resources_dir = os.path.join(BaseEnv.package_dir, 'resources')
         self.params_dir = os.path.join(BaseEnv.package_dir, 'parameters')
@@ -28,13 +29,16 @@ class BaseEnv(Supervisor, gym.Env):
         self.worlds_dir = os.path.join(self.resources_dir, 'worlds')
         
         # Load parameters and set protos to configurations
-        self.params = at.load_parameters([parameter_file, proto_config])
+        self.params = at.load_parameters([parameter_file, proto_config, reward_config])
         bt.update_protos(proto_config)
         
         # Precomputations
         self.precomputed_lidar_values = bt.precompute_lidar_values(
             num_lidar_rays=self.params['proto_substitutions']['horizontalResolution']
         )
+
+        # Reward buffer
+        self.reward_buffer = []
 
         # Training maps and map bounds
         self.train_map_nr_list = at.load_from_json('train_map_nr_list.json', os.path.join(self.params_dir, 'map_nrs'))
@@ -64,8 +68,8 @@ class BaseEnv(Supervisor, gym.Env):
         self.cur_vel = np.array([0.0, 0.0])
         self.cmd_vel = np.array([0.0, 0.0])
         
-        self.method = 'reset' # used for rendering
         self.observation = self.get_obs()
+        self.render(method='reset')
 
         return self.observation, {} # = info
 
@@ -88,10 +92,11 @@ class BaseEnv(Supervisor, gym.Env):
         # Updating prev_pos, cur_pos, cur_orient, footprint in global frame, and getting new local goal
         self.update_robot_state_and_local_goal(method='step')
 
-        self.method = 'step'
         self.observation = self.get_obs()
         self.reward = self.get_reward()
         self.done = self.get_done()
+
+        self.render(method='step')
 
         return self.observation, self.reward, self.done, False, {} # last 3: done, truncated, info
 
@@ -99,13 +104,40 @@ class BaseEnv(Supervisor, gym.Env):
         # Getting lidar data and converting to pointcloud
         super().step(self.basic_timestep) #NOTE: only after this timestep will the lidar data of the previous step be available
         self.lidar_range_image = self.lidar_node.getRangeImage()
-        self.render(method=self.method)
 
         return self.lidar_range_image
 
     def get_reward(self):
-        # NOTE: u must use a reward wrapper to set a proper reward function
-        reward = 0
+        # Adds the reward to the BaseEnv's 0 reward
+        
+        # Checking if @ goal with low velocity #NOTE: also used to terminate episode
+        arrived_at_goal = False
+        if (np.linalg.norm(self.cur_pos[:2] - 
+                           self.goal_pose[:2]) <= self.params['goal_tolerance']): #and (self.cur_vel[1] < self.params['v_goal_threshold']): #TODO: pass from DONE instead of recompute
+            arrived_at_goal = True #NOTE: arrived with low speed!!!
+
+        # Goal/Progress reward
+        if arrived_at_goal:
+            r_goal = self.params['c_at_goal']
+        else:
+            r_goal = self.params['c_progr']*(
+                np.linalg.norm(self.goal_pose[:2] - self.prev_pos[:2]) - 
+                np.linalg.norm(self.goal_pose[:2] - self.cur_pos[:2])
+            )
+
+        # Time penalty
+        if arrived_at_goal == False:
+            r_speed = -1
+        else:
+            r_speed = 0
+
+        # Total reward
+        reward = r_goal + self.params['c_speed']*r_speed
+
+        self.reward_buffer.append(reward)
+        if len(self.reward_buffer) > self.params['reward_buffer_size']:
+            self.reward_buffer.pop(0)
+        
         return reward
 
     def get_done(self):
@@ -240,7 +272,6 @@ class BaseEnv(Supervisor, gym.Env):
         self.init_pose, self.goal_pose = bt.get_init_and_goal_poses(path=self.path, parameters=self.params) # pose -> [x,y,psi]
 
     def set_render_mode(self, render_mode):
-        assert render_mode is None or render_mode in self.metadata["render_modes"]
         self.render_mode = render_mode
         self.render_count = 0
 
@@ -250,87 +281,96 @@ class BaseEnv(Supervisor, gym.Env):
         
         # Create initial plot or remove data
         if self.render_count == 0:
-            self.render_init_plot(self.render_mode)
+            self.render_init_plot()
         else:
-            self.render_remove_data(self.render_mode, method)
+            self.render_remove_data(method)
             
         # Add new data to the plot
-        self.render_add_data(self.render_mode, method)
+        self.render_add_data(method)
         
         # Plot graphs set flags and counter
         self.fig.canvas.draw()
         self.fig.canvas.flush_events()
         self.render_count += 1 # counter for reduced rendering (e.g. every 2nd step)
         
-    def render_init_plot(self, render_mode):
+    def render_init_plot(self):
         plt.ion()
-        self.fig, (self.ax1, self.ax2) = plt.subplots(2, 1)
+        self.fig, (self.ax1, self.ax2, self.ax3) = plt.subplots(3, 1)
         
-        if render_mode in ['position','full']:
-            # ax1 - Lidar data and footprint (axis fixed to base_link)
-            polygon = Polygon(self.params['polygon_coords'])
-            patch = plt_polygon(np.array(polygon.exterior.coords), alpha=0.75, closed=True, facecolor='grey')
-            self.ax1.add_patch(patch)
-
-            self.ax1.set_xlim([-1.5,1.5])
-            self.ax1.set_ylim([-1.5,1.5])
-            self.ax1.set_xlabel('x [m]')
-            self.ax1.set_ylabel('y [m]')
-            self.ax1.set_aspect('equal')
-            self.ax1.grid()
+        # ax1 - Lidar data and footprint (axis fixed to base_link)
+        polygon = Polygon(self.params['polygon_coords'])
+        patch = plt_polygon(np.array(polygon.exterior.coords), alpha=0.75, closed=True, facecolor='grey')
+        self.ax1.add_patch(patch)
+        self.ax1.set_xlim([-1.5,1.5])
+        self.ax1.set_ylim([-1.5,1.5])
+        self.ax1.set_xlabel('x [m]')
+        self.ax1.set_ylabel('y [m]')
+        self.ax1.set_aspect('equal')
+        self.ax1.grid()
             
-        if render_mode in ['trajectory', 'full']:
-            # ax2 - Path, init pose and goal pose data (axis fixed to map)
-            self.ax2.set_aspect('equal', adjustable='box')
-            self.ax2.set_xlabel('x [m]')
-            self.ax2.set_ylabel('y [m]')
-        
-    def render_remove_data(self, render_mode, method):
-        if render_mode in ['position', 'full']:
-            try:
-                # ax1 - Clear lidar data
-                self.lidar_plot.remove()
-                self.local_goal_plot.remove()
-            except AttributeError:
-                pass
+        # ax2 - Path, init pose and goal pose data (axis fixed to map)
+        self.ax2.set_aspect('equal', adjustable='box')
+        self.ax2.set_xlabel('x [m]')
+        self.ax2.set_ylabel('y [m]')
 
-        if render_mode in ['trajectory', 'full']:
-            try:
-                # ax2 - Clear path and poses
-                self.cur_pos_plot.remove()
-                for patch in self.footprint_plot:
-                    patch.remove()
-                if method == 'reset':
-                    for patch in self.grid_plots:
-                        patch.remove()
-                    self.grid_plots.clear()
-                    self.path_plot.remove()
-                    self.init_pose_plot.remove()
-                    self.goal_pose_plot.remove()
-            except AttributeError:
-                pass
+        # ax3 - Reward plot
+        self.ax3.set_xlabel('Step')
+        self.ax3.set_ylabel('Reward')
+        self.ax3.grid()
 
-    def render_add_data(self, render_mode, method):
-        if render_mode in ['position', 'full']:
-            # ax1 - Lidar data
-            self.lidar_points = bt.lidar_to_point_cloud(self.params, self.precomputed_lidar_values, self.lidar_range_image) #NOTE: double computation in case of e.g vo observation wrapper
-            self.lidar_plot = self.ax1.scatter(self.lidar_points[:,0], self.lidar_points[:,1], alpha=1.0, c='black')
-            self.local_goal_plot = self.ax1.scatter(self.local_goal_pos[0], self.local_goal_pos[1], alpha=1.0, c='purple')
+    def render_add_data(self, method):
+        # ax1 - Lidar data
+        self.lidar_points = bt.lidar_to_point_cloud(self.params, self.precomputed_lidar_values, self.lidar_range_image) #NOTE: double computation in case of e.g vo observation wrapper
+        self.lidar_plot = self.ax1.scatter(self.lidar_points[:,0], self.lidar_points[:,1], alpha=1.0, c='black')
+        self.local_goal_plot = self.ax1.scatter(self.local_goal_pos[0], self.local_goal_pos[1], alpha=1.0, c='purple')
             
-        if render_mode in ['trajectory', 'full']:
-            # ax2 - Path and poses
-            self.cur_pos_plot = self.ax2.scatter(self.cur_pos[0], self.cur_pos[1], c='blue', alpha=0.33)
-            x, y = self.footprint_glob.exterior.xy
-            self.footprint_plot = self.ax2.fill(x, y, color='blue', alpha=0.5)
+        # ax2 - Path and poses
+        self.cur_pos_plot = self.ax2.scatter(self.cur_pos[0], self.cur_pos[1], c='blue', alpha=0.33)
+        x, y = self.footprint_glob.exterior.xy
+        self.footprint_plot = self.ax2.fill(x, y, color='blue', alpha=0.5)
+        if method == 'reset':
+            self.grid_plots = []  # Initialize a list to store all rectangle patches
+            indices = np.argwhere(self.grid == 1)
+            for index in indices:
+                x, y = index
+                x_scaled, y_scaled = x * self.params['map_res'], y * self.params['map_res']
+                rect = plt.Rectangle((x_scaled, y_scaled), self.params['map_res'], self.params['map_res'], color='black')
+                self.grid_plots.append(self.ax2.add_patch(rect))  # Add each patch to the list
+
+            self.path_plot = self.ax2.scatter(self.path[:,0], self.path[:,1], c='grey', alpha=0.5)
+            self.init_pose_plot = self.ax2.scatter(self.init_pose[0], self.init_pose[1], c='green')
+            self.goal_pose_plot = self.ax2.scatter(self.goal_pose[0], self.goal_pose[1], c='red')
+
+        # ax3 - Reward plot
+        self.reward_plot = self.ax3.plot(range(len(self.reward_buffer)), self.reward_buffer, color='orange')
+
+    def render_remove_data(self, method):
+        # ax1 - Clear lidar data
+        try:
+            self.lidar_plot.remove()
+            self.local_goal_plot.remove()
+        except AttributeError:
+            pass
+
+        # ax2 - Clear path and poses
+        try:
+            self.cur_pos_plot.remove()
+            for patch in self.footprint_plot:
+                patch.remove()
             if method == 'reset':
-                self.grid_plots = []  # Initialize a list to store all rectangle patches
-                indices = np.argwhere(self.grid == 1)
-                for index in indices:
-                    x, y = index
-                    x_scaled, y_scaled = x * self.params['map_res'], y * self.params['map_res']
-                    rect = plt.Rectangle((x_scaled, y_scaled), self.params['map_res'], self.params['map_res'], color='black')
-                    self.grid_plots.append(self.ax2.add_patch(rect))  # Add each patch to the list
+                for patch in self.grid_plots:
+                    patch.remove()
+                self.grid_plots.clear()
+                self.path_plot.remove()
+                self.init_pose_plot.remove()
+                self.goal_pose_plot.remove()
+        except AttributeError:
+            pass
 
-                self.path_plot = self.ax2.scatter(self.path[:,0], self.path[:,1], c='grey', alpha=0.5)
-                self.init_pose_plot = self.ax2.scatter(self.init_pose[0], self.init_pose[1], c='green')
-                self.goal_pose_plot = self.ax2.scatter(self.goal_pose[0], self.goal_pose[1], c='red')
+        # ax3 - Clear reward plot
+        try:
+            for plot in self.reward_plot:
+                plot.remove()
+        except AttributeError:
+            pass
+

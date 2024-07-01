@@ -15,6 +15,9 @@ nominal_distance: 1.0  # nominal distance between init and goal pos. [m]
 sample_time: 0.05
 max_ep_time: 30
 
+# Reward Plotting
+reward_buffer_size: 150
+
 # Dimensions
 lidar_y_pos: -0.07075
 z_pos: 0.05 # For kinematic robot movement

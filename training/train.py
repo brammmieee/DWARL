@@ -20,7 +20,6 @@ from environments.wrappers.sparse_lidar_observation_wrapper import SparseLidarOb
 from environments.wrappers.command_velocity_action_wrapper import CommandVelocityActionWrapper
 from environments.wrappers.velocity_obstacle_observation_wrapper import VelocityObstacleObservationWrapper
 from environments.wrappers.dynamic_window_action_wrapper import DynamicWindowActionWrapper
-from environments.wrappers.parameterized_reward_wrapper import ParameterizedRewardWrapper
 
 def parse_args():
     parser=argparse.ArgumentParser(description='Training script')
@@ -31,7 +30,7 @@ def parse_args():
     # Environment settings
     parser.add_argument('--envs', type=int, default=1, help='Number of environments to run in parallel')
     parser.add_argument('--env_proto_config', type=str, default='sparse_lidar_proto_config.json', help='Proto config file to adjust proto settings')
-    parser.add_argument('--wrapper_classes', nargs='+', default=['SparseLidarObservationWrapper', 'CommandVelocityActionWrapper', 'ParameterizedRewardWrapper'], help='List of wrapper classes around BaseEnv that are applied chronologically')
+    parser.add_argument('--wrapper_classes', nargs='+', default=['SparseLidarObservationWrapper', 'CommandVelocityActionWrapper'], help='List of wrapper classes around BaseEnv that are applied chronologically')
     
     # Model settings
     parser.add_argument('--comment', type=str, default='test', help='Comment that hints the setup used for training')
@@ -74,6 +73,7 @@ def save_config(args, dir):
             wrapper_params.update({wrapper_file_name: at.load_parameters([wrapper_file_name])})
     config = {
         'train_args': train_args,
+        'reward_params': at.load_parameters(['reward_parameters.yaml']),
         'wrapper_params': wrapper_params,
         'proto_params': at.load_parameters([args.env_proto_config]),
         'base_params': at.load_parameters(['base_parameters.yaml']),

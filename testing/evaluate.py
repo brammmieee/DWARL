@@ -10,15 +10,14 @@ from environments.wrappers.sparse_lidar_observation_wrapper import SparseLidarOb
 from environments.wrappers.command_velocity_action_wrapper import CommandVelocityActionWrapper
 from environments.wrappers.velocity_obstacle_observation_wrapper import VelocityObstacleObservationWrapper
 from environments.wrappers.dynamic_window_action_wrapper import DynamicWindowActionWrapper
-from environments.wrappers.parameterized_reward_wrapper import ParameterizedRewardWrapper
 import matplotlib.pyplot as plt
 
 import utils.admin_tools as at
 import utils.base_tools as bt
 
 # %% Set the following parameters
-training_date = '24_05_14'  # Set the training date in the format YY_MM_DD
-training_time = '15_44_37'  # Set the training time in the format HH_MM_SS
+training_date = '24_05_15'  # Set the training date in the format YY_MM_DD
+training_time = '14_52_22'  # Set the training time in the format HH_MM_SS
 training_steps = 3280000  # Set the number of training steps (optional)
 
 evaluation_episodes = 10  # Set the number of episodes to evaluate the model
