@@ -58,9 +58,9 @@ class BaseEnv(Supervisor, gym.Env):
             'r_at_goal': 0,
             'r_outside_map': 0,
             'r_collision': 0,
-            'r_pogress': 2,
+            'r_pogress': 1,
             'r_not_arrived': 1,
-            'r_path_proximity': 2,
+            'r_path_proximity': 1,
             'total_reward': 1
         }
 
@@ -157,10 +157,7 @@ class BaseEnv(Supervisor, gym.Env):
                 raise ValueError(f'get_reward(): done_cause "{done_cause}" not recognized')
         else:
             # Calculate ongoing rewards
-            reward_components['r_pogress'] = self.params['c_progress'] * (
-                np.linalg.norm(self.goal_pose[:2] - self.prev_pos[:2]) - 
-                np.linalg.norm(self.goal_pose[:2] - self.cur_pos[:2])
-            )
+            reward_components['r_pogress'] = self.params['c_progress']*self.calculate_normalized_progress()
             reward_components['r_not_arrived'] = self.params['r_not_arrived']
             nearest_path_distance = self.get_nearest_path_distance(self.cur_pos[:2])
             reward_components['r_path_proximity'] = np.exp(-nearest_path_distance / self.params['path_proximity_scale'])
@@ -182,6 +179,16 @@ class BaseEnv(Supervisor, gym.Env):
 
         return total_reward
     
+    def calculate_normalized_progress(self):
+        prev_distance_to_goal = np.linalg.norm(self.goal_pose[:2] - self.prev_pos[:2])
+        current_distance_to_goal = np.linalg.norm(self.goal_pose[:2] - self.cur_pos[:2])
+        progress = prev_distance_to_goal - current_distance_to_goal
+        
+        # Normalize the progress between -1 and 1
+        max_progress = self.params['v_max']*self.params['sample_time']
+        normalized_progress = np.clip(progress / max_progress, -1, 1)
+        return normalized_progress
+        
     def get_nearest_path_distance(self, cur_pos):
         distances = [np.linalg.norm(np.array(cur_pos) - np.array(point)) for point in self.path]
         nearest_distance = min(distances)
