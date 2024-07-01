@@ -295,7 +295,7 @@ class BaseEnv(Supervisor, gym.Env):
         
     def render_init_plot(self):
         plt.ion()
-        self.fig, (self.ax1, self.ax2, self.ax3) = plt.subplots(3, 1)
+        self.fig, ((self.ax1, self.ax3), (self.ax2, self.ax4)) = plt.subplots(2, 2)
         
         # ax1 - Lidar data and footprint (axis fixed to base_link)
         polygon = Polygon(self.params['polygon_coords'])
@@ -317,6 +317,11 @@ class BaseEnv(Supervisor, gym.Env):
         self.ax3.set_xlabel('Step')
         self.ax3.set_ylabel('Reward')
         self.ax3.grid()
+
+        # ax4 - dReward/dStep plot
+        self.ax4.set_xlabel('Step')
+        self.ax4.set_ylabel('dReward/dStep')
+        self.ax4.grid()
 
     def render_add_data(self, method):
         # ax1 - Lidar data
@@ -344,6 +349,11 @@ class BaseEnv(Supervisor, gym.Env):
         # ax3 - Reward plot
         self.reward_plot = self.ax3.plot(range(len(self.reward_buffer)), self.reward_buffer, color='orange')
 
+        # ax4 - dReward/dStep plot
+        if len(self.reward_buffer) > 1:
+            dreward = np.diff(self.reward_buffer)
+            self.dreward_plot = self.ax4.plot(range(len(dreward)), dreward, color='orange')
+
     def render_remove_data(self, method):
         # ax1 - Clear lidar data
         try:
@@ -370,6 +380,13 @@ class BaseEnv(Supervisor, gym.Env):
         # ax3 - Clear reward plot
         try:
             for plot in self.reward_plot:
+                plot.remove()
+        except AttributeError:
+            pass
+
+        # ax4 - Clear dReward/dStep plot
+        try:
+            for plot in self.dreward_plot:
                 plot.remove()
         except AttributeError:
             pass
