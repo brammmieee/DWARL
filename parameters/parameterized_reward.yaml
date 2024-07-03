@@ -3,11 +3,9 @@ r_at_goal: 10.0
 r_outside_map: -10.0
 r_collision: -10.0
 
-# Progress reward coefficients
+# Reward coefficients
 c_progress: 5.0
-
-# Path proximity scale
-path_proximity_scale: 1.0
+c_path_dist: -10.0
 
 # Time penalty
 r_not_arrived: -1.0

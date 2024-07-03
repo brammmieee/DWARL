@@ -42,7 +42,7 @@ class BaseEnv(Supervisor, gym.Env):
         self.teleop = teleop
 
         # Reward buffer
-        reward_components = ['r_at_goal', 'r_outside_map', 'r_collision', 'r_pogress', 'r_not_arrived', 'r_path_proximity', 'total_reward']
+        reward_components = ['r_at_goal', 'r_outside_map', 'r_collision', 'r_pogress', 'r_not_arrived', 'r_path_dist', 'total_reward']
         self.reward_buffers = {component: [] for component in reward_components}
         self.reward_style_map = {
             'r_at_goal': {'color': 'green', 'alpha': 1,'linestyle': '-'},
@@ -50,7 +50,7 @@ class BaseEnv(Supervisor, gym.Env):
             'r_collision': {'color': 'orange', 'alpha': 1,'linestyle': '-.'},
             'r_pogress': {'color': 'blue', 'alpha': 1, 'linestyle': ':'},
             'r_not_arrived': {'color': 'purple', 'alpha': 1,'linestyle': '-'},
-            'r_path_proximity': {'color': 'cyan', 'alpha': 1,'linestyle': '--'},
+            'r_path_dist': {'color': 'cyan', 'alpha': 1,'linestyle': '--'},
             'total_reward': {'color': 'black', 'alpha': 1,'linestyle': '-'}
         }
         # Dict that assigns reward components to their respective plots (0, for no plotting, 1 for subplot 1, 2 for subplot 2)
@@ -60,7 +60,7 @@ class BaseEnv(Supervisor, gym.Env):
             'r_collision': 0,
             'r_pogress': 1,
             'r_not_arrived': 1,
-            'r_path_proximity': 1,
+            'r_path_dist': 1,
             'total_reward': 1
         }
 
@@ -142,7 +142,7 @@ class BaseEnv(Supervisor, gym.Env):
             'r_collision': 0,
             'r_pogress': 0,
             'r_not_arrived': 0,
-            'r_path_proximity': 0
+            'r_path_dist': 0
         }
 
         if done:
@@ -157,11 +157,11 @@ class BaseEnv(Supervisor, gym.Env):
                 raise ValueError(f'get_reward(): done_cause "{done_cause}" not recognized')
         else:
             # Calculate ongoing rewards
-            reward_components['r_pogress'] = self.params['c_progress']*self.calculate_normalized_progress()
+            reward_components['r_pogress'] = self.params['c_progress']*self.get_normalized_progress()
             reward_components['r_not_arrived'] = self.params['r_not_arrived']
-            nearest_path_distance = self.get_nearest_path_distance(self.cur_pos[:2])
-            reward_components['r_path_proximity'] = np.exp(-nearest_path_distance / self.params['path_proximity_scale'])
-
+            reward_components['r_path_dist'] = self.params['c_path_dist']*self.get_normalized_nearest_path_dist()
+            print(f'path dist reward: {reward_components["r_path_dist"]}')
+            
         # Calculate total reward as the sum of all components
         total_reward = sum(reward_components.values())
 
@@ -179,7 +179,7 @@ class BaseEnv(Supervisor, gym.Env):
 
         return total_reward
     
-    def calculate_normalized_progress(self):
+    def get_normalized_progress(self):
         prev_distance_to_goal = np.linalg.norm(self.goal_pose[:2] - self.prev_pos[:2])
         current_distance_to_goal = np.linalg.norm(self.goal_pose[:2] - self.cur_pos[:2])
         progress = prev_distance_to_goal - current_distance_to_goal
@@ -189,10 +189,17 @@ class BaseEnv(Supervisor, gym.Env):
         normalized_progress = np.clip(progress / max_progress, -1, 1)
         return normalized_progress
         
-    def get_nearest_path_distance(self, cur_pos):
-        distances = [np.linalg.norm(np.array(cur_pos) - np.array(point)) for point in self.path]
+    def get_normalized_nearest_path_dist(self):
+        distances = [np.linalg.norm(np.array(self.cur_pos[:2]) - np.array(point)) for point in self.path]
         nearest_distance = min(distances)
-        return nearest_distance
+        
+        # Normalize the nearest distance between 0 and 1
+        max_distance = self.params['map_res']*self.params['map_width']
+        normalized_distance = nearest_distance / max_distance
+
+        print(f'distance: {nearest_distance}, normalized_distance: {normalized_distance}')
+        
+        return normalized_distance
     
     def get_done(self):
         done_cause = None
