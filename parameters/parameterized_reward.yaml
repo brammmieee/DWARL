@@ -5,7 +5,11 @@ r_collision: -10.0
 
 # Reward coefficients
 c_progress: 5.0
-c_path_dist: -10.0
+c_path_dist: -5.0
 
-# Time penalty
+# Path dist reward extra parameters
+max_path_dist: 0.2 # Where r_path_dist becomes equal to c_path_dist
+smooth_path_points: 200 # Number of points to use for path smoothing (prevent r_path_dist zig-zagging)
+
+# Time penalty (given each timestep)
 r_not_arrived: -1.0

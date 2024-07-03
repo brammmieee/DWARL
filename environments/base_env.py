@@ -10,6 +10,7 @@ from matplotlib.patches import Polygon as plt_polygon
 from matplotlib.lines import Line2D
 from shapely.geometry import Point, Polygon
 from shapely.affinity import translate, rotate
+from scipy.interpolate import interp1d
 
 import utils.base_tools as bt
 import utils.admin_tools as at
@@ -45,22 +46,22 @@ class BaseEnv(Supervisor, gym.Env):
         reward_components = ['r_at_goal', 'r_outside_map', 'r_collision', 'r_pogress', 'r_not_arrived', 'r_path_dist', 'total_reward']
         self.reward_buffers = {component: [] for component in reward_components}
         self.reward_style_map = {
-            'r_at_goal': {'color': 'green', 'alpha': 1,'linestyle': '-'},
-            'r_outside_map': {'color': 'red', 'alpha': 1,'linestyle': '--'},
-            'r_collision': {'color': 'orange', 'alpha': 1,'linestyle': '-.'},
-            'r_pogress': {'color': 'blue', 'alpha': 1, 'linestyle': ':'},
-            'r_not_arrived': {'color': 'purple', 'alpha': 1,'linestyle': '-'},
-            'r_path_dist': {'color': 'cyan', 'alpha': 1,'linestyle': '--'},
+            'r_at_goal': {'color': 'green', 'alpha': 0.35,'linestyle': '--'},
+            'r_outside_map': {'color': 'orange', 'alpha': 0.35,'linestyle': '--'},
+            'r_collision': {'color': 'red', 'alpha': 0.35,'linestyle': '-'},
+            'r_pogress': {'color': 'blue', 'alpha': 1, 'linestyle': '-'},
+            'r_not_arrived': {'color': 'pink', 'alpha': 0.35,'linestyle': '-'},
+            'r_path_dist': {'color': 'royalblue', 'alpha': 1,'linestyle': '-.'},
             'total_reward': {'color': 'black', 'alpha': 1,'linestyle': '-'}
         }
         # Dict that assigns reward components to their respective plots (0, for no plotting, 1 for subplot 1, 2 for subplot 2)
         self.reward_plot_map = {
-            'r_at_goal': 0,
-            'r_outside_map': 0,
-            'r_collision': 0,
-            'r_pogress': 1,
-            'r_not_arrived': 1,
-            'r_path_dist': 1,
+            'r_at_goal': 2,
+            'r_outside_map': 2,
+            'r_collision': 2,
+            'r_pogress': 2,
+            'r_not_arrived': 2,
+            'r_path_dist': 2,
             'total_reward': 1
         }
 
@@ -160,7 +161,6 @@ class BaseEnv(Supervisor, gym.Env):
             reward_components['r_pogress'] = self.params['c_progress']*self.get_normalized_progress()
             reward_components['r_not_arrived'] = self.params['r_not_arrived']
             reward_components['r_path_dist'] = self.params['c_path_dist']*self.get_normalized_nearest_path_dist()
-            print(f'path dist reward: {reward_components["r_path_dist"]}')
             
         # Calculate total reward as the sum of all components
         total_reward = sum(reward_components.values())
@@ -190,14 +190,12 @@ class BaseEnv(Supervisor, gym.Env):
         return normalized_progress
         
     def get_normalized_nearest_path_dist(self):
-        distances = [np.linalg.norm(np.array(self.cur_pos[:2]) - np.array(point)) for point in self.path]
+        distances = [np.linalg.norm(np.array(self.cur_pos[:2]) - np.array(point)) for point in self.smooth_path]
         nearest_distance = min(distances)
         
         # Normalize the nearest distance between 0 and 1
-        max_distance = self.params['map_res']*self.params['map_width']
-        normalized_distance = nearest_distance / max_distance
-
-        print(f'distance: {nearest_distance}, normalized_distance: {normalized_distance}')
+        max_distance = self.params['max_path_dist']
+        normalized_distance = np.clip(nearest_distance / max_distance, 0, 1)
         
         return normalized_distance
     
@@ -335,6 +333,17 @@ class BaseEnv(Supervisor, gym.Env):
         self.grid = np.load(os.path.join(self.grids_dir, 'grid_' + str(self.map_nr) + '.npy'))
         path = np.load(os.path.join(self.paths_dir, 'path_' + str(self.map_nr) + '.npy'))
         self.path = np.multiply(path, self.params['map_res']) # apply scaling
+
+        # Smooth path for reward calculation
+        if self.path.shape[0] > 1:
+            x, y = self.path[:, 0], self.path[:, 1]
+            lin_tck_x = interp1d(np.arange(x.size), x, kind='linear')
+            lin_tck_y = interp1d(np.arange(y.size), y, kind='linear')
+            interp_points = np.linspace(0, x.size - 1, self.params['smooth_path_points'])
+            self.smooth_path = np.vstack((lin_tck_x(interp_points), lin_tck_y(interp_points))).T
+        else:
+            self.smooth_path = self.path
+
         self.init_pose, self.goal_pose = bt.get_init_and_goal_poses(path=self.path, parameters=self.params) # pose -> [x,y,psi]
 
     def set_render_mode(self, render_mode):
@@ -399,6 +408,7 @@ class BaseEnv(Supervisor, gym.Env):
 
         # Adjust the legend in your plotting method
         self.fig.legend(handles=legend_handles, loc='upper right', bbox_to_anchor=(1, 1), bbox_transform=self.fig.transFigure)
+    
     def render_add_data(self, method):
         # ax1 - Lidar data
         self.lidar_points = bt.lidar_to_point_cloud(self.params, self.precomputed_lidar_values, self.lidar_range_image) #NOTE: double computation in case of e.g vo observation wrapper
