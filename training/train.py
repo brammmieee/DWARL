@@ -4,6 +4,7 @@ import argparse
 import os
 import sys
 import yaml
+from gymnasium.wrappers import TimeLimit
 # import tensorrt
 
 from stable_baselines3.ppo import PPO
@@ -85,13 +86,19 @@ def save_config(args, dir):
     with open(config_file, "w") as f:
         yaml.dump(config, f, default_flow_style=False)
 
+def apply_time_limit(env):
+    # Add time limit wrapper to limit the episode length without breaking Markov assumption
+    params = at.load_parameters(['base_parameters.yaml'])
+    max_episode_steps = params['max_ep_time'] / params['sample_time']
+    return TimeLimit(env, max_episode_steps=max_episode_steps)
+
 def train(args, model_dir, log_dir):
     # Environment settings
     envs=args.envs
     env_proto_config=args.env_proto_config
     wrapper_classes=[globals()[wrapper] for wrapper in args.wrapper_classes]
     # Add montior wrapper to know the episode reward, length, time and other data
-    wrapper_classes = wrapper_classes + [Monitor]
+    wrapper_classes = wrapper_classes + [apply_time_limit] + [Monitor]
     
     # Model settings
     policy_type=args.policy_type
