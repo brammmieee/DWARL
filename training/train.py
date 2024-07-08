@@ -39,7 +39,7 @@ def parse_args():
     
     # Train and callback settings
     parser.add_argument('--steps', type=int, default=1000, help='Total training steps')
-    parser.add_argument('--model_save_freq', type=int, default=5000, help='Model save frequency')
+    parser.add_argument('--model_save_freq', type=int, default=10000, help='Model save frequency')
     parser.add_argument('--model_eval_freq', type=int, default=10000, help='Model evaluation frequency')
     parser.add_argument('--model_n_eval_episodes', type=int, default=25, help='Number of evaluation episodes')
     parser.add_argument('--log_interval', type=int, default=10, help='Log interval')
