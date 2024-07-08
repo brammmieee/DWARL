@@ -8,16 +8,18 @@ else
     exit 1
 fi
 
+# Perform system update and upgrade
+sudo apt update -y
+sudo apt upgrade -y
+
 # Installing Webots 2023b
 echo "Installing Webots 2023b..."
 wget -qO- https://cyberbotics.com/Cyberbotics.asc | sudo apt-key add -
 sudo add-apt-repository 'deb https://cyberbotics.com/debian/ binary-amd64/'
-sudo apt update -y
 sudo apt install -y webots
 
-# Perform system update and upgrade
-sudo apt update -y
-sudo apt upgrade -y
+# Istall Cuda toolkit
+sudo apt install nvidia-cuda-toolkit
 
 # Install Python 3 pip
 sudo apt install -y python3-pip

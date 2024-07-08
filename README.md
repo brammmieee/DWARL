@@ -23,6 +23,9 @@ To install the containerized version of the package, follow these steps:
 
 To attach to the Docker container, run the `attach.bash` script from the [scripts folder](./scripts/).
 
+### Known Issues
+When installing the package locally according to the [section](#local-installation-recommended) above, the issue might occur that upon creating the virtual environment, no activate script is created within the 'bin' folder of your newly created venv. To fix this issue, remove the 'venv' folder completely, reinstall python3-venv by running `sudo apt purge python3-venv` and `sudo apt install python3-venv`, after which you can try running the local install script again.
+
 ## Training
 
 To start training, run `train.py`. To view the available arguments, run `train.py -h`.
