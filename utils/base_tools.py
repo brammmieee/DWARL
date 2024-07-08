@@ -134,7 +134,8 @@ def get_init_and_goal_poses(path, parameters=None):
             if dist_traveled + segment_dist >= nom_dist:
                 init_pose = create_pose(path[rand_index], calculate_orientation(path[rand_index], path[rand_index + sign]))
                 goal_pose = create_pose(path[i], calculate_orientation(path[i], path[i + sign]))
-                return init_pose, goal_pose
+                direction = sign
+                return init_pose, goal_pose, direction
             dist_traveled += segment_dist
             i += sign
 
@@ -150,7 +151,8 @@ def get_init_and_goal_poses(path, parameters=None):
         else:
             init_pose = create_pose(path[init_path_index], calculate_orientation(path[init_path_index], path[goal_path_index]))
             goal_pose = create_pose(path[goal_path_index], calculate_orientation(path[goal_path_index], path[init_path_index]))
-            return init_pose, goal_pose
+            direction = 1 if init_path_index < goal_path_index else -1
+            return init_pose, goal_pose, direction
         
     else:
         raise ValueError("Unsupported mode provided.")

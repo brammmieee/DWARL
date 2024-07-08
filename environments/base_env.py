@@ -43,25 +43,27 @@ class BaseEnv(Supervisor, gym.Env):
         self.teleop = teleop
 
         # Reward buffer
-        reward_components = ['r_at_goal', 'r_outside_map', 'r_collision', 'r_pogress', 'r_not_arrived', 'r_path_dist', 'total_reward']
+        reward_components = ['r_at_goal', 'r_outside_map', 'r_collision', 'r_pogress', 'r_not_arrived', 'r_path_dist', 'r_path_progress', 'total_reward']
         self.reward_buffers = {component: [] for component in reward_components}
         self.reward_style_map = {
             'r_at_goal': {'color': 'green', 'alpha': 0.35,'linestyle': '--'},
             'r_outside_map': {'color': 'orange', 'alpha': 0.35,'linestyle': '--'},
-            'r_collision': {'color': 'red', 'alpha': 0.35,'linestyle': '-'},
+            'r_collision': {'color': 'red', 'alpha': 0.35,'linestyle': '--'},
             'r_pogress': {'color': 'blue', 'alpha': 1, 'linestyle': '-'},
-            'r_not_arrived': {'color': 'pink', 'alpha': 0.35,'linestyle': '-'},
-            'r_path_dist': {'color': 'royalblue', 'alpha': 1,'linestyle': '-.'},
-            'total_reward': {'color': 'black', 'alpha': 1,'linestyle': '-'}
+            'r_not_arrived': {'color': 'pink', 'alpha': 0.35,'linestyle': '--'},
+            'r_path_dist': {'color': 'royalblue', 'alpha': 1,'linestyle': '-'},
+            'r_path_progress': {'color': 'deepskyblue', 'alpha': 1,'linestyle': '-'},
+            'total_reward': {'color': 'black', 'alpha': 1,'linestyle': '-'},
         }
         # Dict that assigns reward components to their respective plots (0, for no plotting, 1 for subplot 1, 2 for subplot 2)
         self.reward_plot_map = {
-            'r_at_goal': 2,
-            'r_outside_map': 2,
-            'r_collision': 2,
-            'r_pogress': 2,
+            'r_at_goal': 0,
+            'r_outside_map': 0,
+            'r_collision': 0,
+            'r_pogress': 0,
             'r_not_arrived': 2,
             'r_path_dist': 2,
+            'r_path_progress': 2,
             'total_reward': 1
         }
 
@@ -89,6 +91,9 @@ class BaseEnv(Supervisor, gym.Env):
 
         # Updating prev_pos, cur_pos, cur_orient, footprint in global frame, and getting new local goal
         self.update_robot_state_and_local_goal(method='reset')
+
+        # Resetting the path progress
+        self.reset_path_progress()
 
         self.cur_vel = np.array([0.0, 0.0])
         self.cmd_vel = np.array([0.0, 0.0])
@@ -119,6 +124,7 @@ class BaseEnv(Supervisor, gym.Env):
 
         # Updating prev_pos, cur_pos, cur_orient, footprint in global frame, and getting new local goal
         self.update_robot_state_and_local_goal(method='step')
+        self.update_path_dist_and_path_progress()
 
         self.observation = self.get_obs()
         self.done, done_cause = self.get_done()
@@ -134,70 +140,6 @@ class BaseEnv(Supervisor, gym.Env):
         self.lidar_range_image = self.lidar_node.getRangeImage()
 
         return self.lidar_range_image
-
-    def get_reward(self, done, done_cause):    
-        # Initialize reward components dictionary with empty values
-        reward_components = {
-            'r_at_goal': 0,
-            'r_outside_map': 0,
-            'r_collision': 0,
-            'r_pogress': 0,
-            'r_not_arrived': 0,
-            'r_path_dist': 0
-        }
-
-        if done:
-            # Assign reward based on the done cause
-            if done_cause == 'at_goal':
-                reward_components['r_at_goal'] = self.params['r_at_goal']
-            elif done_cause == 'outside_map':
-                reward_components['r_outside_map'] = self.params['r_outside_map']
-            elif done_cause == 'collision':
-                reward_components['r_collision'] = self.params['r_collision']
-            else:
-                raise ValueError(f'get_reward(): done_cause "{done_cause}" not recognized')
-        else:
-            # Calculate ongoing rewards
-            reward_components['r_pogress'] = self.params['c_progress']*self.get_normalized_progress()
-            reward_components['r_not_arrived'] = self.params['r_not_arrived']
-            reward_components['r_path_dist'] = self.params['c_path_dist']*self.get_normalized_nearest_path_dist()
-            
-        # Calculate total reward as the sum of all components
-        total_reward = sum(reward_components.values())
-
-        if self.render_mode is not None:
-            # Update reward components buffers and ensure they don't exceed the maximum length
-            for key, value in reward_components.items():
-                self.reward_buffers[key].append(value)
-                if len(self.reward_buffers[key]) > self.params['reward_buffer_size']:
-                    self.reward_buffers[key].pop(0)
-
-            # Append total reward to its buffer and ensure it doesn't exceed the maximum length
-            self.reward_buffers['total_reward'].append(total_reward)
-            if len(self.reward_buffers['total_reward']) > self.params['reward_buffer_size']:
-                self.reward_buffers['total_reward'].pop(0)
-
-        return total_reward
-    
-    def get_normalized_progress(self):
-        prev_distance_to_goal = np.linalg.norm(self.goal_pose[:2] - self.prev_pos[:2])
-        current_distance_to_goal = np.linalg.norm(self.goal_pose[:2] - self.cur_pos[:2])
-        progress = prev_distance_to_goal - current_distance_to_goal
-        
-        # Normalize the progress between -1 and 1
-        max_progress = self.params['v_max']*self.params['sample_time']
-        normalized_progress = np.clip(progress / max_progress, -1, 1)
-        return normalized_progress
-        
-    def get_normalized_nearest_path_dist(self):
-        distances = [np.linalg.norm(np.array(self.cur_pos[:2]) - np.array(point)) for point in self.smooth_path]
-        nearest_distance = min(distances)
-        
-        # Normalize the nearest distance between 0 and 1
-        max_distance = self.params['max_path_dist']
-        normalized_distance = np.clip(nearest_distance / max_distance, 0, 1)
-        
-        return normalized_distance
     
     def get_done(self):
         done_cause = None
@@ -219,7 +161,169 @@ class BaseEnv(Supervisor, gym.Env):
 
         # When none of the done conditions are met
         return False, done_cause
+
+    def get_reward(self, done, done_cause):    
+        # Initialize reward components dictionary with empty values
+        reward_components = {
+            'r_at_goal': 0,
+            'r_outside_map': 0,
+            'r_collision': 0,
+            'r_pogress': 0,
+            'r_not_arrived': 0,
+            'r_path_dist': 0,
+            'r_path_progress': 0,
+        }
+
+        if done:
+            # Assign reward based on the done cause
+            if done_cause == 'at_goal':
+                reward_components['r_at_goal'] = self.params['r_at_goal']
+            elif done_cause == 'outside_map':
+                reward_components['r_outside_map'] = self.params['r_outside_map']
+            elif done_cause == 'collision':
+                reward_components['r_collision'] = self.params['r_collision']
+            else:
+                raise ValueError(f'get_reward(): done_cause "{done_cause}" not recognized')
+        else:
+            # Calculate ongoing rewards
+            reward_components['r_not_arrived'] = self.params['r_not_arrived']
+            reward_components['r_pogress'] = self.params['c_progress']*self.get_normalized_progress()
+            reward_components['r_path_dist'] = self.params['c_path_dist']*self.get_normalized_path_dist()
+            reward_components['r_path_progress'] = self.params['c_path_progress']*self.get_normalized_path_progress()
+            
+        # Calculate total reward as the sum of all components
+        total_reward = sum(reward_components.values())
+
+        # Append rewards to reward buffers for plotting
+        if self.render_mode is not None:
+            self.update_reward_buffers(reward_components, total_reward)
+
+        return total_reward
     
+    def get_normalized_progress(self):
+        if self.params['c_progress'] == 0:
+            return 0
+        prev_distance_to_goal = np.linalg.norm(self.goal_pose[:2] - self.prev_pos[:2])
+        current_distance_to_goal = np.linalg.norm(self.goal_pose[:2] - self.cur_pos[:2])
+        progress = prev_distance_to_goal - current_distance_to_goal
+        max_progress = self.params['v_max']*self.params['sample_time']
+        normalized_progress = np.clip(progress / max_progress, -1, 1)
+
+        return normalized_progress
+        
+    def get_normalized_path_dist(self):
+        if self.params['c_path_dist'] == 0:
+            return 0      
+        max_distance = self.params['max_path_dist']
+        normalized_distance = self.path_dist / max_distance
+        normalized_path_dist = np.clip(1 - normalized_distance, -1, 1)
+
+        return normalized_path_dist
+    
+    def get_normalized_path_progress(self):
+        if self.params['c_path_progress'] == 0:
+            return 0
+        path_progress_diff = self.path_progress - self.prev_path_progress
+        max_path_progress = self.params['v_max']*self.params['sample_time']
+        normalized_path_progress = np.clip(path_progress_diff / max_path_progress, -1, 1)
+
+        return normalized_path_progress
+    
+    def update_reward_buffers(self, reward_components, total_reward):
+        for key, value in reward_components.items():
+            self.reward_buffers[key].append(value)
+            if len(self.reward_buffers[key]) > self.params['reward_buffer_size']:
+                self.reward_buffers[key].pop(0)
+                
+        self.reward_buffers['total_reward'].append(total_reward)
+        if len(self.reward_buffers['total_reward']) > self.params['reward_buffer_size']:
+            self.reward_buffers['total_reward'].pop(0)
+
+    def update_path_dist_and_path_progress(self):
+        path_dist = np.inf
+        path_progress = 0
+        cumulative_path_length = 0
+        r = self.cur_pos[:2]
+
+        for i in range(len(self.path) - 1):
+            p1 = np.array(self.path[i])
+            p2 = np.array(self.path[i + 1])
+            v = p2 - p1
+            w = r - p1
+            t = np.dot(w, v) / np.dot(v, v)
+            t = max(0, min(1, t))
+
+            closest_point_on_segment = p1 + t * v
+            segment_dist = np.linalg.norm(r - closest_point_on_segment)
+            if segment_dist < path_dist:
+                path_dist = segment_dist
+                segment_progress = cumulative_path_length + t * np.linalg.norm(v)
+
+                # Adjust progress calculation based on direction
+                if self.direction > 0:
+                    path_progress = segment_progress - self.init_progress
+                else:
+                    path_progress = self.init_progress - segment_progress
+                
+                p1_ = p1
+                p2_ = p2
+                t_ = t
+                closest_point_on_segment_ = closest_point_on_segment
+                segment_progress_ = segment_progress
+
+            cumulative_path_length += np.linalg.norm(v)
+
+        print(f'p1 = {p1_}')
+        print(f'p2 = {p2_}')
+        print(f'r = {r}')
+        print(f't = {t_}')
+        print(f'closest_point_on_segment = {closest_point_on_segment_}')
+        print(f'segment_progress = {segment_progress_}')
+
+        # Adjust negative progress condition based on direction
+        if self.direction > 0 and path_progress > self.goal_progress:
+            path_progress = -(path_progress - self.goal_progress)
+        elif self.direction < 0 and path_progress < self.goal_progress:
+            path_progress = -(self.goal_progress - path_progress)
+
+        self.path_dist = path_dist
+        self.prev_path_progress = self.path_progress
+        self.path_progress = path_progress
+
+        print(f'path_progress = {self.path_progress}')
+
+    def calculate_progress(self, pose):
+        total_length = 0
+        for i in range(len(self.path) - 1):
+            p1 = np.array(self.path[i])
+            p2 = np.array(self.path[i + 1])
+            if np.array_equal(p1, pose[:2]):
+                progress = total_length
+                break
+            if np.array_equal(p2, pose[:2]):
+                progress = total_length + np.linalg.norm(p2 - p1)
+                break
+            total_length += np.linalg.norm(p2 - p1)
+
+        return progress
+
+    def reset_path_progress(self):
+        self.path_progress = 0
+        self.prev_path_progress = 0
+        self.init_progress = self.calculate_progress(self.init_pose)
+        self.goal_progress = self.calculate_progress(self.goal_pose)
+        print(f'goal_progress: {self.goal_progress}')
+        print(f'init_progress: {self.init_progress}')
+
+    def reset_map_path_and_poses(self):
+        train_map_nr_idx = random.randint(0, len(self.train_map_nr_list)-1)
+        self.map_nr = self.train_map_nr_list[train_map_nr_idx]
+        self.grid = np.load(os.path.join(self.grids_dir, 'grid_' + str(self.map_nr) + '.npy'))
+        path = np.load(os.path.join(self.paths_dir, 'path_' + str(self.map_nr) + '.npy'))
+        self.path = np.multiply(path, self.params['map_res']) # apply scaling
+
+        self.init_pose, self.goal_pose, self.direction = bt.get_init_and_goal_poses(path=self.path, parameters=self.params) # pose -> [x,y,psi]
+
     def update_robot_state_and_local_goal(self, method):
         # Update previous position, current position, current orientation, and global footprint location
         if method == 'step':
@@ -327,25 +431,6 @@ class BaseEnv(Supervisor, gym.Env):
         self.robot_rotation_field.setSFRotation([0.0, 0.0, 1.0, self.init_pose[3]])
         super().step(2*self.basic_timestep) #NOTE: 2 timesteps needed in order to succesfully set the init position
     
-    def reset_map_path_and_poses(self):
-        train_map_nr_idx = random.randint(0, len(self.train_map_nr_list)-1)
-        self.map_nr = self.train_map_nr_list[train_map_nr_idx]
-        self.grid = np.load(os.path.join(self.grids_dir, 'grid_' + str(self.map_nr) + '.npy'))
-        path = np.load(os.path.join(self.paths_dir, 'path_' + str(self.map_nr) + '.npy'))
-        self.path = np.multiply(path, self.params['map_res']) # apply scaling
-
-        # Smooth path for reward calculation
-        if self.path.shape[0] > 1:
-            x, y = self.path[:, 0], self.path[:, 1]
-            lin_tck_x = interp1d(np.arange(x.size), x, kind='linear')
-            lin_tck_y = interp1d(np.arange(y.size), y, kind='linear')
-            interp_points = np.linspace(0, x.size - 1, self.params['smooth_path_points'])
-            self.smooth_path = np.vstack((lin_tck_x(interp_points), lin_tck_y(interp_points))).T
-        else:
-            self.smooth_path = self.path
-
-        self.init_pose, self.goal_pose = bt.get_init_and_goal_poses(path=self.path, parameters=self.params) # pose -> [x,y,psi]
-
     def set_render_mode(self, render_mode):
         self.render_mode = render_mode
         self.render_count = 0

@@ -16,9 +16,9 @@ import utils.admin_tools as at
 import utils.base_tools as bt
 
 # %% Set the following parameters
-training_date = '24_05_15'  # Set the training date in the format YY_MM_DD
-training_time = '14_52_22'  # Set the training time in the format HH_MM_SS
-training_steps = 3280000  # Set the number of training steps (optional)
+training_date = '24_07_03'  # Set the training date in the format YY_MM_DD
+training_time = '17_02_46'  # Set the training time in the format HH_MM_SS
+training_steps = 600000  # Set the number of training steps (optional)
 
 evaluation_episodes = 25  # Set the number of episodes to evaluate the model
 deterministic = False  # Set whether to use deterministic policy or not
@@ -37,12 +37,12 @@ training_config = at.load_parameters(
 )
 
 # Recreate env used during training
-wrapper_classes=[globals()[wrapper] for wrapper in training_config['environment']['wrapper_classes']]
+wrapper_classes=[globals()[wrapper] for wrapper in training_config['train_args']['environment']['wrapper_classes']]
 base_env = BaseEnv(
     render_mode=render_mode, 
     wb_open=True, 
     wb_mode=webots_mode,
-    proto_config=training_config['environment']['env_proto_config']
+    proto_config=training_config['train_args']['environment']['env_proto_config']
 )
 env = bt.chain_wrappers(base_env, wrapper_classes)
 

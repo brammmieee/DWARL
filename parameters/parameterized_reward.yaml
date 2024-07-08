@@ -1,15 +1,15 @@
 # Done rewards
-r_at_goal: 10.0
-r_outside_map: -10.0
-r_collision: -10.0
+r_at_goal: 0.0
+r_outside_map: 0.0
+r_collision: 0.0
 
 # Reward coefficients
-c_progress: 5.0
-c_path_dist: -5.0
+c_progress: 0.0
+c_path_dist: 5.0
+c_path_progress: 5.0
 
 # Path dist reward extra parameters
 max_path_dist: 0.2 # Where r_path_dist becomes equal to c_path_dist
-smooth_path_points: 200 # Number of points to use for path smoothing (prevent r_path_dist zig-zagging)
 
 # Time penalty (given each timestep)
-r_not_arrived: -1.0
+r_not_arrived: 0.0
