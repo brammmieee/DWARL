@@ -16,9 +16,8 @@ import utils.admin_tools as at
 import utils.base_tools as bt
 
 # %% Set the following parameters
-training_date = '24_07_08'  # Set the training date in the format YY_MM_DD
-training_time = '11_04_43'  # Set the training time in the format HH_MM_SS
-training_steps = 1080000  # Set the number of training steps (optional)
+date_time = '24_07_09__12_01_15'
+training_steps = 1320000  # Set the number of training steps (optional)
 
 evaluation_episodes = 25  # Set the number of episodes to evaluate the model
 deterministic = False  # Set whether to use deterministic policy or not
@@ -26,7 +25,6 @@ webots_mode = 'testing'  # Set the Webots mode ('testing' or 'training')
 render_mode = 'full'  # Set the render mode ('trajectory', 'full', 'velocity') or leave it as None for no rendering
 
 # Datetime
-date_time = f'{training_date}__{training_time}'
 package_dir = os.path.abspath(os.pardir)
 
 # %% Run the evaluation script
