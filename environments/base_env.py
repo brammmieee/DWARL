@@ -42,30 +42,11 @@ class BaseEnv(Supervisor, gym.Env):
         # Teleoperation
         self.teleop = teleop
 
-        # Reward buffer
-        reward_components = ['r_at_goal', 'r_outside_map', 'r_collision', 'r_pogress', 'r_not_arrived', 'r_path_dist', 'r_path_progress', 'total_reward']
-        self.reward_buffers = {component: [] for component in reward_components}
-        self.reward_style_map = {
-            'r_at_goal': {'color': 'green', 'alpha': 0.55,'linestyle': '--'},
-            'r_outside_map': {'color': 'orange', 'alpha': 0.55,'linestyle': '--'},
-            'r_collision': {'color': 'red', 'alpha': 0.55,'linestyle': '--'},
-            'r_pogress': {'color': 'blue', 'alpha': 1, 'linestyle': '-'},
-            'r_not_arrived': {'color': 'pink', 'alpha': 0.55,'linestyle': '--'},
-            'r_path_dist': {'color': 'royalblue', 'alpha': 1,'linestyle': '-'},
-            'r_path_progress': {'color': 'deepskyblue', 'alpha': 1,'linestyle': '-'},
-            'total_reward': {'color': 'black', 'alpha': 1,'linestyle': '-'},
-        }
-        # Dict that assigns reward components to their respective plots (0, for no plotting, 1 for subplot 1, 2 for subplot 2)
-        self.reward_plot_map = {
-            'r_at_goal': 2,
-            'r_outside_map': 2,
-            'r_collision': 2,
-            'r_pogress': 0,
-            'r_not_arrived': 2,
-            'r_path_dist': 2,
-            'r_path_progress': 2,
-            'total_reward': 1
-        }
+        # Reward buffer and plotting
+        reward_plotting_config = at.load_parameters(['reward_plotting_config.json'])
+        self.reward_buffers = {component: [] for component in reward_plotting_config.keys()}
+        self.reward_style_map = {key: value["plot_style"] for key, value in reward_plotting_config.items()}
+        self.reward_plot_map = {key: value["plot_nr"] for key, value in reward_plotting_config.items()}
 
         # Training maps and map bounds
         self.train_map_nr_list = at.load_from_json('train_map_nr_list.json', os.path.join(self.params_dir, 'map_nrs'))
@@ -93,7 +74,7 @@ class BaseEnv(Supervisor, gym.Env):
         self.update_robot_state_and_local_goal(method='reset')
 
         # Resetting the path progress
-        self.reset_path_dist_and_progress()
+        self.reset_path_dist_progress_and_heading()
 
         self.cur_vel = np.array([0.0, 0.0])
         self.cmd_vel = np.array([0.0, 0.0])
@@ -124,7 +105,7 @@ class BaseEnv(Supervisor, gym.Env):
 
         # Updating prev_pos, cur_pos, cur_orient, footprint in global frame, and getting new local goal
         self.update_robot_state_and_local_goal(method='step')
-        self.update_path_dist_and_path_progress()
+        self.update_path_dist_progress_and_heading()
 
         self.observation = self.get_obs()
         self.done, done_cause = self.get_done()
@@ -168,10 +149,10 @@ class BaseEnv(Supervisor, gym.Env):
             'r_at_goal': 0,
             'r_outside_map': 0,
             'r_collision': 0,
-            'r_pogress': 0,
             'r_not_arrived': 0,
             'r_path_dist': 0,
             'r_path_progress': 0,
+            'r_path_heading': 0,
         }
 
         if done:
@@ -187,9 +168,9 @@ class BaseEnv(Supervisor, gym.Env):
         else:
             # Calculate ongoing rewards
             reward_components['r_not_arrived'] = self.params['r_not_arrived']
-            reward_components['r_pogress'] = self.params['c_progress']*self.get_normalized_progress()
             reward_components['r_path_dist'] = self.params['c_path_dist']*self.get_normalized_path_dist()
             reward_components['r_path_progress'] = self.params['c_path_progress']*self.get_normalized_path_progress()
+            reward_components['r_path_heading'] = self.params['c_path_heading']*self.get_normalized_path_heading()
             
         # Calculate total reward as the sum of all components
         total_reward = sum(reward_components.values())
@@ -199,17 +180,6 @@ class BaseEnv(Supervisor, gym.Env):
             self.update_reward_buffers(reward_components, total_reward)
 
         return total_reward
-    
-    def get_normalized_progress(self):
-        if self.params['c_progress'] == 0:
-            return 0
-        prev_distance_to_goal = np.linalg.norm(self.goal_pose[:2] - self.prev_pos[:2])
-        current_distance_to_goal = np.linalg.norm(self.goal_pose[:2] - self.cur_pos[:2])
-        progress = prev_distance_to_goal - current_distance_to_goal
-        max_progress = self.params['v_max']*self.params['sample_time']
-        normalized_progress = np.clip(progress / max_progress, -1, 1)
-
-        return normalized_progress
         
     def get_normalized_path_dist(self):
         if self.params['c_path_dist'] == 0:
@@ -229,6 +199,15 @@ class BaseEnv(Supervisor, gym.Env):
 
         return normalized_path_progress
     
+    def get_normalized_path_heading(self):
+        if self.params['c_path_heading'] == 0:
+            return 0
+        path_heading_diff = -(self.path_heading - self.prev_path_heading)
+        max_path_heading = self.params['omega_max']*self.params['sample_time']
+        normalized_path_heading = np.clip(path_heading_diff / max_path_heading, -1, 1)
+
+        return normalized_path_heading
+    
     def update_reward_buffers(self, reward_components, total_reward):
         for key, value in reward_components.items():
             self.reward_buffers[key].append(value)
@@ -239,11 +218,13 @@ class BaseEnv(Supervisor, gym.Env):
         if len(self.reward_buffers['total_reward']) > self.params['reward_buffer_size']:
             self.reward_buffers['total_reward'].pop(0)
 
-    def update_path_dist_and_path_progress(self):
+    def update_path_dist_progress_and_heading(self):
         path_dist = np.inf
         path_progress = 0
+        path_heading = 0
         cumulative_path_length = 0
         r = self.cur_pos[:2]
+        psi = (np.arctan2(self.cur_orient_matrix[3], self.cur_orient_matrix[0])) % (2*np.pi)
 
         for i in range(len(self.path) - 1):
             p1 = np.array(self.path[i])
@@ -255,15 +236,25 @@ class BaseEnv(Supervisor, gym.Env):
 
             closest_point_on_segment = p1 + t * v
             segment_dist = np.linalg.norm(r - closest_point_on_segment)
-            if segment_dist < path_dist:
-                path_dist = segment_dist
-                segment_progress = cumulative_path_length + t * np.linalg.norm(v)
 
-                # Adjust progress calculation based on direction
+            # Caculation of path_dist, path_progress, and path_heading
+            if segment_dist < path_dist:
+                # Path dist calculation
+                path_dist = segment_dist
+
+                # Path progress calculation
+                segment_progress = cumulative_path_length + t * np.linalg.norm(v)
                 if self.direction > 0:
                     path_progress = segment_progress - self.init_progress
                 else:
                     path_progress = self.init_progress - segment_progress
+                
+                # Path heading calculation
+                if self.direction > 0:
+                    path_angle = np.arctan2(v[1], v[0]) % (2*np.pi)
+                else:
+                    path_angle = np.arctan2(v[0], v[1]) % (2*np.pi)
+                path_heading = np.abs(psi - path_angle)
 
             cumulative_path_length += np.linalg.norm(v)
 
@@ -277,6 +268,8 @@ class BaseEnv(Supervisor, gym.Env):
         self.path_dist = path_dist if path_dist < np.inf else 0
         self.prev_path_progress = self.path_progress
         self.path_progress = path_progress
+        self.prev_path_heading = self.path_heading
+        self.path_heading = path_heading
 
     def calculate_progress(self, pose):
         total_length = 0
@@ -293,11 +286,16 @@ class BaseEnv(Supervisor, gym.Env):
 
         return progress
 
-    def reset_path_dist_and_progress(self):
+    def reset_path_dist_progress_and_heading(self):
         self.path_dist = 0
         self.prev_path_dist = 0
+
         self.path_progress = 0
         self.prev_path_progress = 0
+
+        self.path_heading = 0
+        self.prev_path_heading = 0
+
         self.init_progress = self.calculate_progress(self.init_pose)
         self.goal_progress = self.calculate_progress(self.goal_pose)
 
@@ -462,12 +460,14 @@ class BaseEnv(Supervisor, gym.Env):
         # ax3 - Reward plot
         self.ax3.set_xlabel('Step')
         self.ax3.set_ylabel('Reward')
+        self.ax3.set_ylim(-10, 10)
         self.ax3.grid()
         self.reward_plots_1 = {}
 
         # ax4 - dReward/dStep plot
         self.ax4.set_xlabel('Step')
         self.ax4.set_ylabel('Reward')
+        self.ax4.set_ylim(-10, 10)
         self.ax4.grid()
         self.reward_plots_2 = {}
 
