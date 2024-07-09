@@ -36,6 +36,9 @@ def parse_args():
     # Model settings
     parser.add_argument('--comment', type=str, default='test', help='Comment that hints the setup used for training')
     parser.add_argument('--policy_type', type=str, default='MlpPolicy', help='Policy type used for configuring the model')
+    parser.add_argument('--use_init_model', action='store_true', default=False, help='Continue training from a saved model')
+    parser.add_argument('--init_model_datetime', type=str, default=None, help='Date and time of the model to continue training from in the format YY_MM_DD__HH_MM_SS')
+    parser.add_argument('--init_model_steps', type=int, default=None, help='Number of steps of the model to continue training from')
     
     # Train and callback settings
     parser.add_argument('--steps', type=int, default=1000, help='Total training steps')
@@ -58,6 +61,9 @@ def save_config(args, dir):
         },
         'model': {
             'policy_type': args.policy_type,
+            'use_init_model': args.use_init_model,
+            'init_model_datetime': args.init_model_datetime,
+            'init_model_steps': args.init_model_steps,
         },
         'train_and_callback': {
             'steps': args.steps,
@@ -74,7 +80,7 @@ def save_config(args, dir):
             wrapper_params.update({wrapper_file_name: at.load_parameters([wrapper_file_name])})
     config = {
         'train_args': train_args,
-        'reward_params': at.load_parameters(['reward_parameters.yaml']),
+        'reward_params': at.load_parameters(['parameterized_reward.yaml']),
         'wrapper_params': wrapper_params,
         'proto_params': at.load_parameters([args.env_proto_config]),
         'base_params': at.load_parameters(['base_parameters.yaml']),
@@ -92,6 +98,20 @@ def apply_time_limit(env):
     max_episode_steps = params['max_ep_time'] / params['sample_time']
     return TimeLimit(env, max_episode_steps=max_episode_steps)
 
+def load_init_model(args):
+    if args.init_model_datetime is None or args.init_model_steps is None:
+        raise ValueError("When using an initial model, both the datetime and steps must be provided.")
+    
+    package_dir = os.path.abspath(os.pardir)
+    model_dir=os.path.join(package_dir,'training', 'archive', 'models', args.init_model_datetime)
+    model_name=f'rl_model_{args.init_model_steps}_steps.zip'
+    model_path=os.path.join(model_dir, model_name)
+    
+    if not os.path.exists(model_path):
+        raise FileNotFoundError(f"Model directory {model_path} does not exist, continuing training is not possible.")
+
+    return PPO.load(model_path)
+
 def train(args, model_dir, log_dir):
     # Environment settings
     envs=args.envs
@@ -102,7 +122,7 @@ def train(args, model_dir, log_dir):
     
     # Model settings
     policy_type=args.policy_type
-    
+
     # Train and callback settings
     steps=args.steps
     model_save_freq=args.model_save_freq
@@ -123,11 +143,16 @@ def train(args, model_dir, log_dir):
     )
     
     # Creating PPO model with callbacks
-    model=PPO(
-        policy=policy_type,
-        env=vec_env,
-        tensorboard_log=log_dir,
-    )
+    if not args.use_init_model:
+        model=PPO(
+            policy=policy_type,
+            env=vec_env,
+            tensorboard_log=log_dir,
+        )
+    else:
+        model=load_init_model(args)
+        model.set_env(vec_env)
+        model.tensorboard_log=log_dir
     checkpoint_callback=CheckpointCallback(
         save_freq=model_save_freq,
         save_path=model_dir,

@@ -118,7 +118,8 @@ def get_init_and_goal_poses(path, parameters=None):
     if mode == 'full_path':
         init_pose = create_pose(path[0], calculate_orientation(path[0], path[min(2, len(path) - 1)]))
         goal_pose = create_pose(path[-1])
-        return init_pose, goal_pose
+        direction = 1
+        return init_pose, goal_pose, 1
 
     elif mode == 'random':
         if 'nominal_distance' == None:
