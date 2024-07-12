@@ -1,12 +1,19 @@
 # Done rewards
-r_at_goal: 50.0
+r_at_goal: 200.0
 r_outside_map: -50.0
-r_collision: -50.0
+r_collision: -1000.0
 
 # Reward coefficients
+c_path_d_dist: 5.0
+c_path_d_progress: 10.0
+c_path_d_heading: 5.0
+
 c_path_dist: 5.0
-c_path_progress: 5.0
-c_path_heading: 5.0
+c_path_heading: 2.0
 
 # Time penalty (given each timestep)
-r_not_arrived: -1.0
+r_not_arrived: -2.0
+
+# Additional parameters
+max_path_dist: 0.075 # [m] here r_path_dist goes from + to - (max at 0 and +-0.4)
+max_path_heading: 0.18 # [rad] here r_path_heading goes from + to - (max at 0 and +-0.4)

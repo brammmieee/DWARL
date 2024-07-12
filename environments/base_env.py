@@ -150,8 +150,10 @@ class BaseEnv(Supervisor, gym.Env):
             'r_outside_map': 0,
             'r_collision': 0,
             'r_not_arrived': 0,
+            'r_path_d_dist': 0,
+            'r_path_d_progress': 0,
+            'r_path_d_heading': 0,
             'r_path_dist': 0,
-            'r_path_progress': 0,
             'r_path_heading': 0,
         }
 
@@ -168,10 +170,14 @@ class BaseEnv(Supervisor, gym.Env):
         else:
             # Calculate ongoing rewards
             reward_components['r_not_arrived'] = self.params['r_not_arrived']
-            reward_components['r_path_dist'] = self.params['c_path_dist']*self.get_normalized_path_dist()
-            reward_components['r_path_progress'] = self.params['c_path_progress']*self.get_normalized_path_progress()
-            reward_components['r_path_heading'] = self.params['c_path_heading']*self.get_normalized_path_heading()
+
+            reward_components['r_path_d_dist'] = self.params['c_path_d_dist']*self.get_normalized_path_d_dist()
+            reward_components['r_path_d_progress'] = self.params['c_path_d_progress']*self.get_normalized_path_d_progress()
+            reward_components['r_path_d_heading'] = self.params['c_path_d_heading']*self.get_normalized_path_d_heading()
             
+            reward_components['r_path_dist'] = self.params['c_path_dist']*self.get_normalized_path_dist_reward()
+            reward_components['r_path_heading'] = self.params['c_path_heading']*self.get_normalized_path_heading_reward()
+
         # Calculate total reward as the sum of all components
         total_reward = sum(reward_components.values())
 
@@ -181,8 +187,8 @@ class BaseEnv(Supervisor, gym.Env):
 
         return total_reward
         
-    def get_normalized_path_dist(self):
-        if self.params['c_path_dist'] == 0:
+    def get_normalized_path_d_dist(self):
+        if self.params['c_path_d_dist'] == 0:
             return 0    
         path_dist_diff = -(self.path_dist - self.prev_path_dist)
         max_path_dist = self.params['v_max']*self.params['sample_time']
@@ -190,8 +196,8 @@ class BaseEnv(Supervisor, gym.Env):
 
         return normalized_path_dist
     
-    def get_normalized_path_progress(self):
-        if self.params['c_path_progress'] == 0:
+    def get_normalized_path_d_progress(self):
+        if self.params['c_path_d_progress'] == 0:
             return 0
         path_progress_diff = self.path_progress - self.prev_path_progress
         max_path_progress = self.params['v_max']*self.params['sample_time']
@@ -199,14 +205,32 @@ class BaseEnv(Supervisor, gym.Env):
 
         return normalized_path_progress
     
-    def get_normalized_path_heading(self):
-        if self.params['c_path_heading'] == 0:
+    def get_normalized_path_d_heading(self):
+        if self.params['c_path_d_heading'] == 0:
             return 0
         path_heading_diff = -(self.path_heading - self.prev_path_heading)
         max_path_heading = self.params['omega_max']*self.params['sample_time']
         normalized_path_heading = np.clip(path_heading_diff / max_path_heading, -1, 1)
 
         return normalized_path_heading
+    
+    def get_normalized_path_dist_reward(self):
+        if self.params['c_path_dist'] == 0:
+            return 0    
+        max_distance = self.params['max_path_dist']
+        normalized_path_dist = self.path_dist / max_distance
+        normalized_path_dist_reward = np.clip(1 - normalized_path_dist, -1, 1)
+        
+        return normalized_path_dist_reward
+
+    def get_normalized_path_heading_reward(self):
+        if self.params['c_path_heading'] == 0:
+            return 0
+        max_path_heading = self.params['max_path_heading']
+        normalized_path_heading = self.path_heading / max_path_heading
+        normalized_path_heading_reward = np.clip(1 - normalized_path_heading, -1, 1)
+
+        return normalized_path_heading_reward
     
     def update_reward_buffers(self, reward_components, total_reward):
         for key, value in reward_components.items():
@@ -250,10 +274,11 @@ class BaseEnv(Supervisor, gym.Env):
                     path_progress = self.init_progress - segment_progress
                 
                 # Path heading calculation
-                if self.direction > 0:
-                    path_angle = np.arctan2(v[1], v[0]) % (2*np.pi)
-                else:
-                    path_angle = np.arctan2(v[0], v[1]) % (2*np.pi)
+                path_angle = np.arctan2(v[1], v[0])
+                if self.direction < 0:
+                    path_angle += np.pi
+                path_angle = path_angle % (2*np.pi)
+
                 path_heading = np.abs(psi - path_angle)
 
             cumulative_path_length += np.linalg.norm(v)
@@ -460,14 +485,14 @@ class BaseEnv(Supervisor, gym.Env):
         # ax3 - Reward plot
         self.ax3.set_xlabel('Step')
         self.ax3.set_ylabel('Reward')
-        self.ax3.set_ylim(-10, 10)
+        self.ax3.set_ylim(-15, 15)
         self.ax3.grid()
         self.reward_plots_1 = {}
 
         # ax4 - dReward/dStep plot
         self.ax4.set_xlabel('Step')
         self.ax4.set_ylabel('Reward')
-        self.ax4.set_ylim(-10, 10)
+        self.ax4.set_ylim(-15, 15)
         self.ax4.grid()
         self.reward_plots_2 = {}
 

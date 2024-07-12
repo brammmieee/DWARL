@@ -16,8 +16,8 @@ import utils.admin_tools as at
 import utils.base_tools as bt
 
 # %% Set the following parameters
-date_time = '24_07_09__12_01_15'
-training_steps = 1320000  # Set the number of training steps (optional)
+date_time = '24_07_09__15_06_25'
+training_steps = 2940000  # Set the number of training steps (optional)
 
 evaluation_episodes = 25  # Set the number of episodes to evaluate the model
 deterministic = False  # Set whether to use deterministic policy or not

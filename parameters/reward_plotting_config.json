@@ -12,21 +12,34 @@
         "plot_nr": 2
     },
     "r_not_arrived": {
-        "plot_style": {"color": "pink", "alpha": 1, "linestyle": "-"},
+        "plot_style": {"color": "red", "alpha": 1, "linestyle": "-"},
         "plot_nr": 2
     },
+
+    "r_path_d_progress": {
+        "plot_style": {"color": "green", "alpha": 1, "linestyle": "-"},
+        "plot_nr": 2
+    },
+
     "r_path_dist": {
         "plot_style": {"color": "blue", "alpha": 1, "linestyle": "-"},
         "plot_nr": 2
     },
-    "r_path_progress": {
-        "plot_style": {"color": "cornflowerblue", "alpha": 1, "linestyle": "-"},
+    "r_path_d_dist": {
+        "plot_style": {"color": "blue", "alpha": 1, "linestyle": "-."},
         "plot_nr": 2
     },
+
     "r_path_heading": {
-        "plot_style": {"color": "lightskyblue", "alpha": 1, "linestyle": "-"},
+        "plot_style": {"color": "purple", "alpha": 1, "linestyle": "-"},
         "plot_nr": 2
     },
+    "r_path_d_heading": {
+        "plot_style": {"color": "purple", "alpha": 1, "linestyle": "-."},
+        "plot_nr": 2
+    },
+
+
     "total_reward": {
         "plot_style": {"color": "black", "alpha": 1, "linestyle": "-"},
         "plot_nr": 1
