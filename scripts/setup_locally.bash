@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Check if the current system is Ubuntu 22.04 Desktop
-if [[ $(lsb_release -rs) == "22.04" && $(lsb_release -is) == "Ubuntu" && $(uname -m) == "x86_64" ]]; then
+if [[ $(lsb_release -rs) == "24.04" && $(lsb_release -is) == "Ubuntu" && $(uname -m) == "x86_64" ]]; then
     echo "Detected Ubuntu 22.04 Desktop. Continuing..."
 else
     echo "Python venv install of package only compatible with Ubuntu 22.04. Consider using the dockerized version."
@@ -21,7 +21,8 @@ sudo apt install -y webots
 # Istall Cuda toolkit
 sudo apt install nvidia-cuda-toolkit
 
-# Install Python 3 pip
+# Install Python 3 pip and venv
+sudo apt install python3.12-venv
 sudo apt install -y python3-pip
 
 # Get the parent directory path
