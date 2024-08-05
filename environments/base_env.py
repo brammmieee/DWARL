@@ -44,9 +44,12 @@ class BaseEnv(Supervisor, gym.Env):
 
         # Reward buffer and plotting
         reward_plotting_config = at.load_parameters(['reward_plotting_config.json'])
-        self.reward_buffers = {component: [] for component in reward_plotting_config.keys()}
-        self.reward_style_map = {key: value["plot_style"] for key, value in reward_plotting_config.items()}
         self.reward_plot_map = {key: value["plot_nr"] for key, value in reward_plotting_config.items()}
+
+        self.reward_buffers = {component: [] for component in reward_plotting_config.keys()}
+        # self.reward_style_map = {key: value["plot_style"] for key, value in reward_plotting_config.items()}
+        self.reward_style_map = {key: value["plot_style"] for key, value in reward_plotting_config.items() if self.reward_plot_map.get(key, 0) != 0}
+
 
         # Training maps and map bounds
         self.train_map_nr_list = at.load_from_json('train_map_nr_list.json', os.path.join(self.params_dir, 'map_nrs'))
@@ -155,6 +158,7 @@ class BaseEnv(Supervisor, gym.Env):
             'r_path_d_heading': 0,
             'r_path_dist': 0,
             'r_path_heading': 0,
+            'r_path_d_progress_scaled_dist': 0,
         }
 
         if done:
@@ -172,12 +176,15 @@ class BaseEnv(Supervisor, gym.Env):
             reward_components['r_not_arrived'] = self.params['r_not_arrived']
 
             reward_components['r_path_d_dist'] = self.params['c_path_d_dist']*self.get_normalized_path_d_dist()
-            reward_components['r_path_d_progress'] = self.params['c_path_d_progress']*self.get_normalized_path_d_progress()
+            normalized_path_progress = self.get_normalized_path_d_progress()
+            reward_components['r_path_d_progress'] = self.params['c_path_d_progress']*normalized_path_progress
             reward_components['r_path_d_heading'] = self.params['c_path_d_heading']*self.get_normalized_path_d_heading()
             
-            reward_components['r_path_dist'] = self.params['c_path_dist']*self.get_normalized_path_dist_reward()
+            normalized_path_dist_reward = self.get_normalized_path_dist_reward()
+            reward_components['r_path_dist'] = self.params['c_path_dist']*normalized_path_dist_reward
             reward_components['r_path_heading'] = self.params['c_path_heading']*self.get_normalized_path_heading_reward()
-
+            reward_components['r_path_d_progress_scaled_dist'] = self.params['c_path_d_progress_scaled_dist']*self.get_normalized_d_pogress_scaled_path_dist_reward(normalized_path_progress, normalized_path_dist_reward)
+            
         # Calculate total reward as the sum of all components
         total_reward = sum(reward_components.values())
 
@@ -197,14 +204,32 @@ class BaseEnv(Supervisor, gym.Env):
         return normalized_path_dist
     
     def get_normalized_path_d_progress(self):
-        if self.params['c_path_d_progress'] == 0:
+        if self.params['c_path_d_progress'] == 0 and self.params['c_path_d_progress_scaled_dist'] == 0:
             return 0
         path_progress_diff = self.path_progress - self.prev_path_progress
         max_path_progress = self.params['v_max']*self.params['sample_time']
-        normalized_path_progress = np.clip(path_progress_diff / max_path_progress, -1, 1)
+        
+        if not self.params['enable_d_progress_mapping']:
+            normalized_path_progress_diff = path_progress_diff / max_path_progress
+        else:
+            normalized_path_progress_diff = self.get_mapped_normalized_progress_diff(path_progress_diff)
+
+        normalized_path_progress = np.clip(normalized_path_progress_diff, -1, 1)
 
         return normalized_path_progress
     
+    def get_mapped_normalized_progress_diff(self, path_progress_diff):
+        # print(f"x: {path_progress_diff}")
+        if path_progress_diff < self.params['d_progress_low_pass_x']:
+            progress_diff = -1
+        elif path_progress_diff > self.params['d_progress_high_pass_x']:
+            progress_diff = 1
+        else:
+            x = path_progress_diff
+            progress_diff = -674663.913519*x**3 + 5658.877973*x**2 + 213.837054*x**1 - 1.029126
+        # print(f"f(x): {progress_diff}")
+        return progress_diff
+            
     def get_normalized_path_d_heading(self):
         if self.params['c_path_d_heading'] == 0:
             return 0
@@ -215,7 +240,7 @@ class BaseEnv(Supervisor, gym.Env):
         return normalized_path_heading
     
     def get_normalized_path_dist_reward(self):
-        if self.params['c_path_dist'] == 0:
+        if self.params['c_path_dist'] == 0 and self.params['c_path_d_progress_scaled_dist'] == 0:
             return 0    
         max_distance = self.params['max_path_dist']
         normalized_path_dist = self.path_dist / max_distance
@@ -232,6 +257,15 @@ class BaseEnv(Supervisor, gym.Env):
 
         return normalized_path_heading_reward
     
+    def get_normalized_d_pogress_scaled_path_dist_reward(self, normalized_path_progress, normalized_path_dist_reward):
+        if self.params['c_path_d_progress_scaled_dist'] == 0:
+            return 0
+        
+        if np.clip(normalized_path_progress, 0, 1) >= 0.0:
+            return np.clip(normalized_path_progress, 0, 1)*normalized_path_dist_reward
+        else:
+            return normalized_path_dist_reward
+        
     def update_reward_buffers(self, reward_components, total_reward):
         for key, value in reward_components.items():
             self.reward_buffers[key].append(value)

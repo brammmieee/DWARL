@@ -8,11 +8,19 @@ c_path_d_dist: 5.0
 c_path_d_progress: 10.0
 c_path_d_heading: 5.0
 
-c_path_dist: 5.0
-c_path_heading: 2.0
+c_path_dist: 0.0
+c_path_heading: 0.0
+
+c_path_d_progress_scaled_dist: 10.0
+
+# Bias towards positive progress and non lin mapping
+enable_d_progress_mapping: True
+d_progress_high_pass_x: 0.01
+d_progress_low_pass_x: 0.0
+# TODO: add mapping function coefficients
 
 # Time penalty (given each timestep)
-r_not_arrived: -2.0
+r_not_arrived: 0.0
 
 # Additional parameters
 max_path_dist: 0.075 # [m] here r_path_dist goes from + to - (max at 0 and +-0.4)
