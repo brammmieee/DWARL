@@ -7,7 +7,7 @@
 import os
 import yaml
 import numpy as np
-from gym.wrappers import TimeLimit
+from gymnasium.wrappers import TimeLimit
 
 import utils.admin_tools as at
 from environments.base_env import BaseEnv
@@ -25,7 +25,6 @@ from environments.wrappers.sparse_lidar_observation_wrapper import SparseLidarOb
 from environments.wrappers.velocity_obstacle_observation_wrapper import VelocityObstacleObservationWrapper as VObsWrapper
 from environments.wrappers.command_velocity_action_wrapper import CommandVelocityActionWrapper as CVActWrapper
 from environments.wrappers.dynamic_window_action_wrapper import DynamicWindowActionWrapper as DWActWrapper
-from environments.wrappers.parameterized_reward_wrapper import ParameterizedRewardWrapper as PrewWrapper
 
 np.set_printoptions(precision=5, suppress=True)
 
@@ -33,7 +32,7 @@ np.set_printoptions(precision=5, suppress=True)
 
 # %% Single envS
 # env = BaseEnv(render_mode=None, wb_open=True, wb_mode='training')
-env = PrewWrapper(CVActWrapper(SLObsWrapper(BaseEnv(render_mode=None, wb_open=True, wb_mode='training', proto_config='sparse_lidar_proto_config.json'))))
+env = CVActWrapper(SLObsWrapper(BaseEnv(render_mode=None, wb_open=True, wb_mode='training', proto_config='sparse_lidar_proto_config.json')))
 # env = PrewWrapper(DWActWrapper(VObsWrapper(BaseEnv(render_mode=None, wb_open=True, wb_mode='training', proto_config='sparse_lidar_proto_config.json'))))
 
 # env = TimeLimit(env, max_episode_steps=(params['max_ep_time']/params['sample_time']))
