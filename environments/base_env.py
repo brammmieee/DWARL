@@ -21,7 +21,11 @@ class BaseEnv(Supervisor, gym.Env):
     def __init__(self, render_mode=None, wb_open=True, 
                  wb_mode='training', parameter_file='base_parameters.yaml', 
                  proto_config='default_proto_config.json',
-                 reward_config='parameterized_reward.yaml', wb_headless=False, teleop=False):
+                 reward_config='parameterized_reward.yaml', 
+                 wb_headless=False, 
+                 teleop=False,
+                 plot_wrapped_state=False
+                 ):
         
         # Directories
         self.resources_dir = os.path.join(BaseEnv.package_dir, 'resources')
@@ -38,6 +42,9 @@ class BaseEnv(Supervisor, gym.Env):
         self.precomputed_lidar_values = bt.precompute_lidar_values(
             num_lidar_rays=self.params['proto_substitutions']['horizontalResolution']
         )
+
+        # Wrapper flags
+        self.plot_wrapped_state = plot_wrapped_state
 
         # Teleoperation
         self.teleop = teleop
