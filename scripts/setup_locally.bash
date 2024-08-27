@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Check if the current system is Ubuntu 22.04 Desktop
-if [[ $(lsb_release -rs) == "24.04" && $(lsb_release -is) == "Ubuntu" && $(uname -m) == "x86_64" ]]; then
+if [[ $(lsb_release -rs) == "22.04" && $(lsb_release -is) == "Ubuntu" && $(uname -m) == "x86_64" ]]; then
     echo "Detected Ubuntu 22.04 Desktop. Continuing..."
 else
     echo "Python venv install of package only compatible with Ubuntu 22.04. Consider using the dockerized version."
