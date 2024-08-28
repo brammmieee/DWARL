@@ -108,6 +108,9 @@ In this section, we document the notation and conventions used throughout the co
 
 This convention is used to make plotting more straightforward.
 
+### Axis Systems
+In this system, the x-axis points to the right of the robot, the y-axis points forward, and positive rotation around the z-axis is clockwise. This choice is made to make it easier to reason about similarities between Euclidean space and velocity space.
+
 ## Utilities
 
 Check out the utilities [here](./utils/):
