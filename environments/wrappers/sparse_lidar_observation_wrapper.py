@@ -4,6 +4,9 @@ import gymnasium as gym
 import utils.admin_tools as at
 import matplotlib.pyplot as plt
 
+def normalize(value, min_val, max_val):
+    return (value - min_val) / (max_val - min_val)
+
 class SparseLidarObservationWrapper(gym.ObservationWrapper):
     params_file_name = 'sparse_lidar_observation.yaml'
 
@@ -49,7 +52,7 @@ class SparseLidarObservationWrapper(gym.ObservationWrapper):
         # Nomalize lidar data
         min_range = float(self.params['proto_substitutions']['minRange'])
         max_range = float(self.params['proto_substitutions']['maxRange'])
-        normalized_array = (lidar_data_array - min_range) / (max_range - min_range)
+        normalized_array = normalize(lidar_data_array, min_range, max_range)
         
         # Replace nans and infs with a replacement value
         normalized_array[np.isinf(normalized_array)] = replace_value
@@ -58,29 +61,35 @@ class SparseLidarObservationWrapper(gym.ObservationWrapper):
     def process_local_goal(self, local_goal, agent_pos):
         # Convert local goal to local polar coordinates
         goal_pos = np.array(local_goal) + np.array(agent_pos)
-        goal_pos_dist = np.linalg.norm(goal_pos)
         goal_pos_angle = np.arctan2(goal_pos[1], goal_pos[0])
+        goal_pos_dist = np.linalg.norm(goal_pos)
 
-        # Normalize goal position
-        goal_pos_dist_min=self.params['goal_pos_dist_min'],
+        # Clip then normalize goal position
+        goal_pos_angle_min = self.params['goal_pos_angle_min']
+        goal_pos_angle_max = self.params['goal_pos_angle_max']
+        goal_pos_dist_min=self.params['goal_pos_dist_min']
         goal_pos_dist_max=self.params['goal_pos_dist_max']
-        if goal_pos_dist > goal_pos_dist_max:
-            print("Warning: Goal position is outside the maximum range. Goal is capped at the maximum range.")
-            goal_pos_dist = goal_pos_dist_max
-        if goal_pos_dist < goal_pos_dist_min:
-            print("Warning: Goal position is outside the minimum range. Goal is capped at the minimum range.")
-            goal_pos_dist = goal_pos_dist_min
 
-        goal_pos_dist_normalized = (goal_pos_dist - goal_pos_dist_min) / (goal_pos_dist_max - goal_pos_dist_min)
-        goal_pos_angle_normalized = (goal_pos_angle - goal_pos_dist_min) / (goal_pos_dist_max - goal_pos_dist_min)
-        
-        return np.array([goal_pos_dist_normalized, goal_pos_angle_normalized])
+        clipped_goal_pos_angle = np.clip(goal_pos_angle, goal_pos_angle_min, goal_pos_angle_max)
+        clipped_goal_pos_dist = np.clip(goal_pos_dist, goal_pos_dist_min, goal_pos_dist_max)
+        if clipped_goal_pos_angle != goal_pos_angle or clipped_goal_pos_dist != goal_pos_dist:
+            print("Warning: Goal position has been clipped.")
+
+        goal_pos_angle_normalized = normalize(clipped_goal_pos_angle, goal_pos_angle_min, goal_pos_angle_max)
+        goal_pos_dist_normalized = normalize(clipped_goal_pos_dist, goal_pos_dist_min, goal_pos_dist_max)
+
+        return np.array([goal_pos_angle_normalized, goal_pos_dist_normalized])
     
-    def process_prev_action(self, prev_action):
+    def process_prev_vel(self, prev_vel):
+        omega_min=self.params['omega_min']
+        omega_max=self.params['omega_max']
+        v_min=self.params['v_min']
+        v_max=self.params['v_max']
 
-        # Normalize previous action
-        min_range=self.params['v_min'],
-        max_range=self.params['v_max']
+        omega_normalized = normalize(prev_vel[0], omega_min, omega_max)
+        v_normalized = normalize(prev_vel[1], v_min, v_max)
+
+        return np.array([omega_normalized, v_normalized])
 
     def observation(self, obs):
         normalized_lidar_data = self.process_lidar_data(
@@ -90,8 +99,8 @@ class SparseLidarObservationWrapper(gym.ObservationWrapper):
             local_goal=self.unwrapped.local_goal_pos,
             agent_pos=self.unwrapped.cur_pos
         )
-        normalized_prev_action = self.process_prev_action(
-            prev_action=self.unwrapped.cur_vel
+        normalized_prev_vel = self.process_prev_vel(
+            prev_vel=self.unwrapped.cur_vel
         )
 
         # Plot observation created by the wrapper to verify correctness
@@ -99,13 +108,13 @@ class SparseLidarObservationWrapper(gym.ObservationWrapper):
             self.plot_observation(
                 normalized_lidar_data, 
                 normalized_local_goal, 
-                normalized_prev_action
+                normalized_prev_vel
             )
 
         return np.concatenate([
             normalized_lidar_data,
             normalized_local_goal,
-            normalized_prev_action
+            normalized_prev_vel
         ])
 
     def init_plot(self):
@@ -119,13 +128,12 @@ class SparseLidarObservationWrapper(gym.ObservationWrapper):
         self.lidar_plot = None
         self.goal_plot = None
 
-    def plot_observation(self, normalized_lidar_data, normalized_local_goal, normalized_prev_action):
+    def plot_observation(self, normalized_lidar_data, normalized_local_goal, normalized_prev_vel):
+        # Clear previous plots
         if self.lidar_plot is not None:
             self.lidar_plot.remove()
-
         if self.goal_plot is not None:
             self.goal_plot.remove()
-
         if self.action_plot is not None:
             self.action_plot.remove()
 
@@ -140,11 +148,12 @@ class SparseLidarObservationWrapper(gym.ObservationWrapper):
         goal_angle = normalized_local_goal[1]
         x_goal = goal_distance * np.cos(goal_angle)
         y_goal = goal_distance * np.sin(goal_angle)
-        self.goal_plot = self.ax9.scatter(x_goal, y_goal, c='r', label='Goal Position')
+        self.goal_plot = self.ax9.scatter(x_goal, y_goal, c='p', label='Goal Position')
 
         # Plot previous action
-        self.action_plot = self.ax9.scatter(normalized_prev_action[0], normalized_prev_action[1], c='g', label='Previous Action')
-
+        goal_pos_angle_normalized = normalized_prev_vel[0]
+        goal_pos_dist_normalized = normalized_prev_vel[1]
+        self.action_plot = self.ax9.scatter(goal_pos_angle_normalized, goal_pos_dist_normalized, c='g', label='Previous Action')
 
         self.ax9.legend()
         self.fig9.canvas.draw()

@@ -95,6 +95,18 @@ Proto configs allow you to change the configuration of the proto files used by W
 
 Add template files with `{{key}}` items defined by the keys in the substitutions dictionary under the custom config. See the proto_configs folder for examples. Add non-template files to the `.gitignore`.
 
+## Notes on Notation and Conventions
+
+In this section, we document the notation and conventions used throughout the codebase. This helps maintain consistency and makes the code easier to understand and extend.
+
+### Vector Entries
+
+- **XY Space**: `[x, y]`
+- **Velocities**: `[omega, v]`
+- **Polar Coordinates**: `[angle, dist]`
+
+This convention is used to make plotting more straightforward.
+
 ## Utilities
 
 Check out the utilities [here](./utils/):

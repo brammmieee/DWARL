@@ -4,6 +4,7 @@ import argparse
 import os
 import sys
 import yaml
+import torch as th
 from gymnasium.wrappers import TimeLimit
 # import tensorrt
 
@@ -141,6 +142,10 @@ def train(args, model_dir, log_dir):
             'wb_headless': args.headless,
         }
     )
+
+    # TRAINING TRY-OUT - Check if large network is able to have a higher reward and overfit on training data
+    net_arch = dict(pi=[128, 128, 128], vf=[128, 128, 128])
+    activation_fn = th.nn.ReLU # Better for obs normalized between [0, 1]
     
     # Creating PPO model with callbacks
     if not args.use_init_model:
@@ -148,6 +153,10 @@ def train(args, model_dir, log_dir):
             policy=policy_type,
             env=vec_env,
             tensorboard_log=log_dir,
+            policy_kwargs={
+                'net_arch': net_arch,
+                'activation_fn': activation_fn,
+            }
         )
     else:
         model=load_init_model(args)
