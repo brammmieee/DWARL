@@ -22,7 +22,7 @@ env = CVActWrapper(SLObsWrapper(BaseEnv(
     wb_open=True, 
     wb_mode='testing', 
     proto_config='sparse_lidar_proto_config.json',
-    plot_wrapped_state=True
+    plot_wrapped_obs=True
 )))
 
 # %%

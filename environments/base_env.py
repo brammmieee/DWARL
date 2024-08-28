@@ -24,7 +24,7 @@ class BaseEnv(Supervisor, gym.Env):
                  reward_config='parameterized_reward.yaml', 
                  wb_headless=False, 
                  teleop=False,
-                 plot_wrapped_state=False
+                 plot_wrapped_obs=False
                  ):
         
         # Directories
@@ -44,7 +44,7 @@ class BaseEnv(Supervisor, gym.Env):
         )
 
         # Wrapper flags
-        self.plot_wrapped_state = plot_wrapped_state
+        self.plot_wrapped_obs = plot_wrapped_obs
 
         # Teleoperation
         self.teleop = teleop
