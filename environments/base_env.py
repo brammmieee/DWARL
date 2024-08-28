@@ -54,9 +54,7 @@ class BaseEnv(Supervisor, gym.Env):
         self.reward_plot_map = {key: value["plot_nr"] for key, value in reward_plotting_config.items()}
 
         self.reward_buffers = {component: [] for component in reward_plotting_config.keys()}
-        # self.reward_style_map = {key: value["plot_style"] for key, value in reward_plotting_config.items()}
         self.reward_style_map = {key: value["plot_style"] for key, value in reward_plotting_config.items() if self.reward_plot_map.get(key, 0) != 0}
-
 
         # Training maps and map bounds
         self.train_map_nr_list = at.load_from_json('train_map_nr_list.json', os.path.join(self.params_dir, 'map_nrs'))
@@ -511,8 +509,8 @@ class BaseEnv(Supervisor, gym.Env):
         polygon = Polygon(self.params['polygon_coords'])
         patch = plt_polygon(np.array(polygon.exterior.coords), alpha=0.75, closed=True, facecolor='grey')
         self.ax1.add_patch(patch)
-        self.ax1.set_xlim([-1.5,1.5])
-        self.ax1.set_ylim([-1.5,1.5])
+        self.ax1.set_xlim([-3.0, 3.0])
+        self.ax1.set_ylim([-3.0, 3.0])
         self.ax1.set_xlabel('x [m]')
         self.ax1.set_ylabel('y [m]')
         self.ax1.set_aspect('equal')
