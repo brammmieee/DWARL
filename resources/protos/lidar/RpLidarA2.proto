@@ -47,12 +47,12 @@ PROTO RpLidarA2 [
     ]
     
     fieldOfView 6.283185307
-    horizontalResolution 16
+    horizontalResolution 50
     numberOfLayers 1
     near 0.05
-    minRange 0.2
-    maxRange 5.0
-    noise 0.000833
+    minRange 0.05
+    maxRange 3.0
+    noise 0.0
     resolution 0.05
     type "fixed"
     defaultFrequency 20

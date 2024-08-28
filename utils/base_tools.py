@@ -175,13 +175,16 @@ def precompute_lidar_values(num_lidar_rays):
         "lidar_sines": lidar_sines,
     }
 
-def lidar_to_point_cloud(parameters, precomputed, lidar_range_image):
+def lidar_to_point_cloud(parameters, precomputed, lidar_range_image, replace_value=0):
     # NOTE: Webots axis conventions w.r.t. the conventions of this package
-    with np.errstate(invalid='ignore'): # prevent runtime errors
-        lidar_points = np.column_stack(( 
-            lidar_range_image*-precomputed['lidar_sines'], #NOTE: minus because lidar type was set to fixed
-            lidar_range_image*-precomputed['lidar_cosines']
-            ))
+    lidar_range_image = np.array(lidar_range_image)
+    lidar_range_image[np.isinf(lidar_range_image)] = replace_value
+    lidar_range_image[np.isnan(lidar_range_image)] = replace_value
+
+    lidar_points = np.column_stack(( 
+        lidar_range_image*-precomputed['lidar_sines'], #NOTE: minus because lidar type was set to fixed
+        lidar_range_image*-precomputed['lidar_cosines']
+    ))
     # Remove rows (i.e. points) that have np.inf or np.nan in as either x or y value (causes issues in search tree)
     invalid_indices = np.logical_or(np.isinf(lidar_points).any(axis=1), np.isnan(lidar_points).any(axis=1))
     lidar_points = lidar_points[~invalid_indices]

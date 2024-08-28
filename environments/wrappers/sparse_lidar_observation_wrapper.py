@@ -14,7 +14,7 @@ class SparseLidarObservationWrapper(gym.ObservationWrapper):
         super().__init__(env)
         
         # Load parameters
-        self.params = at.load_parameters([ #TODO: list can be directly parsed to init of base env
+        self.params = at.load_parameters([
             'base_parameters.yaml', 
             'sparse_lidar_proto_config.json',
             self.params_file_name
@@ -47,7 +47,11 @@ class SparseLidarObservationWrapper(gym.ObservationWrapper):
             self.init_plot()
 
     def process_lidar_data(self, lidar_data, replace_value=0):
+        # NOTE - the lidar data contains an offset wrt the robot's position!!!
         lidar_data_array = np.array(lidar_data)
+
+        if self.unwrapped.plot_wrapped_obs == True:
+            print(f"Lidar data: {lidar_data_array}")
 
         # Nomalize lidar data
         min_range = float(self.params['proto_substitutions']['minRange'])
@@ -58,11 +62,21 @@ class SparseLidarObservationWrapper(gym.ObservationWrapper):
         normalized_array[np.isinf(normalized_array)] = replace_value
         normalized_array[np.isnan(normalized_array)] = replace_value
 
-    def process_local_goal(self, local_goal, agent_pos):
+        if self.unwrapped.plot_wrapped_obs == True:
+            print(f"Normalized lidar data: {normalized_array}")
+
+        return normalized_array
+
+    def process_local_goal(self, local_goal):
         # Convert local goal to local polar coordinates
-        goal_pos = np.array(local_goal) + np.array(agent_pos)
+        goal_pos = np.array(local_goal)
         goal_pos_angle = np.arctan2(goal_pos[1], goal_pos[0])
         goal_pos_dist = np.linalg.norm(goal_pos)
+
+        if self.unwrapped.plot_wrapped_obs == True:
+            print(f"Goal position: {goal_pos}")
+            print(f"Goal angle: {goal_pos_angle}")
+            print(f"Goal distance: {goal_pos_dist}")
 
         # Clip then normalize goal position
         goal_pos_angle_min = self.params['goal_pos_angle_min']
@@ -78,6 +92,10 @@ class SparseLidarObservationWrapper(gym.ObservationWrapper):
         goal_pos_angle_normalized = normalize(clipped_goal_pos_angle, goal_pos_angle_min, goal_pos_angle_max)
         goal_pos_dist_normalized = normalize(clipped_goal_pos_dist, goal_pos_dist_min, goal_pos_dist_max)
 
+        if self.unwrapped.plot_wrapped_obs == True:
+            print(f"Normalized goal angle: {goal_pos_angle_normalized}")
+            print(f"Normalized goal distance: {goal_pos_dist_normalized}")
+
         return np.array([goal_pos_angle_normalized, goal_pos_dist_normalized])
     
     def process_prev_vel(self, prev_vel):
@@ -86,8 +104,15 @@ class SparseLidarObservationWrapper(gym.ObservationWrapper):
         v_min=self.params['v_min']
         v_max=self.params['v_max']
 
+        if self.unwrapped.plot_wrapped_obs == True:
+            print(f"Previous velocity: {prev_vel}")
+
         omega_normalized = normalize(prev_vel[0], omega_min, omega_max)
         v_normalized = normalize(prev_vel[1], v_min, v_max)
+
+        if self.unwrapped.plot_wrapped_obs == True:
+            print(f"Normalized previous omega: {omega_normalized}")
+            print(f"Normalized previous v: {v_normalized}")
 
         return np.array([omega_normalized, v_normalized])
 
@@ -97,7 +122,6 @@ class SparseLidarObservationWrapper(gym.ObservationWrapper):
         )
         normalized_local_goal = self.process_local_goal(
             local_goal=self.unwrapped.local_goal_pos,
-            agent_pos=self.unwrapped.cur_pos
         )
         normalized_prev_vel = self.process_prev_vel(
             prev_vel=self.unwrapped.cur_vel
@@ -116,48 +140,67 @@ class SparseLidarObservationWrapper(gym.ObservationWrapper):
             normalized_local_goal,
             normalized_prev_vel
         ])
-
+    
     def init_plot(self):
         plt.ion()
-        self.fig9, self.ax9 = plt.subplots()
-        self.ax9.set_xlim(0, 1)  # Set the x-axis limits to 0 and 1
-        self.ax9.set_ylim(0, 1)  # Set the y-axis limits to 0 and 1
-        self.ax9.set_xlabel('X')
-        self.ax9.set_ylabel('Y')
-        self.ax9.set_title('Normalized Observation')
+        self.fig9, (self.ax1, self.ax2) = plt.subplots(1, 2)
+        self.ax1.set_xlim(-1, 1)  # Set the x-axis limits to -1 and 1
+        self.ax1.set_ylim(-1, 1)  # Set the y-axis limits to -1 and 1
+        self.ax1.set_xlabel('X')
+        self.ax1.set_ylabel('Y')
+        self.ax1.set_aspect('equal')
+        self.ax1.grid(True)
+        self.ax1.set_title('Normalized Lidar and Goal Position')
+
+        self.ax2.set_xlim(0, 1)  # Set the x-axis limits to -1 and 1
+        self.ax2.set_ylim(0, 1)  # Set the y-axis limits to -1 and 1
+        self.ax2.set_xlabel('X')
+        self.ax2.set_ylabel('Y')
+        self.ax2.set_aspect('equal')
+        self.ax2.grid(True)
+        self.ax2.set_title('Normalized Previous Velocity')
+
         self.lidar_plot = None
         self.goal_plot = None
+        self.action_plot = None
 
     def plot_observation(self, normalized_lidar_data, normalized_local_goal, normalized_prev_vel):
-        # Clear previous plots
-        if self.lidar_plot is not None:
-            self.lidar_plot.remove()
-        if self.goal_plot is not None:
-            self.goal_plot.remove()
-        if self.action_plot is not None:
-            self.action_plot.remove()
-
+        self.clear_plots()
+        
         # Convert lidar observations from polar to Cartesian coordinates and plot
         angles = np.linspace(0, 2 * np.pi, len(normalized_lidar_data))
-        x_obs = normalized_lidar_data * np.cos(angles)
-        y_obs = normalized_lidar_data * np.sin(angles)
-        self.lidar_plot = self.ax9.scatter(x_obs, y_obs, c='b', label='Lidar Observations')
+        x_obs = normalized_lidar_data * -np.sin(angles) # NOTE: minus to account for fixed lidar (network should shouldn't care about orientation since it only sees the range data)
+        y_obs = normalized_lidar_data * -np.cos(angles)
+        self.lidar_plot = self.ax1.scatter(x_obs, y_obs, c='blue', label='Lidar Observations')
 
-        # Convert goal position from polar to Cartesian coordinates and plot 
-        goal_distance = normalized_local_goal[0]
-        goal_angle = normalized_local_goal[1]
+        # Convert goal position from polar to Cartesian coordinates and plot
+        goal_angle = -np.pi +normalized_local_goal[0]*2*np.pi
+        goal_distance = normalized_local_goal[1]
         x_goal = goal_distance * np.cos(goal_angle)
         y_goal = goal_distance * np.sin(goal_angle)
-        self.goal_plot = self.ax9.scatter(x_goal, y_goal, c='p', label='Goal Position')
+        self.goal_plot = self.ax1.scatter(x_goal, y_goal, c='purple', label='Goal Position')
 
         # Plot previous action
         goal_pos_angle_normalized = normalized_prev_vel[0]
         goal_pos_dist_normalized = normalized_prev_vel[1]
-        self.action_plot = self.ax9.scatter(goal_pos_angle_normalized, goal_pos_dist_normalized, c='g', label='Previous Action')
+        self.action_plot = self.ax2.scatter(goal_pos_angle_normalized, goal_pos_dist_normalized, c='green', label='Previous Action')
 
-        self.ax9.legend()
+        self.ax1.legend()
+        self.ax2.legend()
+        self.ax2.legend()
         self.fig9.canvas.draw()
         plt.pause(0.001)
 
-
-        
+    def clear_plots(self):
+        try:
+            self.lidar_plot.remove()
+        except Exception:
+            pass
+        try:
+            self.goal_plot.remove()
+        except Exception:
+            pass
+        try:
+            self.action_plot.remove()
+        except Exception:
+            pass
