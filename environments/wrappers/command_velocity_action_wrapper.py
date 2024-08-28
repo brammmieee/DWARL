@@ -9,8 +9,8 @@ def map_normalized_action_to_cmd_vel(action, params):
     v_max = params['v_max']
     v_min = params['v_min']
 
-    omega = (action[1] + 1) * (0.5*(omega_max - omega_min)) + omega_min
-    v = (action[0] + 1) * (0.5*(v_max - v_min)) + v_min
+    omega = (action[0] + 1) * (0.5*(omega_max - omega_min)) + omega_min
+    v = (action[1] + 1) * (0.5*(v_max - v_min)) + v_min
     cmd_vel = np.array([omega, v])
 
     return cmd_vel

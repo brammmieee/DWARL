@@ -12,6 +12,7 @@ To install the package locally, follow these steps:
 
 1. Run the `setup_locally.py` script from the [scripts folder](./scripts/). This script checks system requirements, installs Webots2023b locally using `apt`, creates a Python venv in the main package folder, and installs the Python requirements.
 2. To activate the Python venv, run `source venv/bin/activate`.
+3. Restart VSCode and add the proper Python path to the [vscode config json file](./.vscode/settings.json) in order to use the interactive scripts. When running an interactive script vscode might prompt you to install the interactive kernell, please do so.
 
 ### Docker Installation
 
