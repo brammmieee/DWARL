@@ -32,7 +32,7 @@ env = CVActWrapper(SLObsWrapper(BaseEnv(
 obs = env.reset(seed=0) #options={"map_nr":40, "nominal_dist":1})
 
 # %%
-action = np.array([1.0, 0.0]) # = policy(obs)
+action = np.array([0.0, 1.0]) # = policy(obs)
 obs, reward, done, _, _ = env.step(action)
 # print(obs)
 

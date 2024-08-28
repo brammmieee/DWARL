@@ -103,8 +103,11 @@ class BaseEnv(Supervisor, gym.Env):
         # NOTE: u must use an action wrapper for turning the action vector inot a cmd_vel
         self.cmd_vel = action
 
-        # Inacting the action
-        self.cur_vel = self.cmd_vel
+        # Inacting the action (i.e. limit velocity to kinematically feasible values and forward simulate robot)
+        print(f"cmd_vel: {self.cmd_vel}")
+        print(f"prev_vel: {self.cur_vel}")
+        self.cur_vel = bt.apply_kinematic_constraints(self.params, self.cur_vel, self.cmd_vel)
+        print(f"cur_vel: {self.cur_vel}")
         pos, orient = bt.compute_new_pose(self.params, self.cur_pos, self.cur_orient_matrix, self.cur_vel)
         self.robot_translation_field.setSFVec3f([pos[0], pos[1], pos[2]])
         self.robot_rotation_field.setSFRotation([0.0, 0.0, 1.0, orient])

@@ -122,8 +122,6 @@ def get_init_and_goal_poses(path, parameters=None):
         return init_pose, goal_pose, 1
 
     elif mode == 'random':
-        if 'nominal_distance' == None:
-            raise ValueError("Missing 'nominal_distance' parameter for init_and_goal_pose_mode: 'random'.")
         nom_dist = parameters['nominal_distance']
         sign = np.random.choice([-1, 1])
         rand_index = np.random.randint(0, len(path))
@@ -163,6 +161,36 @@ def get_cmd_vel(robot_node):
     ang_vel = (-1)*webots_vel[-1] #NOTE: times (-1) because clockwise rotation is taken as the positve direction
     lin_vel = np.sqrt(webots_vel[0]**2 + webots_vel[1]**2) # in plane global velocities (x and y) to forward vel
     return np.array([ang_vel, lin_vel])
+
+def apply_kinematic_constraints(params, cur_vel, target_vel):
+    omega_max = params['omega_max']
+    omega_min = params['omega_min']
+    alpha_max = params['alpha_max']
+    alpha_min = params['alpha_min']
+    a_max = params['a_max']
+    a_min = params['a_min']
+    v_max = params['v_max']
+    v_min = params['v_min']
+    dt = 1/params['sample_time']
+
+    domega = target_vel[0] - cur_vel[0]
+    domega_clipped = np.clip(domega, alpha_min*dt, alpha_max*dt) 
+    omega_clipped = np.clip((cur_vel[0] + domega_clipped), omega_min, omega_max)
+
+    dv = target_vel[1] - cur_vel[1]
+    dv_clipped = np.clip(dv, a_min*dt, a_max*dt)
+    v = np.clip((cur_vel[1] + dv_clipped), v_min, v_max)
+
+    print("Debug: cur_vel =", cur_vel)
+    print("Debug: target_vel =", target_vel)
+    print("Debug: domega =", domega)
+    print("Debug: domega_clipped =", domega_clipped)
+    print("Debug: omega_clipped =", omega_clipped)
+    print("Debug: dv =", dv)
+    print("Debug: dv_clipped =", dv_clipped)
+    print("Debug: v =", v)
+
+    return np.array([omega_clipped, v])
 
 def precompute_lidar_values(num_lidar_rays):
     lidar_delta_psi = (2 * np.pi) / num_lidar_rays
