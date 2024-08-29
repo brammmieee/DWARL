@@ -34,8 +34,6 @@ class CommandVelocityActionWrapper(gym.ActionWrapper):
         return cmd_vel
     
     def action(self, act):
-        print(f"Action/cmd_vel before wrap mapping: {act}")
         cmd_vel = self.map_normalized_action_to_cmd_vel(act, self.params)
-        print(f"Action/cmd_vel after wrap mapping: {cmd_vel}")
     
         return cmd_vel # = action

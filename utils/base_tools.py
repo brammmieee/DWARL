@@ -171,7 +171,7 @@ def apply_kinematic_constraints(params, cur_vel, target_vel):
     a_min = params['a_min']
     v_max = params['v_max']
     v_min = params['v_min']
-    dt = 1/params['sample_time']
+    dt = params['sample_time']
 
     domega = target_vel[0] - cur_vel[0]
     domega_clipped = np.clip(domega, alpha_min*dt, alpha_max*dt) 
@@ -180,15 +180,6 @@ def apply_kinematic_constraints(params, cur_vel, target_vel):
     dv = target_vel[1] - cur_vel[1]
     dv_clipped = np.clip(dv, a_min*dt, a_max*dt)
     v = np.clip((cur_vel[1] + dv_clipped), v_min, v_max)
-
-    print("Debug: cur_vel =", cur_vel)
-    print("Debug: target_vel =", target_vel)
-    print("Debug: domega =", domega)
-    print("Debug: domega_clipped =", domega_clipped)
-    print("Debug: omega_clipped =", omega_clipped)
-    print("Debug: dv =", dv)
-    print("Debug: dv_clipped =", dv_clipped)
-    print("Debug: v =", v)
 
     return np.array([omega_clipped, v])
 

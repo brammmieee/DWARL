@@ -49,10 +49,6 @@ class SparseLidarObservationWrapper(gym.ObservationWrapper):
     def process_lidar_data(self, lidar_data, replace_value=0):
         # NOTE - the lidar data contains an offset wrt the robot's position!!!
         lidar_data_array = np.array(lidar_data)
-        
-        # DEBUG
-        # if self.unwrapped.plot_wrapped_obs == True:
-        #     print(f"Lidar data: {lidar_data_array}")
 
         # Nomalize lidar data
         min_range = float(self.params['proto_substitutions']['minRange'])
@@ -63,10 +59,6 @@ class SparseLidarObservationWrapper(gym.ObservationWrapper):
         normalized_array[np.isinf(normalized_array)] = replace_value
         normalized_array[np.isnan(normalized_array)] = replace_value
 
-        # DEBUG
-        # if self.unwrapped.plot_wrapped_obs == True:
-        #     print(f"Normalized lidar data: {normalized_array}")
-
         return normalized_array
 
     def process_local_goal(self, local_goal):
@@ -75,12 +67,6 @@ class SparseLidarObservationWrapper(gym.ObservationWrapper):
         goal_pos_angle = np.arctan2(goal_pos[1], goal_pos[0])
         goal_pos_dist = np.linalg.norm(goal_pos)
         
-        # DEBUG
-        # if self.unwrapped.plot_wrapped_obs == True:
-        #     print(f"Goal position: {goal_pos}")
-        #     print(f"Goal angle: {goal_pos_angle}")
-        #     print(f"Goal distance: {goal_pos_dist}")
-
         # Clip then normalize goal position
         goal_pos_angle_min = self.params['goal_pos_angle_min']
         goal_pos_angle_max = self.params['goal_pos_angle_max']
@@ -94,11 +80,6 @@ class SparseLidarObservationWrapper(gym.ObservationWrapper):
 
         goal_pos_angle_normalized = normalize(clipped_goal_pos_angle, goal_pos_angle_min, goal_pos_angle_max)
         goal_pos_dist_normalized = normalize(clipped_goal_pos_dist, goal_pos_dist_min, goal_pos_dist_max)
-
-        # DEBUG
-        # if self.unwrapped.plot_wrapped_obs == True:
-        #     print(f"Normalized goal angle: {goal_pos_angle_normalized}")
-        #     print(f"Normalized goal distance: {goal_pos_dist_normalized}")
 
         return np.array([goal_pos_angle_normalized, goal_pos_dist_normalized])
     
