@@ -89,15 +89,8 @@ class SparseLidarObservationWrapper(gym.ObservationWrapper):
         v_min=self.params['v_min']
         v_max=self.params['v_max']
 
-        if self.unwrapped.plot_wrapped_obs == True:
-            print(f"Previous velocity: {prev_vel}")
-
         omega_normalized = normalize(prev_vel[0], omega_min, omega_max)
         v_normalized = normalize(prev_vel[1], v_min, v_max)
-
-        if self.unwrapped.plot_wrapped_obs == True:
-            print(f"Normalized previous omega: {omega_normalized}")
-            print(f"Normalized previous v: {v_normalized}")
 
         return np.array([omega_normalized, v_normalized])
 

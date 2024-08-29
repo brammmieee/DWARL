@@ -26,7 +26,7 @@ env = CVActWrapper(SLObsWrapper(BaseEnv(
 )))
 
 # %%
-# check_env(env)
+check_env(env)
 
 # %%
 obs = env.reset(seed=0) #options={"map_nr":40, "nominal_dist":1})
