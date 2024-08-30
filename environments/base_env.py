@@ -400,7 +400,7 @@ class BaseEnv(Supervisor, gym.Env):
     
     def check_collision(self):
         # Use the STRTree to find any intersecting boxes
-        result = self.collision_tree.query(self.footprint_glob)
+        result = self.collision_tree.query(self.footprint_glob, predicate='intersects')
         collision_detected = len(result) > 0
 
         if collision_detected:
