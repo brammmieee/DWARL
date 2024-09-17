@@ -4,9 +4,9 @@ DWARL is a comprehensive package designed for creating controller policies throu
 
 ## Installation and Setup
 
-The package can be installed locally with Python packages in a virtual environment (venv) or containerized. For training on a remote desktop, it is recommended to use the local installation due to issues with X11 forwarding in containerized installations.
+The package can be installed locally with Python packages in a virtual environment (venv) or containerized. For training on a remote desktop. The local install is created purely for running the training setup remotely i.c.w. with a remote desktop service, it's therefore recommended to use the containerized version on your local machine for a more foolproof setup procedure.
 
-### Local Installation (Recommended)
+### Local Installation (Recommended for Remote Systems)
 
 To install the package locally, follow these steps:
 
@@ -14,7 +14,7 @@ To install the package locally, follow these steps:
 2. To activate the Python venv, run `source venv/bin/activate`.
 3. Restart VSCode and add the proper Python path to the [vscode config json file](./.vscode/settings.json) in order to use the interactive scripts. When running an interactive script vscode might prompt you to install the interactive kernell, please do so.
 
-### Docker Installation
+### Docker Installation (Recommended for Local Use)
 
 To install the containerized version of the package, follow these steps:
 
@@ -98,18 +98,19 @@ Add template files with `{{key}}` items defined by the keys in the substitutions
 
 ## Notes on Notation and Conventions
 
-In this section, we document the notation and conventions used throughout the codebase. This helps maintain consistency and makes the code easier to understand and extend.
+In this section, we provide documentation for the notation and conventions used in the codebase. This documentation ensures consistency and enhances code comprehension and extensibility. We adhere to SI units throughout the entire package, utilizing meters (m), meters per second (m/s), radians (rad), radians per second (rad/s), and other SI units.
+
+### Axis Systems
+
+In this system, the x-axis points to the right of the robot, the y-axis points forward, and positive rotation around the z-axis is clockwise. This choice is made to facilitate reasoning about similarities between Euclidean space and velocity space.
 
 ### Vector Entries
+
+The vector entries follow the following order. Note that the linear velocity v (velocity in the robot's positive y direction) is the second entry in the velocity vector to simplify plotting.
 
 - **XY Space**: `[x, y]`
 - **Velocities**: `[omega, v]`
 - **Polar Coordinates**: `[angle, dist]`
-
-This convention is used to make plotting more straightforward.
-
-### Axis Systems
-In this system, the x-axis points to the right of the robot, the y-axis points forward, and positive rotation around the z-axis is clockwise. This choice is made to make it easier to reason about similarities between Euclidean space and velocity space.
 
 ## Utilities
 
