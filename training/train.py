@@ -144,7 +144,7 @@ def train(args, model_dir, log_dir):
     )
 
     # TRAINING TRY-OUT - Check if large network is able to have a higher reward and overfit on training data
-    net_arch = dict(pi=[128, 128, 128], vf=[128, 128, 128])
+    net_arch = dict(pi=[256, 256, 256, 256, 256], vf=[256, 256, 256, 256, 256])
     activation_fn = th.nn.ReLU # Better for obs normalized between [0, 1]
     
     # Creating PPO model with callbacks
