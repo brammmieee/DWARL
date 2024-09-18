@@ -2,7 +2,7 @@ numpy
 tensorrt
 tensorflow
 matplotlib
-stable-baselines3
+stable-baselines3[extra]
 pandas
 bottleneck
 numexpr

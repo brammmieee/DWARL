@@ -27,7 +27,7 @@ sudo apt install -y webots
 sudo apt install nvidia-cuda-toolkit
 
 # Install Python 3 pip and venv
-sudo apt install python3.12-venv
+sudo apt install python3-venv
 sudo apt install -y python3-pip
 
 # Get the parent directory path
@@ -44,12 +44,6 @@ export WEBOTS_HOME='/usr/local/webots'
 export PYTHONPATH='/usr/local/webots/lib/controller/python:$parent_dir:$parent_dir/venv/lib/python3.10/site-packages'
 export PYTHONIOENCODING='UTF-8'
 export TF_ENABLE_ONEDNN_OPTS=0
-
-# Add the virtual environment bin directory to PATH 
-export PATH='$parent_dir/venv/bin:\$PATH'
-
-# Add the DWARL directory to PYTHONPATH
-export PYTHONPATH='/home/bramo/DWARL:\$PYTHONPATH'
 " >> "$parent_dir/venv/bin/activate"
 
 # Activate virtual environment
