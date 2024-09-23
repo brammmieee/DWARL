@@ -415,7 +415,7 @@ class BaseEnv(Supervisor, gym.Env):
     
     def close(self):
         self.close_webots()
-                
+
     def open_webots(self, wb_open, wb_mode, wb_headless):
         if not wb_open:
             return
@@ -423,26 +423,26 @@ class BaseEnv(Supervisor, gym.Env):
         # Create Webots command with specified mode and world file
         world_file = os.path.join(self.worlds_dir, 'webots_world_file.wbt')
         if wb_mode == 'training':
-            cmd = ['webots','--extern-urls', '--no-rendering', '--mode=fast', world_file]
+            cmd = ['webots', '--extern-urls', '--no-rendering', '--mode=fast', world_file]
         elif wb_mode == 'testing':
-            cmd = ['webots','--extern-urls', world_file]
+            cmd = ['webots', '--extern-urls', world_file]
         else:
-            print(f'init(): recieved invalid mode "{wb_mode}", should be either "training" or "testing"')
+            print(f'init(): received invalid mode "{wb_mode}", should be either "training" or "testing"')
             return
         
         # Use X virtual framebuffer (Xvfb) to Webots in headless mode
         if wb_headless:
             cmd = ['xvfb-run', '--auto-servernum'] + cmd
 
+        # Find an available port and add it to the command
+        available_port = bt.find_available_port()
+        cmd += [f'--port={str(available_port)}']
+
         # Open Webots
-        wb_process = Popen(cmd, stdout=PIPE)
+        Popen(cmd, stdout=PIPE)
 
         # Set the environment variable for the controller to connect to the supervisor
-        output = wb_process.stdout.readline().decode("utf-8")
-        ipc_prefix = 'ipc://'
-        start_index = output.find(ipc_prefix)
-        port_nr = output[start_index + len(ipc_prefix):].split('/')[0]
-        os.environ["WEBOTS_CONTROLLER_URL"] = ipc_prefix + str(port_nr)
+        os.environ["WEBOTS_CONTROLLER_URL"] = f'ipc://{available_port}'
     
     def close_webots(self):
         self.simulationQuit(0)

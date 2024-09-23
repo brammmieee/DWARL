@@ -10,6 +10,8 @@ from shapely.strtree import STRtree
 
 from utils.admin_tools import find_file, load_parameters
 
+TMP_FILE = '/tmp/DWARL_used_webots_ports.txt'
+
 def chain_wrappers(env, wrapper_classes):
     for wrapper_class in wrapper_classes:
         env=wrapper_class(env)
@@ -19,6 +21,24 @@ def chain_wrappers(env, wrapper_classes):
 def killall_webots():
     command = "ps aux | grep webots | grep -v grep | awk '{print $2}' | xargs -r kill"
     os.system(command)
+        
+def read_used_ports():
+    if not os.path.exists(TMP_FILE):
+        return set()
+    with open(TMP_FILE, 'r') as f:
+        return set(map(int, f.read().split()))
+
+def write_used_port(port):
+    with open(TMP_FILE, 'a') as f:
+        f.write(f'{port}\n')
+
+def find_available_port(start_port=1234, end_port=1300):
+    used_ports = read_used_ports()
+    for port in range(start_port, end_port):
+        if port not in used_ports:
+            write_used_port(port)
+            return port
+    raise RuntimeError(f"No available ports found in default range {start_port}-{end_port}")
 
 def get_teleop_action(keyboard):
     params = load_parameters('base_parameters.yaml')
