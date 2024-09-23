@@ -46,7 +46,7 @@ class SparseLidarObservationWrapper(gym.ObservationWrapper):
         if self.unwrapped.plot_wrapped_obs == True:
             self.init_plot()
 
-    def process_lidar_data(self, lidar_data, replace_value=0):
+    def process_lidar_data(self, lidar_data):
         # NOTE - the lidar data contains an offset wrt the robot's position!!!
         lidar_data_array = np.array(lidar_data)
 
@@ -55,9 +55,9 @@ class SparseLidarObservationWrapper(gym.ObservationWrapper):
         max_range = float(self.params['proto_substitutions']['maxRange'])
         normalized_array = normalize(lidar_data_array, min_range, max_range)
         
-        # Replace nans and infs with a replacement value
-        normalized_array[np.isinf(normalized_array)] = replace_value
-        normalized_array[np.isnan(normalized_array)] = replace_value
+        # Replace nans and infs with 1.0 (max value)
+        normalized_array[np.isinf(normalized_array)] = 1.0
+        normalized_array[np.isnan(normalized_array)] = 1.0
 
         return normalized_array
 
