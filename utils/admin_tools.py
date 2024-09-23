@@ -31,6 +31,32 @@ def find_file(filename, start_dir=os.path.abspath(os.pardir)):
     
     raise FileNotFoundError(f"File '{filename}' not found starting from directory '{start_dir}'.")
 
+def get_latest_model_dir():
+    # Get the latest model directory
+    package_dir = os.path.abspath(os.pardir)
+    model_dir = os.path.join(package_dir, 'training', 'archive', 'models')
+    model_dirs = [d for d in os.listdir(model_dir) if os.path.isdir(os.path.join(model_dir, d))]
+    if model_dirs:
+        latest_model_dir = max(model_dirs)
+        return os.path.join(model_dir, latest_model_dir)
+    else:
+        return None
+
+def get_latest_model_steps(model_dir):
+    # Get the latest model steps
+    model_steps = []
+    for d in os.listdir(model_dir):
+        if d.endswith('.zip'):
+            parts = d.split('_')
+            if parts[-1].startswith('steps'):
+                step_count = int(parts[-2])
+                model_steps.append(step_count)
+    
+    if model_steps:
+        return max(model_steps)
+    else:
+        return None
+
 def load_parameters(file_name_list: Union[str, List[str]], start_dir=os.path.abspath(os.pardir)):
     """
     Load parameters from YAML or JSON files based on the given file names, searching from a specific start directory or default directory.

@@ -37,7 +37,11 @@ def parse_args():
     # Model settings
     parser.add_argument('--comment', type=str, default='test', help='Comment that hints the setup used for training')
     parser.add_argument('--policy_type', type=str, default='MlpPolicy', help='Policy type used for configuring the model')
-    parser.add_argument('--use_init_model', action='store_true', default=False, help='Continue training from a saved model')
+    parser.add_argument('--policy_kwargs', type=dict, default={
+        'net_arch': dict(pi=[256, 256, 256, 256, 256], vf=[256, 256, 256, 256, 256]),
+        'activation_fn': th.nn.ReLU  # Better for obs normalized between [0, 1]
+    }, help='Policy kwargs used for configuring the model')
+    parser.add_argument('--use_init_model', action='store_true', default=False, help='Continue training from a saved model (latest model if datetime or steps are not provided)')
     parser.add_argument('--init_model_datetime', type=str, default=None, help='Date and time of the model to continue training from in the format YY_MM_DD__HH_MM_SS')
     parser.add_argument('--init_model_steps', type=int, default=None, help='Number of steps of the model to continue training from')
     
@@ -52,6 +56,15 @@ def parse_args():
     return args
 
 def save_config(args, dir):
+    # Function to get values when simply wanting to continue training from latest model
+    if args.use_init_model and (args.init_model_datetime is None or args.init_model_steps is None):
+        latest_model_dir=at.get_latest_model_dir()
+        if latest_model_dir is None:
+            raise FileNotFoundError("No model directory found, continuing training is not possible.")
+        args.init_model_datetime=latest_model_dir.split('/')[-1]
+        args.init_model_steps=at.get_latest_model_steps(latest_model_dir)
+        # TODO: load other parameters from archive to continue training without setting envs, steps, etc.
+
     # Create config file from args and wrapper+base+proto parameters
     train_args={
         'comment': args.comment,
@@ -62,6 +75,7 @@ def save_config(args, dir):
         },
         'model': {
             'policy_type': args.policy_type,
+            'policy_kwargs': args.policy_kwargs,
             'use_init_model': args.use_init_model,
             'init_model_datetime': args.init_model_datetime,
             'init_model_steps': args.init_model_steps,
@@ -142,10 +156,6 @@ def train(args, model_dir, log_dir):
             'wb_headless': args.headless,
         }
     )
-
-    # TRAINING TRY-OUT - Check if large network is able to have a higher reward and overfit on training data
-    net_arch = dict(pi=[256, 256, 256, 256, 256], vf=[256, 256, 256, 256, 256])
-    activation_fn = th.nn.ReLU # Better for obs normalized between [0, 1]
     
     # Creating PPO model with callbacks
     if not args.use_init_model:
@@ -153,10 +163,7 @@ def train(args, model_dir, log_dir):
             policy=policy_type,
             env=vec_env,
             tensorboard_log=log_dir,
-            policy_kwargs={
-                'net_arch': net_arch,
-                'activation_fn': activation_fn,
-            }
+            policy_kwargs=args.policy_kwargs
         )
     else:
         model=load_init_model(args)
