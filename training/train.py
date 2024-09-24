@@ -26,6 +26,9 @@ from environments.wrappers.dynamic_window_action_wrapper import DynamicWindowAct
 def parse_args():
     parser=argparse.ArgumentParser(description='Training script')
 
+    # Testing and debugging
+    parser.add_argument('--no_save', action='store_true', default=False, help='Do not save the config, model or logs')
+
     # Webots settings
     parser.add_argument('--headless', action='store_true', default=False, help='Run Webots in headless mode')
     
@@ -55,7 +58,7 @@ def parse_args():
     args=parser.parse_args()
     return args
 
-def save_config(args, dir):
+def save_config(args, dir):    
     # Function to get values when simply wanting to continue training from latest model
     if args.use_init_model and (args.init_model_datetime is None or args.init_model_steps is None):
         latest_model_dir=at.get_latest_model_dir()
@@ -101,11 +104,12 @@ def save_config(args, dir):
         'base_params': at.load_parameters(['base_parameters.yaml']),
     }
 
-    # Save the config to a yaml file
-    os.makedirs(dir, exist_ok=True)
-    config_file=os.path.join(dir, "training_config.yaml")
-    with open(config_file, "w") as f:
-        yaml.dump(config, f, default_flow_style=False)
+    if not args.no_save:
+        # Save the config to a yaml file
+        os.makedirs(dir, exist_ok=True)
+        config_file=os.path.join(dir, "training_config.yaml")
+        with open(config_file, "w") as f:
+            yaml.dump(config, f, default_flow_style=False)
 
 def apply_time_limit(env):
     # Add time limit wrapper to limit the episode length without breaking Markov assumption
@@ -169,6 +173,9 @@ def train(args, model_dir, log_dir):
         model=load_init_model(args)
         model.set_env(vec_env)
         model.tensorboard_log=log_dir
+    # Disables logging
+    if args.no_save:
+        model.tensorboard_log=None
     checkpoint_callback=CheckpointCallback(
         save_freq=model_save_freq,
         save_path=model_dir,
@@ -191,13 +198,21 @@ def train(args, model_dir, log_dir):
     )
 
     # Train model
-    model.learn(
-        total_timesteps=steps,
-        callback=[checkpoint_callback, eval_callback],
-        log_interval=log_interval,
-        reset_num_timesteps=False,
-        progress_bar=True
-    )
+    if not args.no_save:
+        model.learn(
+            total_timesteps=steps,
+            callback=[checkpoint_callback, eval_callback],
+            log_interval=log_interval,
+            reset_num_timesteps=False,
+            progress_bar=True
+        )
+    else:
+        model.learn(
+            total_timesteps=steps,
+            log_interval=0,
+            reset_num_timesteps=False,
+            progress_bar=True
+        )
 
 def main():
     # Parse training arguments
