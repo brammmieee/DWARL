@@ -160,6 +160,7 @@ class BaseEnv(Supervisor, gym.Env):
             'r_not_arrived': 0,
             'r_path_d_dist': 0,
             'r_path_d_progress': 0,
+            'r_linear_d_progress': 0,
             'r_path_d_heading': 0,
             'r_path_dist': 0,
             'r_path_heading': 0,
@@ -183,6 +184,7 @@ class BaseEnv(Supervisor, gym.Env):
             reward_components['r_path_d_dist'] = self.params['c_path_d_dist']*self.get_normalized_path_d_dist()
             normalized_path_progress = self.get_normalized_path_d_progress()
             reward_components['r_path_d_progress'] = self.params['c_path_d_progress']*normalized_path_progress
+            reward_components['r_linear_d_progress'] = self.params['c_linear_d_progress']*self.get_normalized_linear_d_progress()
             reward_components['r_path_d_heading'] = self.params['c_path_d_heading']*self.get_normalized_path_d_heading()
             
             normalized_path_dist_reward = self.get_normalized_path_dist_reward()
@@ -223,6 +225,17 @@ class BaseEnv(Supervisor, gym.Env):
 
         return normalized_path_progress
     
+    def get_normalized_linear_d_progress(self):
+        if self.params['c_linear_d_progress'] == 0:
+            return 0
+        prev_dist_to_goal = np.linalg.norm(self.goal_pose[:2] - self.prev_pos[:2])
+        current_dist_to_goal = np.linalg.norm(self.goal_pose[:2] - self.cur_pos[:2])
+        progress_diff = prev_dist_to_goal - current_dist_to_goal
+        max_progress_diff = self.params['v_max']*self.params['sample_time']
+        normalized_progress_diff = np.clip(progress_diff / max_progress_diff, -1, 1)
+        
+        return normalized_progress_diff
+
     def get_mapped_normalized_progress_diff(self, path_progress_diff):
         # print(f"x: {path_progress_diff}")
         if path_progress_diff < self.params['d_progress_low_pass_x']:
