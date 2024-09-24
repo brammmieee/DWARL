@@ -1,4 +1,4 @@
-goal_pos_dist_max: 3 # Keep it same as the max distance of the lidar to increase consistency
+goal_pos_dist_max: 5 # Keep it same as the max distance of the lidar to increase consistency
 goal_pos_dist_min: 0.05 # Keep it same as the min distance of the lidar to increase consistency
 goal_pos_angle_min: -3.141592653589793
 goal_pos_angle_max: 3.141592653589793
