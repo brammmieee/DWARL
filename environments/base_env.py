@@ -320,14 +320,19 @@ class BaseEnv(Supervisor, gym.Env):
 
                 # Path progress calculation
                 segment_progress = cumulative_path_length + t * np.linalg.norm(v)
-                if self.direction > 0:
+
+                # TODO: Fix this!
+                # if self.direction > 0:
+                if 1 > 0:
                     path_progress = segment_progress - self.init_progress
                 else:
                     path_progress = self.init_progress - segment_progress
                 
                 # Path heading calculation
                 path_angle = np.arctan2(v[1], v[0])
-                if self.direction < 0:
+                # TODO: Fix this!
+                # if self.direction < 0:
+                if 1 < 0:
                     path_angle += np.pi
                 path_angle = path_angle % (2*np.pi)
 
@@ -336,10 +341,11 @@ class BaseEnv(Supervisor, gym.Env):
             cumulative_path_length += np.linalg.norm(v)
 
         # Adjust negative progress condition based on direction
-        if self.direction > 0 and path_progress > self.goal_progress:
-            path_progress = -(path_progress - self.goal_progress)
-        elif self.direction < 0 and path_progress < self.goal_progress:
-            path_progress = -(self.goal_progress - path_progress)
+        # TODO: Fix this!
+        # if self.direction > 0 and path_progress > self.goal_progress:
+        #     path_progress = -(path_progress - self.goal_progress)
+        # elif self.direction < 0 and path_progress < self.goal_progress:
+        #     path_progress = -(self.goal_progress - path_progress)
 
         self.prev_path_dist = self.path_dist
         self.path_dist = path_dist if path_dist < np.inf else 0
@@ -381,9 +387,9 @@ class BaseEnv(Supervisor, gym.Env):
         self.map_nr = self.train_map_nr_list[train_map_nr_idx]
         self.grid = np.load(os.path.join(self.grids_dir, 'grid_' + str(self.map_nr) + '.npy'))
         path = np.load(os.path.join(self.paths_dir, 'path_' + str(self.map_nr) + '.npy'))
-        self.path = np.multiply(path, self.params['map_res']) # apply scaling
+        path = np.multiply(path, self.params['map_res']) # apply scaling
 
-        self.init_pose, self.goal_pose, self.direction = bt.get_init_and_goal_poses(path=self.path, parameters=self.params) # pose -> [x,y,psi]
+        self.init_pose, self.goal_pose, self.path = bt.get_init_and_goal_poses(path=path, parameters=self.params) # pose -> [x,y,psi]
 
     def update_robot_state_and_local_goal(self, method):
         # Update previous position, current position, current orientation, and global footprint location
