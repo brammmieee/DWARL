@@ -42,7 +42,7 @@ def parse_args():
     parser.add_argument('--policy_type', type=str, default='MlpPolicy', help='Policy type used for configuring the model')
     parser.add_argument('--policy_kwargs', type=dict, default={
         'net_arch': dict(pi=[256, 256, 256, 256, 256], vf=[256, 256, 256, 256, 256]),
-        'activation_fn': th.nn.ReLU  # Better for obs normalized between [0, 1]
+        'activation_fn': 'th.nn.ReLU'  # Better for obs normalized between [0, 1]
     }, help='Policy kwargs used for configuring the model')
     parser.add_argument('--use_init_model', action='store_true', default=False, help='Continue training from a saved model (latest model if datetime or steps are not provided)')
     parser.add_argument('--init_model_datetime', type=str, default=None, help='Date and time of the model to continue training from in the format YY_MM_DD__HH_MM_SS')
