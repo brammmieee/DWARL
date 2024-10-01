@@ -322,10 +322,6 @@ class BaseEnv(Supervisor, gym.Env):
 
                 # Path heading calculation
                 path_angle = np.arctan2(v[1], v[0])
-                # TODO: Fix this!
-                # if self.direction < 0:
-                if 1 < 0:
-                    path_angle += np.pi
                 path_angle = path_angle % (2*np.pi)
                 path_heading = np.abs(psi - path_angle)
 
