@@ -99,64 +99,12 @@ def create_pose(point, orientation=0.0):
     """ Create a pose from a point and an orientation. """
     return np.array([point[0], point[1], 0.0, orientation])
 
-# def get_init_and_goal_poses(path, parameters=None):
-#     """
-#     General function to get initial and goal poses on a path.
-    
-#     Args:
-#         path: List or array of points defining the path.
-#         mode: Type of mode to determine poses ('random', 'full_path', 'random_distance').
-#         parameters: Dictionary containing parameters like nominal distance, sign, etc.
-
-#     Returns:
-#         A tuple of numpy arrays (init_pose, goal_pose).
-#     """
-#     mode = parameters.get('init_and_goal_pose_mode')
-#     if mode is None:
-#         raise ValueError("Missing 'init_and_goal_pose_mode' parameter.")
-
-#     if mode == 'full_path':
-#         init_pose = create_pose(path[0], calculate_orientation(path[0], path[min(2, len(path) - 1)]))
-#         goal_pose = create_pose(path[-1])
-#         direction = 1
-#         return init_pose, goal_pose, 1, path
-
-#     elif mode == 'random':
-#         nom_dist = parameters['nominal_distance']
-#         sign = np.random.choice([-1, 1])
-#         rand_index = np.random.randint(0, len(path))
-
-#         i = rand_index
-#         dist_traveled = 0
-#         while 0 <= i + sign < len(path):
-#             segment_dist = np.linalg.norm(path[i + sign] - path[i])
-#             if dist_traveled + segment_dist >= nom_dist:
-#                 init_pose = create_pose(path[rand_index], calculate_orientation(path[rand_index], path[rand_index + sign]))
-#                 goal_pose = create_pose(path[i], calculate_orientation(path[i], path[i + sign]))
-#                 direction = sign
-#                 return init_pose, goal_pose, direction, path
-#             dist_traveled += segment_dist
-#             i += sign
-
-#         # Recursive call fallback for cases when distance is not met
-#         sign *= -1
-#         return get_init_and_goal_poses(path, parameters={'init_and_goal_pose_mode': mode, 'nominal_distance': nom_dist, 'sign': sign, 'index': rand_index})
-
-#     elif mode == 'random_distance':
-#         init_path_index = np.random.randint(0, len(path) - 1)
-#         goal_path_index = np.random.randint(0, len(path) - 1)
-#         if np.linalg.norm(path[init_path_index] - path[goal_path_index]) < parameters['min_init2goal_dist']:
-#             return get_init_and_goal_poses(path, parameters=parameters)
-#         else:
-#             init_pose = create_pose(path[init_path_index], calculate_orientation(path[init_path_index], path[goal_path_index]))
-#             goal_pose = create_pose(path[goal_path_index], calculate_orientation(path[goal_path_index], path[init_path_index]))
-#             direction = 1 if init_path_index < goal_path_index else -1
-#             return init_pose, goal_pose, direction, path
-        
-#     else:
-#         raise ValueError("Unsupported mode provided.")
-
 def get_init_and_goal_poses(path, parameters):
+# General function to get initial and goal poses on a path.
+
+# Args:
+#     path: List or array of points defining the path.
+#     parameters: Dictionary containing parameters like nominal distance and mode ('random', 'full_path', 'random_distance').
 
     mode = parameters.get('init_and_goal_pose_mode')
 
