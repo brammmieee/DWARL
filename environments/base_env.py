@@ -211,17 +211,21 @@ class BaseEnv(Supervisor, gym.Env):
         return normalized_path_dist
     
     def get_normalized_path_d_progress(self):
-        if self.params['c_path_d_progress'] == 0 and self.params['c_path_d_progress_scaled_dist'] == 0:
-            return 0
-        path_progress_diff = self.path_progress - self.prev_path_progress
-        max_path_progress = self.params['v_max']*self.params['sample_time']
-        
-        if not self.params['enable_d_progress_mapping']:
-            normalized_path_progress_diff = path_progress_diff / max_path_progress
-        else:
-            normalized_path_progress_diff = self.get_mapped_normalized_progress_diff(path_progress_diff)
 
-        normalized_path_progress = np.clip(normalized_path_progress_diff, -1, 1)
+        if self.path_progress is not None and self.prev_path_progress is not None:
+            if self.params['c_path_d_progress'] == 0 and self.params['c_path_d_progress_scaled_dist'] == 0:
+                return 0
+            path_progress_diff = self.path_progress - self.prev_path_progress
+            max_path_progress = self.params['v_max']*self.params['sample_time']
+
+            if not self.params['enable_d_progress_mapping']:
+                normalized_path_progress_diff = path_progress_diff / max_path_progress
+            else:
+                normalized_path_progress_diff = self.get_mapped_normalized_progress_diff(path_progress_diff)
+
+            normalized_path_progress = np.clip(normalized_path_progress_diff, -1, 1)
+        else: # Robot is not between init and goal
+            normalized_path_progress = 0
 
         return normalized_path_progress
     
@@ -249,11 +253,15 @@ class BaseEnv(Supervisor, gym.Env):
         return progress_diff
             
     def get_normalized_path_d_heading(self):
-        if self.params['c_path_d_heading'] == 0:
-            return 0
-        path_heading_diff = -(self.path_heading - self.prev_path_heading)
-        max_path_heading = self.params['omega_max']*self.params['sample_time']
-        normalized_path_heading = np.clip(path_heading_diff / max_path_heading, -1, 1)
+
+        if self.path_heading is not None and self.prev_path_heading is not None:
+            if self.params['c_path_d_heading'] == 0:
+                return 0
+            path_heading_diff = -(self.path_heading - self.prev_path_heading)
+            max_path_heading = self.params['omega_max']*self.params['sample_time']
+            normalized_path_heading = np.clip(path_heading_diff / max_path_heading, -1, 1)
+        else: # Robot is not between init and goal
+            normalized_path_heading = 0
 
         return normalized_path_heading
     
@@ -267,11 +275,14 @@ class BaseEnv(Supervisor, gym.Env):
         return normalized_path_dist_reward
 
     def get_normalized_path_heading_reward(self):
-        if self.params['c_path_heading'] == 0:
-            return 0
-        max_path_heading = self.params['max_path_heading']
-        normalized_path_heading = self.path_heading / max_path_heading
-        normalized_path_heading_reward = np.clip(1 - normalized_path_heading, -1, 1)
+        if self.path_heading is not None and self.prev_path_heading is not None:
+            if self.params['c_path_heading'] == 0:
+                return 0
+            max_path_heading = self.params['max_path_heading']
+            normalized_path_heading = self.path_heading / max_path_heading
+            normalized_path_heading_reward = np.clip(1 - normalized_path_heading, -1, 1)
+        else: # Robot is not between init and goal
+            normalized_path_heading_reward = 0
 
         return normalized_path_heading_reward
     
@@ -307,25 +318,39 @@ class BaseEnv(Supervisor, gym.Env):
             v = p2 - p1
             w = r - p1
             t = np.dot(w, v) / np.dot(v, v)
-            t = max(0, min(1, t))
 
-            closest_point_on_segment = p1 + t * v
-            segment_dist = np.linalg.norm(r - closest_point_on_segment)
+            # Check if robot is still between init and goal
+            if i == 0 and t < 0:  # Robot is before starting point (init) of the path
+                path_progress = None
+                path_heading = None
+                path_dist = np.linalg.norm(r - self.path[0])
+                break
+            elif i == len(self.path) - 2 and t > 1:  # Robot has passed the end point (goal) of the path
+                path_progress = None
+                path_heading = None
+                path_dist = np.linalg.norm(r - self.path[-1])
+                break
+            else:  # Robot is between init and goal
 
-            # Caculation of path_dist, path_progress, and path_heading
-            if segment_dist < path_dist:
-                # Path dist calculation
-                path_dist = segment_dist
+                t = max(0, min(1, t))
+                closest_point_on_segment = p1 + t * v
+                segment_dist = np.linalg.norm(r - closest_point_on_segment)
 
-                # Path progress calculation
-                path_progress = cumulative_path_length + t * np.linalg.norm(v)  # Progress along the path
+                # Caculation of path_dist, path_progress, and path_heading
+                if segment_dist < path_dist:
+                    # Path dist calculation
+                    path_dist = segment_dist
 
-                # Path heading calculation
-                path_angle = np.arctan2(v[1], v[0])
-                path_angle = path_angle % (2*np.pi)
-                path_heading = np.abs(psi - path_angle)
+                    # Path progress calculation
+                    path_progress = cumulative_path_length + t * np.linalg.norm(v)  # Progress along the path
 
-            cumulative_path_length += np.linalg.norm(v)
+                    # Path heading calculation
+                    path_angle = np.arctan2(v[1], v[0])
+                    path_angle = path_angle % (2*np.pi)
+                    path_heading = np.abs(psi - path_angle)
+                    self.t = t
+
+                cumulative_path_length += np.linalg.norm(v)
 
         self.prev_path_dist = self.path_dist
         self.path_dist = path_dist if path_dist < np.inf else 0
@@ -364,6 +389,7 @@ class BaseEnv(Supervisor, gym.Env):
         self.map_nr = self.train_map_nr_list[train_map_nr_idx]
         self.grid = np.load(os.path.join(self.grids_dir, 'grid_' + str(self.map_nr) + '.npy'))
         path = np.load(os.path.join(self.paths_dir, 'path_' + str(self.map_nr) + '.npy'))
+        path = path[1:]  # For some reason, the first two points of the path are duplicates
         path = np.multiply(path, self.params['map_res']) # apply scaling
 
         self.init_pose, self.goal_pose, self.path = bt.get_init_and_goal_poses(path=path, parameters=self.params) # pose -> [x,y,psi]
