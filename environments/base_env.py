@@ -295,8 +295,7 @@ class BaseEnv(Supervisor, gym.Env):
             self.reward_buffers['total_reward'].pop(0)
 
     def update_path_dist_progress_and_heading(self):
-        path_dist = np.inf
-        path_progress = 0
+        path_dist = np.inf  # Distance to the path
         path_heading = 0
         cumulative_path_length = 0
         r = self.cur_pos[:2]
@@ -319,15 +318,8 @@ class BaseEnv(Supervisor, gym.Env):
                 path_dist = segment_dist
 
                 # Path progress calculation
-                segment_progress = cumulative_path_length + t * np.linalg.norm(v)
+                path_progress = cumulative_path_length + t * np.linalg.norm(v)  # Progress along the path
 
-                # TODO: Fix this!
-                # if self.direction > 0:
-                if 1 > 0:
-                    path_progress = segment_progress - self.init_progress
-                else:
-                    path_progress = self.init_progress - segment_progress
-                
                 # Path heading calculation
                 path_angle = np.arctan2(v[1], v[0])
                 # TODO: Fix this!
@@ -335,17 +327,9 @@ class BaseEnv(Supervisor, gym.Env):
                 if 1 < 0:
                     path_angle += np.pi
                 path_angle = path_angle % (2*np.pi)
-
                 path_heading = np.abs(psi - path_angle)
 
             cumulative_path_length += np.linalg.norm(v)
-
-        # Adjust negative progress condition based on direction
-        # TODO: Fix this!
-        # if self.direction > 0 and path_progress > self.goal_progress:
-        #     path_progress = -(path_progress - self.goal_progress)
-        # elif self.direction < 0 and path_progress < self.goal_progress:
-        #     path_progress = -(self.goal_progress - path_progress)
 
         self.prev_path_dist = self.path_dist
         self.path_dist = path_dist if path_dist < np.inf else 0
@@ -378,9 +362,6 @@ class BaseEnv(Supervisor, gym.Env):
 
         self.path_heading = 0
         self.prev_path_heading = 0
-
-        self.init_progress = self.calculate_progress(self.init_pose)
-        self.goal_progress = self.calculate_progress(self.goal_pose)
 
     def reset_map_path_and_poses(self):
         train_map_nr_idx = random.randint(0, len(self.train_map_nr_list)-1)
