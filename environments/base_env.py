@@ -270,7 +270,7 @@ class BaseEnv(Supervisor, gym.Env):
             return 0    
         max_distance = self.params['max_path_dist']
         normalized_path_dist = self.path_dist / max_distance
-        normalized_path_dist_reward = np.clip(1 - normalized_path_dist, -1, 1)
+        normalized_path_dist_reward = 1 - np.clip(normalized_path_dist, -1, 1)
         
         return normalized_path_dist_reward
 
