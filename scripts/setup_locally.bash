@@ -4,8 +4,13 @@
 if [[ $(lsb_release -rs) == "22.04" && $(lsb_release -is) == "Ubuntu" && $(uname -m) == "x86_64" ]]; then
     echo "Detected Ubuntu 22.04 Desktop. Continuing..."
 else
-    echo "Python venv install of package only compatible with Ubuntu 22.04. Consider using the dockerized version."
-    exit 1
+    echo "Python venv install of package is only officially supported on Ubuntu 22.04. Consider using the dockerized version."
+    read -p "Do you want to continue anyway? (y/n): " choice
+    case "$choice" in 
+      y|Y ) echo "Continuing despite the recommendation...";;
+      n|N ) echo "Exiting..."; exit 1;;
+      * ) echo "Invalid choice. Exiting..."; exit 1;;
+    esac
 fi
 
 # Perform system update and upgrade
@@ -22,7 +27,7 @@ sudo apt install -y webots
 sudo apt install nvidia-cuda-toolkit
 
 # Install Python 3 pip and venv
-sudo apt install python3.12-venv
+sudo apt install python3-venv
 sudo apt install -y python3-pip
 
 # Get the parent directory path
@@ -43,9 +48,6 @@ export TF_ENABLE_ONEDNN_OPTS=0
 
 # Activate virtual environment
 source "$parent_dir/venv/bin/activate"
-
-# Ensure the venv's bin directory is in the PATH
-export PATH="$parent_dir/venv/bin:$PATH"
 
 # Install PyTorch specifically for CUDA 11.8
 pip install torch --index-url https://download.pytorch.org/whl/cu118

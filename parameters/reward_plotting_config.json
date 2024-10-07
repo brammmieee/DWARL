@@ -21,6 +21,10 @@
         "plot_style": {"color": "green", "alpha": 1, "linestyle": "-"},
         "plot_nr": 2
     },
+    "r_linear_d_progress": {
+        "plot_style": {"color": "green", "alpha": 1, "linestyle": "-."},
+        "plot_nr": 2
+    },
 
 
     "r_path_dist": {

@@ -4,6 +4,7 @@ import argparse
 import os
 import sys
 import yaml
+import torch as th
 from gymnasium.wrappers import TimeLimit
 # import tensorrt
 
@@ -25,6 +26,9 @@ from environments.wrappers.dynamic_window_action_wrapper import DynamicWindowAct
 def parse_args():
     parser=argparse.ArgumentParser(description='Training script')
 
+    # Testing and debugging
+    parser.add_argument('--no_save', action='store_true', default=False, help='Do not save the config, model or logs')
+
     # Webots settings
     parser.add_argument('--headless', action='store_true', default=False, help='Run Webots in headless mode')
     
@@ -36,7 +40,9 @@ def parse_args():
     # Model settings
     parser.add_argument('--comment', type=str, default='test', help='Comment that hints the setup used for training')
     parser.add_argument('--policy_type', type=str, default='MlpPolicy', help='Policy type used for configuring the model')
-    parser.add_argument('--use_init_model', action='store_true', default=False, help='Continue training from a saved model')
+    parser.add_argument('--net_arch', type=dict, default=dict(pi=[256, 256, 256, 256, 256], vf=[256, 256, 256, 256, 256]), help='Network architecture for the policy and value function')
+    parser.add_argument('--activation_fn', type=str, choices=['ReLU', 'Tanh', 'Sigmoid'], default='ReLU', help='Activation function used in the network')
+    parser.add_argument('--use_init_model', action='store_true', default=False, help='Continue training from a saved model (latest model if datetime or steps are not provided)')
     parser.add_argument('--init_model_datetime', type=str, default=None, help='Date and time of the model to continue training from in the format YY_MM_DD__HH_MM_SS')
     parser.add_argument('--init_model_steps', type=int, default=None, help='Number of steps of the model to continue training from')
     
@@ -50,7 +56,16 @@ def parse_args():
     args=parser.parse_args()
     return args
 
-def save_config(args, dir):
+def save_config(args, dir):    
+    # Function to get values when simply wanting to continue training from latest model
+    if args.use_init_model and (args.init_model_datetime is None or args.init_model_steps is None):
+        latest_model_dir=at.get_latest_model_dir()
+        if latest_model_dir is None:
+            raise FileNotFoundError("No model directory found, continuing training is not possible.")
+        args.init_model_datetime=latest_model_dir.split('/')[-1]
+        args.init_model_steps=at.get_latest_model_steps(latest_model_dir)
+        # TODO: load other parameters from archive to continue training without setting envs, steps, etc.
+
     # Create config file from args and wrapper+base+proto parameters
     train_args={
         'comment': args.comment,
@@ -61,6 +76,8 @@ def save_config(args, dir):
         },
         'model': {
             'policy_type': args.policy_type,
+            'net_arch': args.net_arch,
+            'activation_fn': args.activation_fn,
             'use_init_model': args.use_init_model,
             'init_model_datetime': args.init_model_datetime,
             'init_model_steps': args.init_model_steps,
@@ -86,11 +103,12 @@ def save_config(args, dir):
         'base_params': at.load_parameters(['base_parameters.yaml']),
     }
 
-    # Save the config to a yaml file
-    os.makedirs(dir, exist_ok=True)
-    config_file=os.path.join(dir, "training_config.yaml")
-    with open(config_file, "w") as f:
-        yaml.dump(config, f, default_flow_style=False)
+    if not args.no_save:
+        # Save the config to a yaml file
+        os.makedirs(dir, exist_ok=True)
+        config_file=os.path.join(dir, "training_config.yaml")
+        with open(config_file, "w") as f:
+            yaml.dump(config, f, default_flow_style=False)
 
 def apply_time_limit(env):
     # Add time limit wrapper to limit the episode length without breaking Markov assumption
@@ -141,6 +159,12 @@ def train(args, model_dir, log_dir):
             'wb_headless': args.headless,
         }
     )
+
+    # Policy kwargs
+    policy_kwargs = {
+        'net_arch': args.net_arch,
+        'activation_fn': getattr(th.nn, args.activation_fn)
+    }
     
     # Creating PPO model with callbacks
     if not args.use_init_model:
@@ -148,11 +172,15 @@ def train(args, model_dir, log_dir):
             policy=policy_type,
             env=vec_env,
             tensorboard_log=log_dir,
+            policy_kwargs=policy_kwargs
         )
     else:
         model=load_init_model(args)
         model.set_env(vec_env)
         model.tensorboard_log=log_dir
+    # Disables logging
+    if args.no_save:
+        model.tensorboard_log=None
     checkpoint_callback=CheckpointCallback(
         save_freq=model_save_freq,
         save_path=model_dir,
@@ -175,13 +203,21 @@ def train(args, model_dir, log_dir):
     )
 
     # Train model
-    model.learn(
-        total_timesteps=steps,
-        callback=[checkpoint_callback, eval_callback],
-        log_interval=log_interval,
-        reset_num_timesteps=False,
-        progress_bar=True
-    )
+    if not args.no_save:
+        model.learn(
+            total_timesteps=steps,
+            callback=[checkpoint_callback, eval_callback],
+            log_interval=log_interval,
+            reset_num_timesteps=False,
+            progress_bar=True
+        )
+    else:
+        model.learn(
+            total_timesteps=steps,
+            log_interval=0,
+            reset_num_timesteps=False,
+            progress_bar=True
+        )
 
 def main():
     # Parse training arguments

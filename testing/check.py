@@ -17,16 +17,22 @@ from environments.wrappers.command_velocity_action_wrapper import CommandVelocit
 # env = DWAActWrapper(VObsWrapper(BaseEnv(render_mode='full', wb_open=True, wb_mode='testing')))
 
 # %%
-env = CVActWrapper(SLObsWrapper(BaseEnv(render_mode='full', wb_open=True, wb_mode='testing', proto_config='sparse_lidar_proto_config.json')))
+env = CVActWrapper(SLObsWrapper(BaseEnv(
+    render_mode='full', 
+    wb_open=True, 
+    wb_mode='testing', 
+    proto_config='sparse_lidar_proto_config.json',
+    plot_wrapped_obs=True
+)))
 
 # %%
-# check_env(env)
+check_env(env)
 
 # %%
 obs = env.reset(seed=0) #options={"map_nr":40, "nominal_dist":1})
 
 # %%
-action = np.array([1.0, 0.0]) # = policy(obs)
+action = np.array([0.0, 1.0]) # = policy(obs)
 obs, reward, done, _, _ = env.step(action)
 # print(obs)
 

@@ -4,16 +4,17 @@ DWARL is a comprehensive package designed for creating controller policies throu
 
 ## Installation and Setup
 
-The package can be installed locally with Python packages in a virtual environment (venv) or containerized. For training on a remote desktop, it is recommended to use the local installation due to issues with X11 forwarding in containerized installations.
+The package can be installed locally with Python packages in a virtual environment (venv) or containerized. For training on a remote desktop. The local install is created purely for running the training setup remotely i.c.w. with a remote desktop service, it's therefore recommended to use the containerized version on your local machine for a more foolproof setup procedure.
 
-### Local Installation (Recommended)
+### Local Installation (Recommended for Remote Systems)
 
 To install the package locally, follow these steps:
 
 1. Run the `setup_locally.py` script from the [scripts folder](./scripts/). This script checks system requirements, installs Webots2023b locally using `apt`, creates a Python venv in the main package folder, and installs the Python requirements.
 2. To activate the Python venv, run `source venv/bin/activate`.
+3. Restart VSCode and add the proper Python path to the [vscode config json file](./.vscode/settings.json) in order to use the interactive scripts. When running an interactive script vscode might prompt you to install the interactive kernell, please do so.
 
-### Docker Installation
+### Docker Installation (Recommended for Local Use)
 
 To install the containerized version of the package, follow these steps:
 
@@ -94,6 +95,22 @@ Proto configs allow you to change the configuration of the proto files used by W
     - Note: When adding a custom config that changes any proto properties, save the default setup in the `default_proto_config` to revert to the base configuration.
 
 Add template files with `{{key}}` items defined by the keys in the substitutions dictionary under the custom config. See the proto_configs folder for examples. Add non-template files to the `.gitignore`.
+
+## Notes on Notation and Conventions
+
+In this section, we provide documentation for the notation and conventions used in the codebase. This documentation ensures consistency and enhances code comprehension and extensibility. We adhere to SI units throughout the entire package, utilizing meters (m), meters per second (m/s), radians (rad), radians per second (rad/s), and other SI units.
+
+### Axis Systems
+
+In this system, the x-axis points to the right of the robot, the y-axis points forward, and positive rotation around the z-axis is clockwise. This choice is made to facilitate reasoning about similarities between Euclidean space and velocity space.
+
+### Vector Entries
+
+The vector entries follow the following order. Note that the linear velocity v (velocity in the robot's positive y direction) is the second entry in the velocity vector to simplify plotting.
+
+- **XY Space**: `[x, y]`
+- **Velocities**: `[omega, v]`
+- **Polar Coordinates**: `[angle, dist]`
 
 ## Utilities
 

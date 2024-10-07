@@ -122,8 +122,6 @@ def get_init_and_goal_poses(path, parameters=None):
         return init_pose, goal_pose, 1
 
     elif mode == 'random':
-        if 'nominal_distance' == None:
-            raise ValueError("Missing 'nominal_distance' parameter for init_and_goal_pose_mode: 'random'.")
         nom_dist = parameters['nominal_distance']
         sign = np.random.choice([-1, 1])
         rand_index = np.random.randint(0, len(path))
@@ -164,6 +162,27 @@ def get_cmd_vel(robot_node):
     lin_vel = np.sqrt(webots_vel[0]**2 + webots_vel[1]**2) # in plane global velocities (x and y) to forward vel
     return np.array([ang_vel, lin_vel])
 
+def apply_kinematic_constraints(params, cur_vel, target_vel):
+    omega_max = params['omega_max']
+    omega_min = params['omega_min']
+    alpha_max = params['alpha_max']
+    alpha_min = params['alpha_min']
+    a_max = params['a_max']
+    a_min = params['a_min']
+    v_max = params['v_max']
+    v_min = params['v_min']
+    dt = params['sample_time']
+
+    domega = target_vel[0] - cur_vel[0]
+    domega_clipped = np.clip(domega, alpha_min*dt, alpha_max*dt) 
+    omega_clipped = np.clip((cur_vel[0] + domega_clipped), omega_min, omega_max)
+
+    dv = target_vel[1] - cur_vel[1]
+    dv_clipped = np.clip(dv, a_min*dt, a_max*dt)
+    v = np.clip((cur_vel[1] + dv_clipped), v_min, v_max)
+
+    return np.array([omega_clipped, v])
+
 def precompute_lidar_values(num_lidar_rays):
     lidar_delta_psi = (2 * np.pi) / num_lidar_rays
     lidar_angles = np.arange(0, 2 * np.pi, lidar_delta_psi)
@@ -175,13 +194,16 @@ def precompute_lidar_values(num_lidar_rays):
         "lidar_sines": lidar_sines,
     }
 
-def lidar_to_point_cloud(parameters, precomputed, lidar_range_image):
+def lidar_to_point_cloud(parameters, precomputed, lidar_range_image, replace_value=0):
     # NOTE: Webots axis conventions w.r.t. the conventions of this package
-    with np.errstate(invalid='ignore'): # prevent runtime errors
-        lidar_points = np.column_stack(( 
-            lidar_range_image*-precomputed['lidar_sines'], #NOTE: minus because lidar type was set to fixed
-            lidar_range_image*-precomputed['lidar_cosines']
-            ))
+    lidar_range_image = np.array(lidar_range_image)
+    lidar_range_image[np.isinf(lidar_range_image)] = replace_value
+    lidar_range_image[np.isnan(lidar_range_image)] = replace_value
+
+    lidar_points = np.column_stack(( 
+        lidar_range_image*-precomputed['lidar_sines'], #NOTE: minus because lidar type was set to fixed
+        lidar_range_image*-precomputed['lidar_cosines']
+    ))
     # Remove rows (i.e. points) that have np.inf or np.nan in as either x or y value (causes issues in search tree)
     invalid_indices = np.logical_or(np.isinf(lidar_points).any(axis=1), np.isnan(lidar_points).any(axis=1))
     lidar_points = lidar_points[~invalid_indices]
