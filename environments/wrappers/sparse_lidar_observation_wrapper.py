@@ -48,16 +48,21 @@ class SparseLidarObservationWrapper(gym.ObservationWrapper):
 
     def process_lidar_data(self, lidar_data):
         # NOTE - the lidar data contains an offset wrt the robot's position!!!
-        lidar_data_array = np.array(lidar_data)
-
-        # Nomalize lidar data
+        # Parameters
         min_range = float(self.params['proto_substitutions']['minRange'])
         max_range = float(self.params['proto_substitutions']['maxRange'])
+
+        # Convert lidar data to numpy array and limit limit
+        lidar_data_array = np.array(lidar_data)
+
+        # Clip and replace invalid values with max range
+        lidar_data_array[np.isinf(lidar_data_array)] = max_range # this can happen when the lidar sensor doesn't detect anything
+        if np.isnan(lidar_data_array).any():
+            print("Warning: Lidar data contains NaN values. Replacing with max range.")
+        lidar_data_array[np.isnan(lidar_data_array)] = max_range # this shoudn't happen ergo the warning
+
+        # Nomalize lidar data
         normalized_array = normalize(lidar_data_array, min_range, max_range)
-        
-        # Replace nans and infs with 1.0 (max value)
-        normalized_array[np.isinf(normalized_array)] = 1.0
-        normalized_array[np.isnan(normalized_array)] = 1.0
 
         return normalized_array
 
