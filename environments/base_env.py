@@ -253,15 +253,12 @@ class BaseEnv(Supervisor, gym.Env):
         return progress_diff
             
     def get_normalized_path_d_heading(self):
-
-        if self.path_heading is not None and self.prev_path_heading is not None:
-            if self.params['c_path_d_heading'] == 0:
-                return 0
-            path_heading_diff = -(self.path_heading - self.prev_path_heading)
-            max_path_heading = self.params['omega_max']*self.params['sample_time']
-            normalized_path_heading = np.clip(path_heading_diff / max_path_heading, -1, 1)
-        else: # Robot is not between init and goal
-            normalized_path_heading = 0
+        robot_not_between_init_and_goal = self.path_heading is not None and self.prev_path_heading is not None
+        if robot_not_between_init_and_goal or self.params['c_path_d_heading'] == 0:
+            return 0
+        path_heading_diff = -(self.path_heading - self.prev_path_heading)
+        max_path_heading = self.params['omega_max']*self.params['sample_time']
+        normalized_path_heading = np.clip(path_heading_diff / max_path_heading, -1, 1)
 
         return normalized_path_heading
     
@@ -275,14 +272,12 @@ class BaseEnv(Supervisor, gym.Env):
         return normalized_path_dist_reward
 
     def get_normalized_path_heading_reward(self):
-        if self.path_heading is not None and self.prev_path_heading is not None:
-            if self.params['c_path_heading'] == 0:
-                return 0
-            max_path_heading = self.params['max_path_heading']
-            normalized_path_heading = self.path_heading / max_path_heading
-            normalized_path_heading_reward = np.clip(1 - normalized_path_heading, -1, 1)
-        else: # Robot is not between init and goal
-            normalized_path_heading_reward = 0
+        robot_not_between_init_and_goal = self.path_heading is not None and self.prev_path_heading is not None
+        if robot_not_between_init_and_goal or self.params['c_path_heading'] == 0:
+            return 0
+        max_path_heading = self.params['max_path_heading']
+        normalized_path_heading = self.path_heading / max_path_heading
+        normalized_path_heading_reward = np.clip(1 - normalized_path_heading, -1, 1)
 
         return normalized_path_heading_reward
     
