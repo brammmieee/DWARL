@@ -1,83 +1,152 @@
-import os
-import json
-import numpy as np
-from subprocess import Popen, PIPE
-import random
-from typing import Tuple, List, Dict
+from controller import Supervisor, Keyboard
+from shapely.affinity import translate, rotate
+from shapely.geometry import Point, Polygon
 from shapely.geometry import Polygon
 from shapely.geometry import box
 from shapely.strtree import STRtree
+from subprocess import Popen, PIPE
+import math as m
+import numpy as np
+import os
+import yaml
 
-def killall_webots():
-    command = "ps aux | grep webots | grep -v grep | awk '{print $2}' | xargs -r kill"
-    os.system(command)
+class WebotsEnv(Supervisor):
+    @staticmethod
+    def killall():
+        command = "ps aux | grep webots | grep -v grep | awk '{print $2}' | xargs -r kill"
+        os.system(command)
 
-def open_webots(cfg):       
-    # Create Webots command with specified mode and world file
-    world_file = os.path.join(self.worlds_dir, 'webots_world_file.wbt')
-    cmd = ['webots','--extern-urls', '--no-rendering', f'--mode={cfg.mode}', world_file]
+    @staticmethod
+    def open_world(cfg, path_to_worlds):       
+        # Create Webots command with specified mode and world file
+        world_file = os.path.join(path_to_worlds, 'webots_world_file.wbt')
+        cmd = ['webots','--extern-urls', '--no-rendering', f'--mode={cfg.mode}', world_file]
 
-    # Open Webots
-    wb_process = Popen(cmd, stdout=PIPE)
+        # Open Webots
+        wb_process = Popen(cmd, stdout=PIPE)
 
-    # Set the environment variable for the controller to connect to the supervisor
-    output = wb_process.stdout.readline().decode("utf-8")
-    ipc_prefix = 'ipc://'
-    start_index = output.find(ipc_prefix)
-    port_nr = output[start_index + len(ipc_prefix):].split('/')[0]
-    os.environ["WEBOTS_CONTROLLER_URL"] = ipc_prefix + str(port_nr)
+        # Set the environment variable for the controller to connect to the supervisor
+        output = wb_process.stdout.readline().decode("utf-8")
+        ipc_prefix = 'ipc://'
+        start_index = output.find(ipc_prefix)
+        port_nr = output[start_index + len(ipc_prefix):].split('/')[0]
+        os.environ["WEBOTS_CONTROLLER_URL"] = ipc_prefix + str(port_nr)
+        
+    def __init__(self, cfg, path_to_worlds):
+        super().__init__()
 
-def close_webots(self):
-    self.simulationQuit(0)
+        self.basic_timestep = int(self.getBasicTimeStep())
+        self.timestep = 2*self.basic_timestep #NOTE: basic timestep set 0.5*timestep for lidar update
+        
+        # Static node references
+        self.robot_node = self.getFromDef('ROBOT')
+        self.root_node = self.getRoot() # root node (the nodes seen in the Webots scene tree editor window are children of the root node)
+        self.robot_translation_field = self.robot_node.getField('translation')
+        self.robot_rotation_field = self.robot_node.getField('rotation')
+        self.root_children_field = self.root_node.getField('children') # used for inserting map node
+
+        # Lidar sensor and keyboard
+        self.lidar_node = self.getDevice('lidar')
+        self.lidar_node.enable(int(self.getBasicTimeStep()))
+        self.keyboard = Keyboard()
+
+        # Open the world
+        self.open_world(cfg, path_to_worlds)
     
-def init_webots(self):
-    # Static node references
-    super().__init__() # Env class instance (self) inherits Supervisor's methods + Robot's methods
-    self.basic_timestep = int(self.getBasicTimeStep())
-    self.timestep = 2*self.basic_timestep #NOTE: basic timestep set 0.5*timestep for lidar update
-    self.robot_node = self.getFromDef('ROBOT')
-    self.root_node = self.getRoot() # root node (the nodes seen in the scene tree editor window are children of the root node)
-    self.robot_translation_field = self.robot_node.getField('translation')
-    self.robot_rotation_field = self.robot_node.getField('rotation')
-    self.root_children_field = self.root_node.getField('children') # used for inserting map node
+    def reset(self, map_nr):
+        self.simulationReset()
+        super().step(self.basic_timestep) # super prevents confusion with self.step() defined below
+        self.reset_map(map_nr)
+        self.reset_robot()
 
-    # Lidar sensor and keyboard
-    self.lidar_node = self.getDevice('lidar')
-    self.lidar_node.enable(int(self.getBasicTimeStep()))
-    self.keyboard = Keyboard()
+    def reset_map(self, map_nr):
+        # Loading and translating map into position
+        self.root_children_field.importMFNodeFromString(position=-1, nodeString='DEF MAP ' + 'yaml_' + str(self.map_nr) + '{}')
+        map_node = self.getFromDef('MAP')
+        map_node_translation_field = map_node.getField('translation')
+        map_node_translation_field.setSFVec3f([self.params['map_res']*self.params['map_width'], -(self.params['map_res']*self.params['map_width'])-3*self.params['map_res'], 0.0])
+        super().step(self.basic_timestep)
 
-def reset_webots(self):
-    self.simulationReset()
-    super().step(self.basic_timestep) # super prevents confusion with self.step() defined below
+    def reset_robot(self):
+        # Positioning the robot at init_pos
+        self.robot_translation_field.setSFVec3f([self.init_pose[0], self.init_pose[1], self.params['z_pos']]) #TODO: add z_pos to init_pose[2]
+        self.robot_rotation_field.setSFRotation([0.0, 0.0, 1.0, self.init_pose[3]])
+        super().step(2*self.basic_timestep) #NOTE: 2 timesteps needed in order to succesfully set the init position
     
-    # Loading and translating map into position
-    self.root_children_field.importMFNodeFromString(position=-1, nodeString='DEF MAP ' + 'yaml_' + str(self.map_nr) + '{}')
-    map_node = self.getFromDef('MAP')
-    map_node_translation_field = map_node.getField('translation')
-    map_node_translation_field.setSFVec3f([self.params['map_res']*self.params['map_width'], -(self.params['map_res']*self.params['map_width'])-3*self.params['map_res'], 0.0])
-    super().step(self.basic_timestep)
+    def step(self, new_position, new_orientation):
+        self.robot_translation_field.setSFVec3f([
+            new_position[0], 
+            new_position[1], 
+            new_position[2]
+        ])
+        self.robot_rotation_field.setSFRotation([
+            0.0,
+            0.0,
+            1.0,
+            new_orientation
+        ])
+        super().step(self.basic_timestep)
+        super().step(self.basic_timestep) #NOTE: only after this timestep will the lidar data of the previous step be available
 
-    # Positioning the robot at init_pos
-    self.robot_translation_field.setSFVec3f([self.init_pose[0], self.init_pose[1], self.params['z_pos']]) #TODO: add z_pos to init_pose[2]
-    self.robot_rotation_field.setSFRotation([0.0, 0.0, 1.0, self.init_pose[3]])
-    super().step(2*self.basic_timestep) #NOTE: 2 timesteps needed in order to succesfully set the init position
+    def close_webots(self):
+        self.simulationQuit(0)
+        self.killall()
 
+    @property
+    def robot_position(self):
+        return np.array(self.robot_node.getPosition())
 
-def get_teleop_action(keyboard):
-    params = load_parameters('base_parameters.yaml')
+    @property
+    def robot_orientation(self):
+        return np.array(self.robot_node.getOrientation())
 
-    key = float(keyboard.getKey())
-    if key == 315: # up arrow
-        action = np.array([0.0, params['v_max']])
-    elif key == 317: # down arrow
-        action = np.array([0.0, params['v_min']])
-    elif key == 314: # left array
-        action = np.array([params['omega_min'], 0.0]) #.00001 to not get stuck on upper bounds
-    elif key == 316: # right arrow
-        action = np.array([params['omega_max'], 0.0]) #.00001 to not get stuck on upper bounds
-    else:
-        action = np.array([0.0, 0.0])
-    return action
+class map_dataloader:
+    def __init__(self, paths):
+        self.paths = paths # paths as in system paths
+
+    def load_dataset(self, dataset_name):
+        dataset = {}
+        path_to_datasets = self.paths.resources.datasets
+        map_configs_path = self.paths.resources.map_configs
+        path_to_grids = self.paths.resources.grids
+        path_to_paths = self.paths.resources.paths
+        path_to_protos = self.paths.resources.protos
+
+        with open(os.path.join(path_to_datasets, dataset_name + '.yaml'), 'r') as file:
+            dataset = yaml.safe_load(file)
+        
+        # at.load_from_json('train_map_nr_list.json', os.path.join(self.params_dir, 'map_nrs'))
+        return dataset
+    
+    def 
+    
+def check_collision(collision_tree, footprint_glob):
+    # Use the STRTree to find any intersecting boxes
+    result = collision_tree.query(footprint_glob, predicate='intersects')
+    collision_detected = len(result) > 0
+
+    if collision_detected:
+        return True
+    
+    return collision_detected
+
+def get_global_footprint_location(cur_pos, cur_orient_matrix, polygon_coords):
+    # Get position and orientation
+    position = cur_pos[:2]
+    orientation_matrix = cur_orient_matrix
+
+    # Construct translated and rotated polygon
+    footprint = Polygon(polygon_coords)
+    translated_footprint = translate(footprint, position[0], position[1])
+    angle_rad = m.atan2(orientation_matrix[3], orientation_matrix[0])  # atan2(sin, cos)
+    rotated_footprint = rotate(
+        translated_footprint, 
+        angle_rad-0.5*np.pi,
+        origin=Point(position[0], position[1]), 
+        use_radians=True
+    )
+    
+    return rotated_footprint
 
 def get_local_goal_pos(cur_pos, cur_orient_matrix, goal_pose): #TODO: remove 3rd dimension for efficiency
     '''
@@ -199,6 +268,7 @@ def get_init_and_goal_poses(path, parameters=None):
     else:
         raise ValueError("Unsupported mode provided.")
 
+##### NOTE!!! are we sure the get velocity call actually gives us a velocity? #####
 def get_cmd_vel(robot_node):
     webots_vel = robot_node.getVelocity()
     ang_vel = (-1)*webots_vel[-1] #NOTE: times (-1) because clockwise rotation is taken as the positve direction
@@ -344,7 +414,7 @@ def replace_placeholders(content, substitutions):
         content = content.replace(placeholder, str(value))
     return content
 
-def update_protos(cfg):
+def update_protos(cfg, path_to_proto):
     """
     Update the proto files based on the provided configuration.
 
@@ -362,7 +432,7 @@ def update_protos(cfg):
         # Load the template proto file
         template_proto_file_path = find_file(
             filename=template_proto_file_name, 
-            start_dir=cfg.paths.resources.protos
+            start_dir=path_to_proto
         )
         with open(template_proto_file_path, 'r') as file:
             template_proto_content = file.read()

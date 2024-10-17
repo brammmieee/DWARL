@@ -11,7 +11,13 @@ class ParameterizedRewardWrapper(gym.RewardWrapper):
 
         self.reward_buffers = {component: [] for component in reward_plotting_config.keys()}
         self.reward_style_map = {key: value["plot_style"] for key, value in reward_plotting_config.items() if self.reward_plot_map.get(key, 0) != 0}
+        
+    def step():
+        # called after update_robot_state_and_local_goal in baseEnv
+        self.update_path_dist_progress_and_heading()
 
+    def reset():
+        self.reset_path_dist_progress_and_heading()
     
     def reward(self, reward):
         modified_reward = self.get_reward(self.unwrapped.done, self.unwrapped.done_cause)
@@ -26,6 +32,19 @@ class ParameterizedRewardWrapper(gym.RewardWrapper):
         self.reward_buffers['total_reward'].append(total_reward)
         if len(self.reward_buffers['total_reward']) > self.params['reward_buffer_size']:
             self.reward_buffers['total_reward'].pop(0)
+
+    def reset_path_dist_progress_and_heading(self):
+        self.path_dist = 0
+        self.prev_path_dist = 0
+
+        self.path_progress = 0
+        self.prev_path_progress = 0
+
+        self.path_heading = 0
+        self.prev_path_heading = 0
+
+        self.init_progress = self.calculate_progress(self.init_pose)
+        self.goal_progress = self.calculate_progress(self.goal_pose)
 
     def update_path_dist_progress_and_heading(self):
         path_dist = np.inf

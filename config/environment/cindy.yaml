@@ -1,5 +1,6 @@
 # dataset_name: barn
-name: cindy
+name: cindy             # environment name
+dataset: barn           # dataset name
 start_and_goal:
   goal_tolerance: 0.1               # Tolerance for goal reaching [m]
   min_init2goal_dist: 0.1           # Minimum euclidian distance between initial and goal position [m]

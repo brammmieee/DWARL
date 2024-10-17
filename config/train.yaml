@@ -2,6 +2,7 @@ paths:
   root: ${hydra:runtime.cwd}/..
   resources: 
     datasets: ${paths.root}/resources/datasets
+    map_configs: ${paths.root}/resources/map_configs
     grids: ${paths.root}/resources/grids
     paths: ${paths.root}/resources/paths
     protos: ${paths.root}/resources/protos

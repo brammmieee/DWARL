@@ -4,7 +4,6 @@ import numpy as np
 import math as m
 import gymnasium as gym
 from subprocess import Popen, PIPE
-from controller import Supervisor, Keyboard
 import matplotlib.pyplot as plt
 from matplotlib.patches import Polygon as plt_polygon
 from matplotlib.lines import Line2D
@@ -15,15 +14,18 @@ from scipy.interpolate import interp1d
 import utils.env_tools as et
 import utils.admin_tools as at
 
-class BaseEnv(Supervisor, gym.Env):
+class BaseEnv(gym.Env):
     package_dir = os.path.abspath(os.pardir)
     
-    def __init__(self, cfg):        
+    def __init__(self, cfg, paths):
+        super().__init__()
+              
         self.cfg = cfg
+        self.paths = paths
         # self.render_canvas_drawn = False
 
         # Update the proto files according to the configuration
-        et.update_protos(self.cfg.proto_reconfiguration)
+        # et.update_protos(self.cfg.proto_reconfiguration, self.paths.resources.protos)
         
         # Precomputations
         self.precomputed_lidar_values = et.precompute_lidar_values(
@@ -31,11 +33,11 @@ class BaseEnv(Supervisor, gym.Env):
         )
 
         # Training maps and map bounds
-        self.train_map_nr_list = at.load_from_json('train_map_nr_list.json', os.path.join(self.params_dir, 'map_nrs'))
+        et.load_dataset(self.cfg.dataset, self.paths)
         self.map_bounds_polygon = et.compute_map_bound_polygon(self.params)
 
-        et.open_webots(cfg.webots)
-        et.init_webots()
+        # Create a Webots environment
+        self.webots_env = et.WebotsEnv(cfg.webots, self.paths.resources.worlds)
 
         # Space definitions
         # NOTE: u must use an action wrapper to set self.action_space
@@ -44,57 +46,64 @@ class BaseEnv(Supervisor, gym.Env):
     def reset(self, seed=None, options=None):
         super().reset(seed=seed) # RNG seeding only done once (i.e. when value is not None)
         
-        # Reset map, path, init/goal pose and simulation
+        # Reset map, path, init/goal pose, simulation and collision tree
         self.reset_map_path_and_poses()
-        self.reset_webots()
-
-        # Compute collision tree for efficient collision detection (depends on new grid)
+        self.webots_env.reset(self.map_nr)
         self.collision_tree = et.precompute_collision_detection(self.grid, self.params['map_res'])
 
         # Updating prev_pos, cur_pos, cur_orient, footprint in global frame, and getting new local goal
-        self.update_robot_state_and_local_goal(method='reset')
-
-        # Resetting the path progress
-        self.reset_path_dist_progress_and_heading()
-
-        self.cur_vel = np.array([0.0, 0.0])
-        self.cmd_vel = np.array([0.0, 0.0])
+        self.cur_pos = self.webots_env.robot_position
+        self.cur_orient_matrix = self.webots_env.robot_orientation
+        self.footprint_glob = et.get_global_footprint_location(
+            self.cur_pos, 
+            self.cur_orient_matrix, 
+            self.params['polygon_coords']
+        )
+        self.local_goal_pos = et.get_local_goal_pos(
+            self.cur_pos, 
+            self.cur_orient_matrix, 
+            self.goal_pose
+        )
+        self.cur_vel, self.cmd_vel = np.array([0.0, 0.0]), np.array([0.0, 0.0])
         
         self.observation = self.get_obs()
-        if self.cfg.render:
-            self.render(method='reset')
+        # self.render(method='reset')
 
         return self.observation, {} # = info
 
     def step(self, action):
+        # NOTE: u must use an action wrapper for turning the action vector into a cmd_vel
+        self.cmd_vel = action
+
         # Updating previous values before updating
         self.prev_pos = self.cur_pos
         self.prev_observation = self.observation
            
-        if self.teleop == True:
-            action = et.get_teleop_action(self.keyboard)
-
-        # NOTE: u must use an action wrapper for turning the action vector inot a cmd_vel
-        self.cmd_vel = action
-
         # Inacting the action (i.e. limit velocity to kinematically feasible values and forward simulate robot)
         self.cur_vel = et.apply_kinematic_constraints(self.params, self.cur_vel, self.cmd_vel)
         pos, orient = et.compute_new_pose(self.params, self.cur_pos, self.cur_orient_matrix, self.cur_vel)
-        self.robot_translation_field.setSFVec3f([pos[0], pos[1], pos[2]])
-        self.robot_rotation_field.setSFRotation([0.0, 0.0, 1.0, orient])
         
-        super().step(self.basic_timestep) # WEBOTS - Step()
+        self.webots_env.step(pos, orient)
 
         # Updating prev_pos, cur_pos, cur_orient, footprint in global frame, and getting new local goal
-        self.update_robot_state_and_local_goal(method='step')
-        self.update_path_dist_progress_and_heading()
+        self.prev_pos = self.cur_pos
+        self.cur_pos = self.webots_env.robot_position
+        self.cur_orient_matrix = self.webots_env.robot_orientation
+        self.footprint_glob = et.get_global_footprint_location(
+            self.cur_pos, 
+            self.cur_orient_matrix, 
+            self.params['polygon_coords']
+        )
+        self.local_goal_pos = et.get_local_goal_pos(
+            self.cur_pos, 
+            self.cur_orient_matrix, 
+            self.goal_pose
+        )
 
         self.observation = self.get_obs()
-        self.done, done_cause = self.get_done()
-        self.reward = self.reward(self.done, done_cause)
-
-        if self.cfg.render:
-            self.render(method='step')
+        self.done, self.done_cause = self.get_done()
+        self.reward = self.reward(self.done, self.done_cause)
+        # self.render(method='step')
 
         return self.observation, self.reward, self.done, False, {} # last 3: done, truncated, info
     
@@ -103,8 +112,7 @@ class BaseEnv(Supervisor, gym.Env):
         return 0.0 # = reward
 
     def get_obs(self):
-        # Getting lidar data and converting to pointcloud
-        super().step(self.basic_timestep) #NOTE: only after this timestep will the lidar data of the previous step be available
+        # super().step(self.basic_timestep) # NOTE: moved to webots_env but might be needed here (weird bugfix)
         self.lidar_range_image = self.lidar_node.getRangeImage()
 
         return self.lidar_range_image
@@ -123,25 +131,12 @@ class BaseEnv(Supervisor, gym.Env):
             done_cause = 'outside_map'
             return True, done_cause
         
-        if self.check_collision():
+        if et.check_collision(self.collision_tree, self.footprint_glob):
             done_cause = 'collision'
             return True, done_cause
 
         # When none of the done conditions are met
         return False, done_cause
-
-    def reset_path_dist_progress_and_heading(self):
-        self.path_dist = 0
-        self.prev_path_dist = 0
-
-        self.path_progress = 0
-        self.prev_path_progress = 0
-
-        self.path_heading = 0
-        self.prev_path_heading = 0
-
-        self.init_progress = self.calculate_progress(self.init_pose)
-        self.goal_progress = self.calculate_progress(self.goal_pose)
 
     def reset_map_path_and_poses(self):
         train_map_nr_idx = random.randint(0, len(self.train_map_nr_list)-1)
@@ -152,51 +147,12 @@ class BaseEnv(Supervisor, gym.Env):
 
         self.init_pose, self.goal_pose, self.direction = et.get_init_and_goal_poses(path=self.path, parameters=self.params) # pose -> [x,y,psi]
 
-    def update_robot_state_and_local_goal(self, method):
-        # Update previous position, current position, current orientation, and global footprint location
-        if method == 'step':
-            self.prev_pos = np.array(self.cur_pos)
-        self.cur_pos = np.array(self.robot_node.getPosition())
-        self.cur_orient_matrix = np.array(self.robot_node.getOrientation())
-        self.footprint_glob = self.get_global_footprint_location(
-            self.cur_pos, self.cur_orient_matrix, self.params['polygon_coords']
-        )
-        
-        # Calculate local goal position
-        self.local_goal_pos = et.get_local_goal_pos(self.cur_pos, self.cur_orient_matrix, self.goal_pose)
-
-    def get_global_footprint_location(self, cur_pos, cur_orient_matrix, polygon_coords):
-        # Get position and orientation
-        position = cur_pos[:2]
-        orientation_matrix = cur_orient_matrix
-
-        # Construct translated and rotated polygon
-        footprint = Polygon(polygon_coords)
-        translated_footprint = translate(footprint, position[0], position[1])
-        angle_rad = m.atan2(orientation_matrix[3], orientation_matrix[0])  # atan2(sin, cos)
-        rotated_footprint = rotate(
-            translated_footprint, 
-            angle_rad-0.5*np.pi,
-            origin=Point(position[0], position[1]), 
-            use_radians=True
-        )
-        
-        return rotated_footprint
-    
-    def check_collision(self):
-        # Use the STRTree to find any intersecting boxes
-        result = self.collision_tree.query(self.footprint_glob, predicate='intersects')
-        collision_detected = len(result) > 0
-
-        if collision_detected:
-            return True
-        
-        return collision_detected
-    
     def close(self):
-        et.close_webots()
+        self.webots_env.close()
 
     # def render(self, method=None):
+    #     if not self.cfg.render:
+    #         return
     #     # Initialize the plot or remove the previous data 
     #     if self.render_canvas_drawn == False:
     #         self.render_init_plot()

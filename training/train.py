@@ -8,12 +8,12 @@ from stable_baselines3.common.vec_env import SubprocVecEnv
 from stable_baselines3.ppo import PPO
 import hydra
 import torch as th
-import utils.wrappers.wrapper_tools as wt
+import utils.wrapper_tools as wt
 
 @hydra.main(config_path='../config', config_name='train')
 def main(cfg : DictConfig):
     # Environment setup
-    base_env = BaseEnv(cfg.environment)
+    base_env = BaseEnv(cfg.environment, cfg.paths)
     wrapped_env = wt.wrap_env(cfg.wrappers, base_env)
     vec_env=make_vec_env( #NOTE: Wraps the environment in a Monitor wrapper to have additional training information
         env_id=wrapped_env,
@@ -24,8 +24,8 @@ def main(cfg : DictConfig):
 
     # Model setup
     model=PPO(
-        policy=cfg.model.policy_type,
         env=vec_env,
+        policy=cfg.model.policy_type,
         tensorboard_log=cfg.paths.outputs.logs,
         policy_kwargs={
             'net_arch': cfg.model.net_arch,
@@ -66,9 +66,6 @@ def main(cfg : DictConfig):
 if __name__ == '__main__':
     main()
 
-
-
-
 #### Continue Training Stuff #### TODO
 # def load_init_model(args):
 #     if args.init_model_datetime is None or args.init_model_steps is None:
@@ -95,7 +92,6 @@ if __name__ == '__main__':
     #     model=load_init_model(args)
     #     model.set_env(vec_env)
     #     model.tensorboard_log=log_dir
-
 
 ### Force quit which is not working anyways ###
     # try:
