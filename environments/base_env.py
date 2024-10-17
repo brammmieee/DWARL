@@ -19,7 +19,7 @@ class BaseEnv(gym.Env):
     
     def __init__(self, cfg, paths):
         super().__init__()
-              
+
         self.cfg = cfg
         self.paths = paths
         # self.render_canvas_drawn = False
@@ -33,8 +33,10 @@ class BaseEnv(gym.Env):
         )
 
         # Training maps and map bounds
-        et.load_dataset(self.cfg.dataset, self.paths)
-        self.map_bounds_polygon = et.compute_map_bound_polygon(self.params)
+        # et.load_dataset(self.cfg.dataset, self.paths)
+        # self.map_bounds_polygon = et.compute_map_bound_polygon(self.params)
+
+        self.map_data = et.map_dataloader(self.cfg.map_dataset_name, self.paths)
 
         # Create a Webots environment
         self.webots_env = et.WebotsEnv(cfg.webots, self.paths.resources.worlds)
@@ -131,22 +133,14 @@ class BaseEnv(gym.Env):
             done_cause = 'outside_map'
             return True, done_cause
         
-        if et.check_collision(self.collision_tree, self.footprint_glob):
+        # Collision with obstacles
+        if len(self.collision_tree.query(footprint_glob, predicate='intersects')) > 0:
             done_cause = 'collision'
             return True, done_cause
 
         # When none of the done conditions are met
         return False, done_cause
-
-    def reset_map_path_and_poses(self):
-        train_map_nr_idx = random.randint(0, len(self.train_map_nr_list)-1)
-        self.map_nr = self.train_map_nr_list[train_map_nr_idx]
-        self.grid = np.load(os.path.join(self.grids_dir, 'grid_' + str(self.map_nr) + '.npy'))
-        path = np.load(os.path.join(self.paths_dir, 'path_' + str(self.map_nr) + '.npy'))
-        self.path = np.multiply(path, self.params['map_res']) # apply scaling
-
-        self.init_pose, self.goal_pose, self.direction = et.get_init_and_goal_poses(path=self.path, parameters=self.params) # pose -> [x,y,psi]
-
+    
     def close(self):
         self.webots_env.close()
 
@@ -240,4 +234,3 @@ class BaseEnv(gym.Env):
     #             self.goal_pose_plot.remove()
     #     except AttributeError:
     #         pass
-
