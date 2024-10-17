@@ -124,14 +124,19 @@ def get_init_and_goal_poses(path, parameters):
             init_index = np.random.choice(init_options)
             goal_index =  np.max(np.argwhere(cum_path_length < cum_path_length[init_index] + nom_dist))  # Find point within nominal distance from init_index
         elif mode == 'random_distance':
-            init_index, goal_index = np.sort([random.randint(0, path.shape[0]-1) for _ in range(2)])
-            while init_index == goal_index:
+            distance = 0
+            init_index = 0
+            goal_index = 0
+            while distance < parameters['min_init2goal_dist'] and goal_index <= init_index:
                 init_index, goal_index = np.sort([random.randint(0, path.shape[0]-1) for _ in range(2)])
+                distance = np.linalg.norm(path[init_index] - path[goal_index])
+        else:
+            raise ValueError(f"Invalid mode '{mode}' for getting initial and goal poses.")
 
         if path.shape[0] > init_index + 1:
             init_pose = create_pose(path[init_index], calculate_orientation(path[init_index], path[init_index + 1]))
         else:
-            init_pose = create_pose(path[init_index], 0.0)  # This should not happen
+            raise ValueError(f"Invalid init_index '{init_index}' for path of length '{path.shape[0]}'.")
         if path.shape[0] > goal_index + 1:  # TODO: Computing a goal pose should not be necessary
             goal_pose = create_pose(path[goal_index], calculate_orientation(path[goal_index], path[goal_index + 1]))
         else:
