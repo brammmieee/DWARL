@@ -1,0 +1,2 @@
+time_limit:
+  max_episode_steps: 600                 # maximum episode steps [s]

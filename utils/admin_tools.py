@@ -1,22 +1,8 @@
 import os
-import yaml
-import json
-import pickle
 import datetime
-from typing import List, Union, Any, Dict
-
-def write_pickle_file(file_name, file_dir, value):
-    # NOTE: file dir is relative to package folder
-    package_dir = os.path.abspath(os.pardir)
-    pickle_file_path = os.path.join(package_dir, file_dir, file_name + '.pickle')
-    with open(pickle_file_path, "wb") as file:
-        pickle.dump(value, file, protocol=pickle.HIGHEST_PROTOCOL)
-    
-def read_pickle_file(file_name, file_dir):
-    pickle_file_path = os.path.join(file_dir, file_name + '.pickle')
-    with open(pickle_file_path, "rb") as file:
-        pickle_file = pickle.load(file)
-        return pickle_file
+import json
+import random
+from typing import List, Tuple, Dict
 
 def get_date_time():
     current_date = datetime.datetime.now()  # Returns current date and time
@@ -40,7 +26,7 @@ def get_latest_model_dir():
         latest_model_dir = max(model_dirs)
         return os.path.join(model_dir, latest_model_dir)
     else:
-        return None
+        raise FileNotFoundError("No model directory found.")
 
 def get_latest_model_steps(model_dir):
     # Get the latest model steps
@@ -56,88 +42,79 @@ def get_latest_model_steps(model_dir):
         return max(model_steps)
     else:
         return None
-
-def load_parameters(file_name_list: Union[str, List[str]], start_dir=os.path.abspath(os.pardir)):
+    
+def sample_training_test_map_nrs(first_map_idx: int, last_map_idx: int, training_ratio: float) -> Tuple[List[int], List[int]]:
     """
-    Load parameters from YAML or JSON files based on the given file names, searching from a specific start directory or default directory.
+    Splits a range of numbers into training and testing lists based on a given ratio.
+    
+    Args:
+    first_map_idx (int): The first index of the map number range.
+    last_map_idx (int): The last index of the map number range.
+    training_ratio (float): The fraction of the total range to be used for training.
+    
+    Returns:
+    Tuple[List[int], List[int]]: A tuple containing two lists:
+        - The first list contains the training indices.
+        - The second list contains the testing indices.
+    """
+    all_numbers = list(range(first_map_idx, last_map_idx + 1))
+    training_list_size = int(len(all_numbers) * training_ratio)
+    training_list = random.sample(all_numbers, training_list_size)
+    testing_list = [x for x in all_numbers if x not in training_list]
+    
+    return training_list, testing_list
+
+def create_level_dictionary(input_list: List[int], num_levels: int, total_maps: int) -> Dict[str, List[int]]:
+    """
+    Organizes a list of map indices into a dictionary based on specified levels.
+    
+    Args:
+    input_list (List[int]): The list of integers (map indices) to be organized.
+    num_levels (int): The number of levels to divide the maps into.
+    total_maps (int): The total number of maps.
+    
+    Returns:
+    Dict[str, List[int]]: A dictionary where each key corresponds to a level ("lvl x") and each value is a list of integers assigned to that level.
+    """
+    level_dict = {}
+    maps_per_level = total_maps // num_levels  # Assumes an equal distribution of maps across levels
+    for i in range(1, num_levels + 1):
+        lower_bound = (i - 1) * maps_per_level
+        if i < num_levels:
+            upper_bound = i * maps_per_level
+        else:
+            upper_bound = total_maps  # Ensure the last level includes any remaining maps due to integer division
+
+        level_key = f'lvl {i}'
+        level_values = [num for num in input_list if lower_bound <= num < upper_bound]
+        level_dict[level_key] = level_values
+
+    return level_dict
+
+def sample_maps(train_map_nr_dict, test_map_nr_dict, maps_per_level, lowest_level, highest_level):
+    """
+    Sample maps from level-based dictionaries for training and testing.
 
     Args:
-        file_name_list (Union[str, List[str]]): A single file name or a list of file names.
-        start_dir (str, optional): The directory from which to start the search for files.
+    train_map_nr_dict (dict): A dictionary containing training maps categorized by levels.
+    test_map_nr_dict (dict): A dictionary containing testing maps categorized by levels.
+    maps_per_level (int): Number of maps to sample per level.
+    lowest_level (int): Lowest level to consider.
+    highest_level (int): Highest level to consider.
 
     Returns:
-        dict: A dictionary containing the loaded parameters.
-
+    tuple: Two lists containing the sampled training and testing map numbers.
     """
-    if isinstance(file_name_list, str):
-        file_name_list = [file_name_list]
-
-    parameters = {}
-    for file_name in file_name_list:
-        try:
-            file_path = find_file(file_name, start_dir)
-            _, file_extension = os.path.splitext(file_path)
-            with open(file_path, 'r') as stream:
-                if file_extension == '.yaml' or file_extension == '.yml':
-                    try:
-                        parameters.update(yaml.safe_load(stream))
-                    except yaml.YAMLError as exc:
-                        print(f"Error loading YAML from {file_path}: {exc}")
-                elif file_extension == '.json':
-                    try:
-                        json_dict = json.load(stream)
-                        parameters.update(json_dict)
-                    except json.JSONDecodeError as exc:
-                        print(f"Error loading JSON from {file_path}: {exc}")
-                else:
-                    print(f"Unsupported file format for {file_path}")
-        except FileNotFoundError as e:
-            print(e)
-
-    return parameters
-
-def save_to_json(data: Dict[str, Any], filename: str, file_dir: str) -> None:
-    """
-    Save data to a JSON file, creating the directory if it doesn't exist.
-
-    Args:
-    data (dict): The data to be saved.
-    filename (str): The name of the file to save the data in.
-    file_dir (str): The directory relative to the package where the file should be saved.
-    """
-    # Get the directory relative to the package folder
-    package_dir = os.path.abspath(os.pardir)
-    json_file_path = os.path.join(package_dir, file_dir)
+    train_map_nr_list = []
+    test_map_nr_list = []
     
-    # Create directory if it doesn't exist
-    os.makedirs(json_file_path, exist_ok=True)
-    
-    # Create the full path to the file
-    full_path = os.path.join(json_file_path, filename)
-    
-    # Save the data to JSON file
-    with open(full_path, 'w') as json_file:
-        json.dump(data, json_file)
-
-def load_from_json(filename: str, file_dir: str) -> Dict[str, Any]:
-    """
-    Load data from a JSON file.
-
-    Args:
-    filename (str): The name of the file to load the data from.
-    file_dir (str): The directory relative to the package where the file is located.
-
-    Returns:
-    dict: The data loaded from the JSON file.
-    """
-    # Get the directory relative to the package folder
-    package_dir = os.path.abspath(os.pardir)
-    json_file_path = os.path.join(package_dir, file_dir, filename)
-    
-    # Load the data from JSON file
-    if os.path.exists(json_file_path):
-        with open(json_file_path, 'r') as json_file:
-            data = json.load(json_file)
-        return data
-    else:
-        raise FileNotFoundError(f"No file found at {json_file_path}")
+    for i, map_nr_dict in enumerate([train_map_nr_dict, test_map_nr_dict]):
+        for lvl in range(lowest_level, highest_level + 1):
+            level_key = f'lvl {lvl}'
+            map_nr_list = map_nr_dict.get(level_key, [])
+            if i == 0:  # Training maps
+                train_map_nr_list.extend(sorted(random.sample(map_nr_list, maps_per_level)))
+            else:  # Testing maps
+                test_map_nr_list.extend(sorted(random.sample(map_nr_list, maps_per_level)))
+                
+    return train_map_nr_list, test_map_nr_list

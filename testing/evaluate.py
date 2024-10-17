@@ -13,7 +13,7 @@ from environments.wrappers.dynamic_window_action_wrapper import DynamicWindowAct
 import matplotlib.pyplot as plt
 
 import utils.admin_tools as at
-import utils.base_tools as bt
+import utils.env_tools as bt
 
 # %% Set the following parameters
 date_time = '24_07_09__15_06_25'

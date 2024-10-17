@@ -1,0 +1,43 @@
+# dataset_name: barn
+name: cindy
+start_and_goal:
+  goal_tolerance: 0.1               # Tolerance for goal reaching [m]
+  min_init2goal_dist: 0.1           # Minimum euclidian distance between initial and goal position [m]
+  nominal_distance: 1.5             # Nominal distance between initial and goal position [m]
+  init_and_goal_pose_mode: random   # full_path, random (nominal distance apart), random_distance (min. min_init2goal_dist apart)
+webots:                 # Webots simulation parameters
+  sample_time: 0.05       # sample time [s]
+  mode: fast              # simulation mode (fast or real-time)
+  no_rendering: true      # rendering mode (true or false)
+render: false           # rendering enabled (true or false)
+proto_reconfiguration:    # reconfiguration of the Webots proto files
+  template_name: RpLidarA2_template.proto  # name of the proto template file (input)
+  output_name: RpLidarA2.proto  # name of the output proto file (output)
+  substitutions:          # substitutions for the proto template
+    defaultFrequency: 20          # default frequency of the lidar [Hz]
+    fieldOfView: 6.283185307      # field of view of the lidar [rad]
+    horizontalResolution: 64      # horizontal resolution of the lidar [steps]
+    maxFrequency: 40              # maximum frequency of the lidar [Hz]
+    maxRange: 3.0                 # maximum range of the lidar [m]
+    minFrequency: 20              # minimum frequency of the lidar [Hz]
+    minRange: 0.05                # minimum range of the lidar [m]
+    near: 0.05                    # near clipping distance of the lidar [m]
+    noise: 0.0                    # noise level of the lidar measurements
+    numberOfLayers: 1             # number of layers of the lidar
+    resolution: 0.05              # resolution of the lidar [m]
+    type: fixed                   # type of the lidar (fixed or rotating)
+vehicle:
+  kinematics:
+    v_max: 0.2        # maximum linear velocity [m/s]
+    v_min: -0.2       # minimum linear velocity [m/s]
+    a_max: 0.3        # maximum linear acceleration [m/s^2]
+    a_min: -0.3       # minimum linear acceleration [m/s^2]
+    omega_max: 0.6    # maximum angular velocity [rad/s]
+    omega_min: -0.6   # minimum angular velocity [rad/s]
+    alpha_max: 0.8    # maximum angular acceleration [rad/s^2]
+    alpha_min: -0.8   # minimum angular acceleration [rad/s^2]
+  dimensions: 
+    polygon_coordinates: [[0.16, 0.08], [0.16, -0.24], [0.0, -0.4], [-0.16, -0.24], [-0.16, 0.08]] # robot footprint polygon coordinates
+    lidar_y_pos: -0.07075 # y position of the lidar [m]
+    z_pos: 0.05           # z position of the robot [m] (used for kinematic robot movement)
+  

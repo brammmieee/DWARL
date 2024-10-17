@@ -1,0 +1,38 @@
+paths:
+  root: ${hydra:runtime.cwd}/..
+  resources: 
+    datasets: ${paths.root}/resources/datasets
+    grids: ${paths.root}/resources/grids
+    paths: ${paths.root}/resources/paths
+    protos: ${paths.root}/resources/protos
+    worlds: ${paths.root}/resources/worlds
+  outputs:
+    logs: ${hydra:runtime.output_dir}/logs
+    models: ${hydra:runtime.output_dir}/models
+  
+defaults:
+- _self_
+- environment:
+    - cindy
+- wrappers:
+    - parameterized_reward
+    - sparse_lidar_observation
+    - command_velocity_action
+    - time_limit
+
+steps: 10000000             # number of training steps
+envs: 6    # number of parallel environments (and Webots instances)
+continue_training: false    # continue training from a previous model
+init_model_datetime: null   # datetime of the model to continue training from 
+init_model_steps: null      # steps of the model to continue training from
+log_interval: 10            # logging interval for logging callback parsed to model [steps]
+callbacks:
+  model_eval_freq: 10000      # model evaluation frequency [steps]
+  model_n_eval_episodes: 25   # number of episodes for model evaluation [episodes]
+  model_save_freq: 10000      # model saving frequency [steps]
+model:
+  policy_type: MlpPolicy            # policy type for the neural network
+  activation_fn: ReLU         # activation function for the neural network
+  net_arch:                         # network architecture for the neural network
+    pi: [256, 256, 256, 256, 256]     # policy network architecture
+    vf: [256, 256, 256, 256, 256]     # value function network architecture
