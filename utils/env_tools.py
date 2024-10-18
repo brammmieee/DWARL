@@ -129,18 +129,96 @@ class map_dataloader:
 
     def get_init_and_goal_poses(self, path, parameters=None):
         print("Getting initial and goal poses.")
+    
+    def get_init_and_goal_poses(self, path, mode):
+        if mode == 'full_path':
+            init_pose = create_pose(path[0], calculate_orientation(path[0], path[min(2, len(path) - 1)]))
+            goal_pose = create_pose(path[-1])
+            direction = 1
+            return init_pose, goal_pose, 1
+
+        elif mode == 'random':
+            nom_dist = parameters['nominal_distance']
+            sign = np.random.choice([-1, 1])
+            rand_index = np.random.randint(0, len(path))
+
+            i = rand_index
+            dist_traveled = 0
+            while 0 <= i + sign < len(path):
+                segment_dist = np.linalg.norm(path[i + sign] - path[i])
+                if dist_traveled + segment_dist >= nom_dist:
+                    init_pose = create_pose(path[rand_index], calculate_orientation(path[rand_index], path[rand_index + sign]))
+                    goal_pose = create_pose(path[i], calculate_orientation(path[i], path[i + sign]))
+                    direction = sign
+                    return init_pose, goal_pose, direction
+                dist_traveled += segment_dist
+                i += sign
+
+            # Recursive call fallback for cases when distance is not met
+            sign *= -1
+            return self.get_init_and_goal_poses(path, parameters={'init_and_goal_pose_mode': mode, 'nominal_distance': nom_dist, 'sign': sign, 'index': rand_index})
+
+        elif mode == 'random_distance':
+            init_path_index = np.random.randint(0, len(path) - 1)
+            goal_path_index = np.random.randint(0, len(path) - 1)
+            if np.linalg.norm(path[init_path_index] - path[goal_path_index]) < parameters['min_init2goal_dist']:
+                return self.get_init_and_goal_poses(path, parameters=parameters)
+            else:
+                init_pose = create_pose(path[init_path_index], calculate_orientation(path[init_path_index], path[goal_path_index]))
+                goal_pose = create_pose(path[goal_path_index], calculate_orientation(path[goal_path_index], path[init_path_index]))
+                direction = 1 if init_path_index < goal_path_index else -1
+                return init_pose, goal_pose, direction
+            
+        else:
+            raise ValueError("Unsupported mode provided.")
+        
+    def get_init_and_goal_poses(path, parameters):
+        # General function to get initial and goal poses on a path.
+
+        # Args:
+        #     path: List or array of points defining the path.
+        #     parameters: Dictionary containing parameters like nominal distance and mode ('random', 'full_path', 'random_distance').
+        mode = parameters.get('init_and_goal_pose_mode')
+
+        direction = np.random.choice([-1, 1])
+        if direction == -1:
+            path = path[::-1]
+
+        if mode == 'full_path':
+            init_pose = create_pose(path[0], calculate_orientation(path[0], path[min(2, len(path) - 1)]))
+            goal_pose = create_pose(path[-1])
+        else: 
+            if mode == 'random':
+                nom_dist = parameters['nominal_distance']
+                cum_path_length = np.cumsum(np.linalg.norm(path[1:] - path[:-1], axis=1))  # Cummulative path length
+                init_options = np.argwhere(cum_path_length[-1] - cum_path_length > nom_dist).squeeze()
+                
+                init_index = np.random.choice(init_options)
+                goal_index =  np.max(np.argwhere(cum_path_length < cum_path_length[init_index] + nom_dist))  # Find point within nominal distance from init_index
+            elif mode == 'random_distance':
+                distance = 0
+                init_index = 0
+                goal_index = 0
+                while distance < parameters['min_init2goal_dist'] and goal_index <= init_index:
+                    init_index, goal_index = np.sort([random.randint(0, path.shape[0]-1) for _ in range(2)])
+                    distance = np.linalg.norm(path[init_index] - path[goal_index])
+            else:
+                raise ValueError(f"Invalid mode '{mode}' for getting initial and goal poses.")
+
+            if path.shape[0] > init_index + 1:
+                init_pose = create_pose(path[init_index], calculate_orientation(path[init_index], path[init_index + 1]))
+            else:
+                raise ValueError(f"Invalid init_index '{init_index}' for path of length '{path.shape[0]}'.")
+            if path.shape[0] > goal_index + 1:  # TODO: Computing a goal pose should not be necessary
+                goal_pose = create_pose(path[goal_index], calculate_orientation(path[goal_index], path[goal_index + 1]))
+            else:
+                goal_pose = create_pose(path[goal_index], 0.0)  # This can happen
+
+            path = path[init_index:goal_index + 1]
+
+        return init_pose, goal_pose, path
         
     def precompute_collision_detection(gridmap, resolution):
-        """
-        Precomputes the collision detection data structure.
-
-        Args:
-        gridmap (list of list of int): Occupancy grid (2D array) where 1 indicates an occupied cell and 0 an empty one.
-        resolution (float): The size of each grid cell in meters.
-
-        Returns:
-        shapely.strtree.STRTree: The constructed STRTree.
-        """
         occupied_boxes = []
         
         # Create a shapely box for each occupied cell in the gridmap
@@ -369,60 +447,25 @@ def update_protos(cfg, path_to_proto):
         file.write(output_proto_content)
 
 
-    ### Helper function to be upgraded with Birgit's solution ###
-    # def get_init_and_goal_poses(self, path, parameters=None):
-    #     """
-    #     General function to get initial and goal poses on a path.
-        
-    #     Args:
-    #         path: List or array of points defining the path.
-    #         mode: Type of mode to determine poses ('random', 'full_path', 'random_distance').
-    #         parameters: Dictionary containing parameters like nominal distance, sign, etc.
+    # """
+    # General function to get initial and goal poses on a path.
 
-    #     Returns:
-    #         A tuple of numpy arrays (init_pose, goal_pose).
-    #     """
-    #     mode = parameters.get('init_and_goal_pose_mode')
-    #     if mode is None:
-    #         raise ValueError("Missing 'init_and_goal_pose_mode' parameter.")
+    # Args:
+    #     path: List or array of points defining the path.
+    #     mode: Type of mode to determine poses ('random', 'full_path', 'random_distance').
+    #     parameters: Dictionary containing parameters like nominal distance, sign, etc.
 
-    #     if mode == 'full_path':
-    #         init_pose = create_pose(path[0], calculate_orientation(path[0], path[min(2, len(path) - 1)]))
-    #         goal_pose = create_pose(path[-1])
-    #         direction = 1
-    #         return init_pose, goal_pose, 1
+    # Returns:
+    #     A tuple of numpy arrays (init_pose, goal_pose).
+    # """
 
-    #     elif mode == 'random':
-    #         nom_dist = parameters['nominal_distance']
-    #         sign = np.random.choice([-1, 1])
-    #         rand_index = np.random.randint(0, len(path))
+    # """
+    # Precomputes the collision detection data structure.
 
-    #         i = rand_index
-    #         dist_traveled = 0
-    #         while 0 <= i + sign < len(path):
-    #             segment_dist = np.linalg.norm(path[i + sign] - path[i])
-    #             if dist_traveled + segment_dist >= nom_dist:
-    #                 init_pose = create_pose(path[rand_index], calculate_orientation(path[rand_index], path[rand_index + sign]))
-    #                 goal_pose = create_pose(path[i], calculate_orientation(path[i], path[i + sign]))
-    #                 direction = sign
-    #                 return init_pose, goal_pose, direction
-    #             dist_traveled += segment_dist
-    #             i += sign
+    # Args:
+    # gridmap (list of list of int): Occupancy grid (2D array) where 1 indicates an occupied cell and 0 an empty one.
+    # resolution (float): The size of each grid cell in meters.
 
-    #         # Recursive call fallback for cases when distance is not met
-    #         sign *= -1
-    #         return self.get_init_and_goal_poses(path, parameters={'init_and_goal_pose_mode': mode, 'nominal_distance': nom_dist, 'sign': sign, 'index': rand_index})
-
-    #     elif mode == 'random_distance':
-    #         init_path_index = np.random.randint(0, len(path) - 1)
-    #         goal_path_index = np.random.randint(0, len(path) - 1)
-    #         if np.linalg.norm(path[init_path_index] - path[goal_path_index]) < parameters['min_init2goal_dist']:
-    #             return self.get_init_and_goal_poses(path, parameters=parameters)
-    #         else:
-    #             init_pose = create_pose(path[init_path_index], calculate_orientation(path[init_path_index], path[goal_path_index]))
-    #             goal_pose = create_pose(path[goal_path_index], calculate_orientation(path[goal_path_index], path[init_path_index]))
-    #             direction = 1 if init_path_index < goal_path_index else -1
-    #             return init_pose, goal_pose, direction
-            
-    #     else:
-    #         raise ValueError("Unsupported mode provided.")
+    # Returns:
+    # shapely.strtree.STRTree: The constructed STRTree.
+    # """

@@ -20,6 +20,8 @@ defaults:
     - sparse_lidar_observation
     - command_velocity_action
     - time_limit
+- datasets:
+    - barn
 
 steps: 10000000             # number of training steps
 envs: 6    # number of parallel environments (and Webots instances)
