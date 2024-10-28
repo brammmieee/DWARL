@@ -1,3 +1,0 @@
-map_list_name: barn  # name of the map list (used for loading the map list from the resources/datasets folder)
-defaults:
-  - pose_sampling: random  # pose sampling mode (random, random_distance, full_path)

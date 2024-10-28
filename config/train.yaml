@@ -1,16 +1,15 @@
 paths:
   root: ${hydra:runtime.cwd}/..
   resources: 
-    datasets: ${paths.root}/resources/datasets
-    map_configs: ${paths.root}/resources/map_configs
-    grids: ${paths.root}/resources/grids
-    paths: ${paths.root}/resources/paths
+    maps: ${paths.root}/resources/maps
+    map_name_lists: ${paths.root}/resources/map_name_lists
     protos: ${paths.root}/resources/protos
     worlds: ${paths.root}/resources/worlds
   outputs:
     logs: ${hydra:runtime.output_dir}/logs
     models: ${hydra:runtime.output_dir}/models
-  
+    data_sets: /tmp/DWARL_data_sets
+
 defaults:
 - _self_
 - environment:
@@ -20,7 +19,7 @@ defaults:
     - sparse_lidar_observation
     - command_velocity_action
     - time_limit
-- datasets:
+- data_loader:
     - barn
 
 steps: 10000000             # number of training steps

@@ -1,0 +1,8 @@
+defaults:
+  - _self_
+  - pose_sampling:
+    - random
+map:
+  list_name: barn
+  resolution:
+  padding:

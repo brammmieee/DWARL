@@ -9,11 +9,14 @@ from stable_baselines3.ppo import PPO
 import hydra
 import torch as th
 import utils.wrapper_tools as wt
+from utils.data_tools import data_loader
 
 @hydra.main(config_path='../config', config_name='train')
 def main(cfg : DictConfig):
     # Environment setup
-    base_env = BaseEnv(cfg.environment, cfg.paths)
+    data_loader = data_loader.DataLoader(cfg.dataset, cfg.paths)
+    base_env = BaseEnv(cfg.environment, cfg.paths, data_loader)
+    
     wrapped_env = wt.wrap_env(cfg.wrappers, base_env)
     vec_env=make_vec_env( #NOTE: Wraps the environment in a Monitor wrapper to have additional training information
         env_id=wrapped_env,

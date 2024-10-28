@@ -1,11 +1,5 @@
 # dataset_name: barn
 name: cindy             # environment name
-map_dataset_name: barn           # dataset name
-start_and_goal:
-  goal_tolerance: 0.1               # Tolerance for goal reaching [m]
-  min_init2goal_dist: 0.1           # Minimum euclidian distance between initial and goal position [m]
-  nominal_distance: 1.5             # Nominal distance between initial and goal position [m]
-  init_and_goal_pose_mode: random   # full_path, random (nominal distance apart), random_distance (min. min_init2goal_dist apart)
 webots:                 # Webots simulation parameters
   sample_time: 0.05       # sample time [s]
   mode: fast              # simulation mode (fast or real-time)

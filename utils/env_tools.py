@@ -1,4 +1,4 @@
-from controller import Supervisor, Keyboard
+from controller import Supervisor
 from shapely.affinity import translate, rotate
 from shapely.geometry import Point, Polygon
 from shapely.geometry import Polygon
@@ -48,7 +48,6 @@ class WebotsEnv(Supervisor):
         # Lidar sensor and keyboard
         self.lidar_node = self.getDevice('lidar')
         self.lidar_node.enable(int(self.getBasicTimeStep()))
-        self.keyboard = Keyboard()
 
         # Open the world
         self.open_world(cfg, path_to_worlds)
@@ -99,159 +98,41 @@ class WebotsEnv(Supervisor):
     @property
     def robot_orientation(self):
         return np.array(self.robot_node.getOrientation())
-
-class map_dataloader:
-    def __init__(self, dataset_name, paths):
-        self.paths = paths # paths as in system paths
-
-        dataset = {}
-        path_to_datasets = self.paths.resources.datasets
-        map_configs_path = self.paths.resources.map_configs
-        path_to_grids = self.paths.resources.grids
-        path_to_paths = self.paths.resources.paths
-        path_to_protos = self.paths.resources.protos
-
-        with open(os.path.join(path_to_datasets, dataset_name + '.yaml'), 'r') as file:
-            dataset = yaml.safe_load(file)
-        
-        # at.load_from_json('train_map_nr_list.json', os.path.join(self.params_dir, 'map_nrs'))
     
-    def reset(self, map_nr):
+def compute_collision_detection_tree(gridmap, resolution):
+    occupied_boxes = []
     
-    def reset_map_path_and_poses(self):
-        train_map_nr_idx = random.randint(0, len(self.train_map_nr_list)-1)
-        self.map_nr = self.train_map_nr_list[train_map_nr_idx]
-        self.grid = np.load(os.path.join(self.grids_dir, 'grid_' + str(self.map_nr) + '.npy'))
-        path = np.load(os.path.join(self.paths_dir, 'path_' + str(self.map_nr) + '.npy'))
-        self.path = np.multiply(path, self.params['map_res']) # apply scaling
-
-        self.init_pose, self.goal_pose, self.direction = et.get_init_and_goal_poses(path=self.path, parameters=self.params) # pose -> [x,y,psi]
-
-    def get_init_and_goal_poses(self, path, parameters=None):
-        print("Getting initial and goal poses.")
+    # Create a shapely box for each occupied cell in the gridmap
+    for x in range(len(gridmap)):
+        for y in range(len(gridmap[0])):
+            if gridmap[x][y] == 1:
+                # Convert grid indices to spatial coordinates based on the resolution
+                min_x = x * resolution
+                min_y = y * resolution
+                max_x = min_x + resolution
+                max_y = min_y + resolution
+                # Create a box for the occupied cell
+                occupied_boxes.append(box(min_x, min_y, max_x, max_y))
     
-    def get_init_and_goal_poses(self, path, mode):
-        if mode == 'full_path':
-            init_pose = create_pose(path[0], calculate_orientation(path[0], path[min(2, len(path) - 1)]))
-            goal_pose = create_pose(path[-1])
-            direction = 1
-            return init_pose, goal_pose, 1
+    # Create an STRTree from all occupied boxes
+    return STRtree(occupied_boxes)
 
-        elif mode == 'random':
-            nom_dist = parameters['nominal_distance']
-            sign = np.random.choice([-1, 1])
-            rand_index = np.random.randint(0, len(path))
+def compute_map_bound_polygon(parameters):
+    map_res = parameters['map_res']
+    map_width = parameters['map_width']
+    map_bound_buffer = parameters['map_bound_buffer']
 
-            i = rand_index
-            dist_traveled = 0
-            while 0 <= i + sign < len(path):
-                segment_dist = np.linalg.norm(path[i + sign] - path[i])
-                if dist_traveled + segment_dist >= nom_dist:
-                    init_pose = create_pose(path[rand_index], calculate_orientation(path[rand_index], path[rand_index + sign]))
-                    goal_pose = create_pose(path[i], calculate_orientation(path[i], path[i + sign]))
-                    direction = sign
-                    return init_pose, goal_pose, direction
-                dist_traveled += segment_dist
-                i += sign
+    map_bounds = [
+        [0.0, 0.0], 
+        [(map_width*map_res - map_res), 0.0], 
+        [(map_width*map_res - map_res), (map_width*map_res - map_res)], 
+        [0.0, (map_width*map_res - map_res)]
+    ]
 
-            # Recursive call fallback for cases when distance is not met
-            sign *= -1
-            return self.get_init_and_goal_poses(path, parameters={'init_and_goal_pose_mode': mode, 'nominal_distance': nom_dist, 'sign': sign, 'index': rand_index})
-
-        elif mode == 'random_distance':
-            init_path_index = np.random.randint(0, len(path) - 1)
-            goal_path_index = np.random.randint(0, len(path) - 1)
-            if np.linalg.norm(path[init_path_index] - path[goal_path_index]) < parameters['min_init2goal_dist']:
-                return self.get_init_and_goal_poses(path, parameters=parameters)
-            else:
-                init_pose = create_pose(path[init_path_index], calculate_orientation(path[init_path_index], path[goal_path_index]))
-                goal_pose = create_pose(path[goal_path_index], calculate_orientation(path[goal_path_index], path[init_path_index]))
-                direction = 1 if init_path_index < goal_path_index else -1
-                return init_pose, goal_pose, direction
-            
-        else:
-            raise ValueError("Unsupported mode provided.")
-        
-    def get_init_and_goal_poses(path, parameters):
-        # General function to get initial and goal poses on a path.
-
-        # Args:
-        #     path: List or array of points defining the path.
-        #     parameters: Dictionary containing parameters like nominal distance and mode ('random', 'full_path', 'random_distance').
-        mode = parameters.get('init_and_goal_pose_mode')
-
-        direction = np.random.choice([-1, 1])
-        if direction == -1:
-            path = path[::-1]
-
-        if mode == 'full_path':
-            init_pose = create_pose(path[0], calculate_orientation(path[0], path[min(2, len(path) - 1)]))
-            goal_pose = create_pose(path[-1])
-        else: 
-            if mode == 'random':
-                nom_dist = parameters['nominal_distance']
-                cum_path_length = np.cumsum(np.linalg.norm(path[1:] - path[:-1], axis=1))  # Cummulative path length
-                init_options = np.argwhere(cum_path_length[-1] - cum_path_length > nom_dist).squeeze()
-                
-                init_index = np.random.choice(init_options)
-                goal_index =  np.max(np.argwhere(cum_path_length < cum_path_length[init_index] + nom_dist))  # Find point within nominal distance from init_index
-            elif mode == 'random_distance':
-                distance = 0
-                init_index = 0
-                goal_index = 0
-                while distance < parameters['min_init2goal_dist'] and goal_index <= init_index:
-                    init_index, goal_index = np.sort([random.randint(0, path.shape[0]-1) for _ in range(2)])
-                    distance = np.linalg.norm(path[init_index] - path[goal_index])
-            else:
-                raise ValueError(f"Invalid mode '{mode}' for getting initial and goal poses.")
-
-            if path.shape[0] > init_index + 1:
-                init_pose = create_pose(path[init_index], calculate_orientation(path[init_index], path[init_index + 1]))
-            else:
-                raise ValueError(f"Invalid init_index '{init_index}' for path of length '{path.shape[0]}'.")
-            if path.shape[0] > goal_index + 1:  # TODO: Computing a goal pose should not be necessary
-                goal_pose = create_pose(path[goal_index], calculate_orientation(path[goal_index], path[goal_index + 1]))
-            else:
-                goal_pose = create_pose(path[goal_index], 0.0)  # This can happen
-
-            path = path[init_index:goal_index + 1]
-
-        return init_pose, goal_pose, path
-        
-    def precompute_collision_detection(gridmap, resolution):
-        occupied_boxes = []
-        
-        # Create a shapely box for each occupied cell in the gridmap
-        for x in range(len(gridmap)):
-            for y in range(len(gridmap[0])):
-                if gridmap[x][y] == 1:
-                    # Convert grid indices to spatial coordinates based on the resolution
-                    min_x = x * resolution
-                    min_y = y * resolution
-                    max_x = min_x + resolution
-                    max_y = min_y + resolution
-                    # Create a box for the occupied cell
-                    occupied_boxes.append(box(min_x, min_y, max_x, max_y))
-        
-        # Create an STRTree from all occupied boxes
-        return STRtree(occupied_boxes)
-
-    def compute_map_bound_polygon(parameters):
-        map_res = parameters['map_res']
-        map_width = parameters['map_width']
-        map_bound_buffer = parameters['map_bound_buffer']
-
-        map_bounds = [
-            [0.0, 0.0], 
-            [(map_width*map_res - map_res), 0.0], 
-            [(map_width*map_res - map_res), (map_width*map_res - map_res)], 
-            [0.0, (map_width*map_res - map_res)]
-        ]
-
-        map_bound_polygon = Polygon(map_bounds)
-        buffered_map_bound_polygon = map_bound_polygon.buffer(map_bound_buffer)
-        
-        return Polygon(buffered_map_bound_polygon)
+    map_bound_polygon = Polygon(map_bounds)
+    buffered_map_bound_polygon = map_bound_polygon.buffer(map_bound_buffer)
+    
+    return Polygon(buffered_map_bound_polygon)
 
 def get_global_footprint_location(cur_pos, cur_orient_matrix, polygon_coords):
     # Get position and orientation
@@ -324,15 +205,6 @@ def compute_new_pose(parameters, cur_pos, cur_orient_matrix, cur_vel):
         ])
 
     return position, orientation
-
-def calculate_orientation(p1, p2):
-    """ Calculate orientation angle from point p1 to p2. """
-    align = p2 - p1
-    return np.arctan2(align[1], align[0])
-
-def create_pose(point, orientation=0.0):
-    """ Create a pose from a point and an orientation. """
-    return np.array([point[0], point[1], 0.0, orientation])
 
 ##### NOTE!!! are we sure the get velocity call actually gives us a velocity? #####
 def get_cmd_vel(robot_node):
@@ -445,27 +317,3 @@ def update_protos(cfg, path_to_proto):
     output_proto_file_path = template_proto_file_path.replace(template_proto_file_name, output_proto_file_name)
     with open(output_proto_file_path, 'w') as file:
         file.write(output_proto_content)
-
-
-    # """
-    # General function to get initial and goal poses on a path.
-
-    # Args:
-    #     path: List or array of points defining the path.
-    #     mode: Type of mode to determine poses ('random', 'full_path', 'random_distance').
-    #     parameters: Dictionary containing parameters like nominal distance, sign, etc.
-
-    # Returns:
-    #     A tuple of numpy arrays (init_pose, goal_pose).
-    # """
-
-    # """
-    # Precomputes the collision detection data structure.
-
-    # Args:
-    # gridmap (list of list of int): Occupancy grid (2D array) where 1 indicates an occupied cell and 0 an empty one.
-    # resolution (float): The size of each grid cell in meters.
-
-    # Returns:
-    # shapely.strtree.STRTree: The constructed STRTree.
-    # """

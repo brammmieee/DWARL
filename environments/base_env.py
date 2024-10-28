@@ -17,11 +17,12 @@ import utils.admin_tools as at
 class BaseEnv(gym.Env):
     package_dir = os.path.abspath(os.pardir)
     
-    def __init__(self, cfg, paths):
+    def __init__(self, cfg, paths, data_loader):
         super().__init__()
 
         self.cfg = cfg
         self.paths = paths
+        self.data_loader = data_loader
         # self.render_canvas_drawn = False
 
         # Update the proto files according to the configuration
@@ -31,12 +32,6 @@ class BaseEnv(gym.Env):
         self.precomputed_lidar_values = et.precompute_lidar_values(
             num_lidar_rays=self.cfg.env.proto_reconfiguration.proto_substitutions.horizontalResolution
         )
-
-        # Training maps and map bounds
-        # et.load_dataset(self.cfg.dataset, self.paths)
-        # self.map_bounds_polygon = et.compute_map_bound_polygon(self.params)
-
-        self.map_data = et.map_dataloader(self.cfg.map_dataset_name, self.paths)
 
         # Create a Webots environment
         self.webots_env = et.WebotsEnv(cfg.webots, self.paths.resources.worlds)
@@ -49,9 +44,11 @@ class BaseEnv(gym.Env):
         super().reset(seed=seed) # RNG seeding only done once (i.e. when value is not None)
         
         # Reset map, path, init/goal pose, simulation and collision tree
-        self.reset_map_path_and_poses()
+        self.init_pose, self.goal_pose = self.data_loader # TODO!!!
+        
         self.webots_env.reset(self.map_nr)
-        self.collision_tree = et.precompute_collision_detection(self.grid, self.params['map_res'])
+        self.collision_tree = et.compute_collision_detection_tree(self.grid, self.params['map_res'])
+        self.map_bounds_polygon = et.compute_map_bound_polygon(self.params)
 
         # Updating prev_pos, cur_pos, cur_orient, footprint in global frame, and getting new local goal
         self.cur_pos = self.webots_env.robot_position
