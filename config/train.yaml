@@ -2,6 +2,7 @@ paths:
   root: ${hydra:runtime.cwd}/..
   resources: 
     maps: ${paths.root}/resources/maps
+    paths: ${paths.root}/resources/paths
     map_name_lists: ${paths.root}/resources/map_name_lists
     protos: ${paths.root}/resources/protos
     worlds: ${paths.root}/resources/worlds
@@ -19,7 +20,7 @@ defaults:
     - sparse_lidar_observation
     - command_velocity_action
     - time_limit
-- data_loader:
+- data_generator:
     - barn
 
 steps: 10000000             # number of training steps

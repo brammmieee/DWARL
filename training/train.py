@@ -9,12 +9,14 @@ from stable_baselines3.ppo import PPO
 import hydra
 import torch as th
 import utils.wrapper_tools as wt
-from utils.data_tools import data_loader
+from utils.data_loader import DataLoader
 
 @hydra.main(config_path='../config', config_name='train')
 def main(cfg : DictConfig):
     # Environment setup
-    data_loader = data_loader.DataLoader(cfg.dataset, cfg.paths)
+    data_loader = DataLoader(cfg.dataset, cfg.paths)
+    data_loader.prepare_data()
+    data_loader.load_data()
     base_env = BaseEnv(cfg.environment, cfg.paths, data_loader)
     
     wrapped_env = wt.wrap_env(cfg.wrappers, base_env)

@@ -1,0 +1,2 @@
+mode: full_path                   # Full path sampling (all poses in the environment)
+max_combinations: 2               # Maximum number of combinations of initial and goal poses

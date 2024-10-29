@@ -1,0 +1,198 @@
+paths:
+  root: ${hydra:runtime.cwd}/..
+  resources:
+    maps: ${paths.root}/resources/maps
+    map_name_lists: ${paths.root}/resources/map_name_lists
+    protos: ${paths.root}/resources/protos
+    worlds: ${paths.root}/resources/worlds
+  outputs:
+    logs: ${hydra:runtime.output_dir}/logs
+    models: ${hydra:runtime.output_dir}/models
+    data_sets: /tmp/DWARL_data_sets
+steps: 10000000
+envs: 6
+continue_training: false
+init_model_datetime: null
+init_model_steps: null
+log_interval: 10
+callbacks:
+  model_eval_freq: 10000
+  model_n_eval_episodes: 25
+  model_save_freq: 10000
+model:
+  policy_type: MlpPolicy
+  activation_fn: ReLU
+  net_arch:
+    pi:
+    - 256
+    - 256
+    - 256
+    - 256
+    - 256
+    vf:
+    - 256
+    - 256
+    - 256
+    - 256
+    - 256
+environment:
+  name: cindy
+  webots:
+    sample_time: 0.05
+    mode: fast
+    no_rendering: true
+  render: false
+  proto_reconfiguration:
+    template_name: RpLidarA2_template.proto
+    output_name: RpLidarA2.proto
+    substitutions:
+      defaultFrequency: 20
+      fieldOfView: 6.283185307
+      horizontalResolution: 64
+      maxFrequency: 40
+      maxRange: 3.0
+      minFrequency: 20
+      minRange: 0.05
+      near: 0.05
+      noise: 0.0
+      numberOfLayers: 1
+      resolution: 0.05
+      type: fixed
+  vehicle:
+    kinematics:
+      v_max: 0.2
+      v_min: -0.2
+      a_max: 0.3
+      a_min: -0.3
+      omega_max: 0.6
+      omega_min: -0.6
+      alpha_max: 0.8
+      alpha_min: -0.8
+    dimensions:
+      polygon_coordinates:
+      - - 0.16
+        - 0.08
+      - - 0.16
+        - -0.24
+      - - 0.0
+        - -0.4
+      - - -0.16
+        - -0.24
+      - - -0.16
+        - 0.08
+      lidar_y_pos: -0.07075
+      z_pos: 0.05
+wrappers:
+  parameterized_reward:
+    plot_wrapped_observation: false
+    reward_buffer_size: 150
+    r_at_goal: 250.0
+    r_collision: -1500.0
+    r_not_arrived: 0.0
+    r_outside_map: -50.0
+    c_linear_d_progress: 50.0
+    c_path_d_dist: 0.0
+    c_path_d_heading: 0.0
+    c_path_d_progress: 0.0
+    c_path_d_progress_scaled_dist: 0.0
+    c_path_dist: 0.0
+    c_path_heading: 0.0
+    d_progress_high_pass_x: 0.01
+    d_progress_low_pass_x: 0.0
+    enable_d_progress_mapping: true
+    max_path_dist: 0.075
+    max_path_heading: 0.18
+    plot_config:
+      r_at_goal:
+        plot_style:
+          color: green
+          alpha: 0.55
+          linestyle: --
+        plot_nr: 1
+      r_outside_map:
+        plot_style:
+          color: orange
+          alpha: 0.55
+          linestyle: --
+        plot_nr: 1
+      r_collision:
+        plot_style:
+          color: red
+          alpha: 0.55
+          linestyle: --
+        plot_nr: 1
+      r_not_arrived:
+        plot_style:
+          color: red
+          alpha: 1
+          linestyle: '-'
+        plot_nr: 0
+      r_path_d_progress:
+        plot_style:
+          color: green
+          alpha: 1
+          linestyle: '-'
+        plot_nr: 2
+      r_linear_d_progress:
+        plot_style:
+          color: green
+          alpha: 1
+          linestyle: -.
+        plot_nr: 2
+      r_path_dist:
+        plot_style:
+          color: blue
+          alpha: 1
+          linestyle: '-'
+        plot_nr: 0
+      r_path_d_dist:
+        plot_style:
+          color: blue
+          alpha: 1
+          linestyle: -.
+        plot_nr: 2
+      r_path_d_progress_scaled_dist:
+        plot_style:
+          color: blue
+          alpha: 1
+          linestyle: '-'
+        plot_nr: 2
+      r_path_heading:
+        plot_style:
+          color: purple
+          alpha: 1
+          linestyle: '-'
+        plot_nr: 0
+      r_path_d_heading:
+        plot_style:
+          color: purple
+          alpha: 1
+          linestyle: -.
+        plot_nr: 2
+      total_reward:
+        plot_style:
+          color: black
+          alpha: 1
+          linestyle: '-'
+        plot_nr: 1
+  sparse_lidar_observation:
+    goal_pos_angle_max: 3.141592653589793
+    goal_pos_angle_min: -3.141592653589793
+    goal_pos_dist_max: 3
+    goal_pos_dist_min: 0.05
+  command_velocity_action: {}
+  time_limit:
+    max_episode_steps: 600
+data_generator:
+  map:
+    padding: 0.2
+    goal_tolerance: 0.2
+    list: barn
+    resolution: 0.1
+    occupied_thresh: 0.65
+    free_tresh: 0.196
+  pose_sampler:
+    random:
+      seed: 0
+      max_combinations: 10
+      nominal_distance: 1.5

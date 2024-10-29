@@ -1,7 +1,0 @@
-random: 
-  seed: 0                           # Seed for random number generator (enables reproducibility)
-  max_combinations: 10              # Maximum number of combinations of initial and goal poses 
-  goal_tolerance: 0.1               # Tolerance for goal reaching [m]
-  min_init2goal_dist: 0.1           # Minimum euclidian distance between initial and goal position [m]
-  nominal_distance: 1.5             # Nominal distance between initial and goal position [m]
-  init_and_goal_pose_mode: random   # full_path, random (nominal distance apart), random_distance (min. min_init2goal_dist apart)
