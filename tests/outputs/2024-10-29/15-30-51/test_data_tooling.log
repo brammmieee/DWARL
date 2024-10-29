@@ -1,0 +1,18 @@
+[2024-10-29 15:30:51,963][root][INFO] - 
+ Generating data for map: barn_0
+[2024-10-29 15:30:51,963][root][INFO] -  Number of paths found: 2
+[2024-10-29 15:30:51,963][root][INFO] - 	 Processing path: barn_0_1
+[2024-10-29 15:30:51,963][root][INFO] - 	 Number of init goal pairs: 2, using mode: full_path
+[2024-10-29 15:30:51,964][root][INFO] - 		 init_pose: [8.1115     2.8418     0.         0.69687058], goal_pose: [21.6714 24.1134  0.      0.    ]
+[2024-10-29 15:30:51,964][root][INFO] - 		 init_pose: [21.6714 24.1134  0.      0.    ], goal_pose: [8.1115     2.8418     0.         0.69687058]
+[2024-10-29 15:30:51,965][root][INFO] - 	 Processing path: barn_0_0
+[2024-10-29 15:30:51,965][root][INFO] - 	 Number of init goal pairs: 2, using mode: full_path
+[2024-10-29 15:30:51,965][root][INFO] - 		 init_pose: [26.          0.          0.          3.14159265], goal_pose: [18. 29.  0.  0.]
+[2024-10-29 15:30:51,966][root][INFO] - 		 init_pose: [18. 29.  0.  0.], goal_pose: [26.          0.          0.          3.14159265]
+[2024-10-29 15:30:51,968][root][INFO] - 
+ Generating data for map: barn_1
+[2024-10-29 15:30:51,968][root][INFO] -  Number of paths found: 1
+[2024-10-29 15:30:51,969][root][INFO] - 	 Processing path: barn_1_0
+[2024-10-29 15:30:51,969][root][INFO] - 	 Number of init goal pairs: 2, using mode: full_path
+[2024-10-29 15:30:51,970][root][INFO] - 		 init_pose: [26.          0.          0.          3.14159265], goal_pose: [14. 29.  0.  0.]
+[2024-10-29 15:30:51,970][root][INFO] - 		 init_pose: [14. 29.  0.  0.], goal_pose: [26.          0.          0.          3.14159265]

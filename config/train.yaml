@@ -9,6 +9,7 @@ paths:
   outputs:
     logs: ${hydra:runtime.output_dir}/logs
     models: ${hydra:runtime.output_dir}/models
+    data_generator_logs: ${hydra:runtime.output_dir}/data_generator_logs
     data_sets: /tmp/DWARL_data_sets
 
 defaults:
@@ -20,7 +21,7 @@ defaults:
     - sparse_lidar_observation
     - command_velocity_action
     - time_limit
-- data_generator:
+- data:
     - barn
 
 steps: 10000000             # number of training steps
