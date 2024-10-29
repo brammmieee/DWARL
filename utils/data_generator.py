@@ -8,7 +8,8 @@ class DataGenerator:
     def __init__(self, cfg, paths):
         self.cfg = cfg
         self.paths = paths
-        
+                
+        self.map_names = self.load_map_names(cfg.map.list)
         self.map_loader = MapLoader(paths)
         self.path_loader = PathLoader(paths)
         self.proto_converter = ProtoConverter(cfg.map)
@@ -17,9 +18,13 @@ class DataGenerator:
     def erase_data(self):
         data_sets_folder = Path(self.paths.outputs.data_sets)
         if data_sets_folder.exists() and data_sets_folder.is_dir():
-            shutil.rmtree(data_sets_folder)        
+            shutil.rmtree(data_sets_folder)    
             
-    def generate_data(self, map_names):
+    def load_map_names(self, map_list_name):    
+        with open(Path(self.paths.resources.map_name_lists) / f"{map_list_name}.yaml") as f:
+            return yaml.load(f, Loader=yaml.BaseLoader)
+            
+    def generate_data(self):
         # Generate folder structure for data
         proto_dir = Path(self.paths.outputs.data_sets) / "protos"
         grid_dir = Path(self.paths.outputs.data_sets) / "grids"
@@ -31,7 +36,7 @@ class DataGenerator:
         data_point_dir.mkdir(parents=True, exist_ok=True)
         
         # Generate data for each map
-        for map_name in map_names:
+        for map_name in self.map_names:
             map_raster = self.map_loader.load_map_raster(map_name)
             path_file_path_list = self.path_loader.list_paths_for_map(map_name)
             
