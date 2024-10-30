@@ -1,5 +1,6 @@
 paths:
   root: ${hydra:runtime.cwd}/..
+  data_sets_root: /tmp/DWARL_data_sets
   resources: 
     maps: ${paths.root}/resources/maps
     paths: ${paths.root}/resources/paths
@@ -10,7 +11,11 @@ paths:
     logs: ${hydra:runtime.output_dir}/logs
     models: ${hydra:runtime.output_dir}/models
     data_generator_logs: ${hydra:runtime.output_dir}/data_generator_logs
-    data_sets: /tmp/DWARL_data_sets
+  data_sets:
+    protos: ${paths.data_sets_root}/protos
+    grids: ${paths.data_sets_root}/grids
+    data_points: ${paths.data_sets_root}/data_points
+    worlds: ${paths.data_sets_root}/worlds
 
 defaults:
 - _self_

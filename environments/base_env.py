@@ -10,6 +10,7 @@ from matplotlib.lines import Line2D
 from shapely.geometry import Point, Polygon
 from shapely.affinity import translate, rotate
 from scipy.interpolate import interp1d
+from pathlib import Path
 
 import utils.env_tools as et
 import utils.admin_tools as at
@@ -17,12 +18,11 @@ import utils.admin_tools as at
 class BaseEnv(gym.Env):
     package_dir = os.path.abspath(os.pardir)
     
-    def __init__(self, cfg, paths, data_loader):
+    def __init__(self, cfg, paths, data_set):
         super().__init__()
 
         self.cfg = cfg
         self.paths = paths
-        self.data_loader = data_loader
         # self.render_canvas_drawn = False
 
         # Update the proto files according to the configuration
@@ -30,12 +30,15 @@ class BaseEnv(gym.Env):
         
         # Precomputations
         self.precomputed_lidar_values = et.precompute_lidar_values(
-            num_lidar_rays=self.cfg.env.proto_reconfiguration.proto_substitutions.horizontalResolution
+            num_lidar_rays=cfg.proto_reconfiguration.substitutions.horizontalResolution
         )
 
         # Create a Webots environment
-        self.webots_env = et.WebotsEnv(cfg.webots, self.paths.resources.worlds)
-
+        self.webots_env = et.WebotsEnv(cfg.webots, paths)
+        
+        # Create itterator object for the dataset
+        self.data_iterator = iter(data_set)  # Reset the iterator if needed
+        
         # Space definitions
         # NOTE: u must use an action wrapper to set self.action_space
         # NOTE: u must use an observation wrapper to set self.observation_space
@@ -44,31 +47,35 @@ class BaseEnv(gym.Env):
         super().reset(seed=seed) # RNG seeding only done once (i.e. when value is not None)
         
         # Reset map, path, init/goal pose, simulation and collision tree
-        self.init_pose, self.goal_pose = self.data_loader # TODO!!!
+        grid, proto_name, init_pose, goal_pose = self.get_data()        
+            
+        # Resetting the simulation
+        self.webots_env.reset()
+        self.webots_env.reset_map(proto_name)
+        self.webots_env.reset_robot(init_pose)
         
-        self.webots_env.reset(self.map_nr)
-        self.collision_tree = et.compute_collision_detection_tree(self.grid, self.params['map_res'])
-        self.map_bounds_polygon = et.compute_map_bound_polygon(self.params)
+        # self.collision_tree = et.compute_collision_detection_tree(grid, self.params['map_res'])
+        # self.map_bounds_polygon = et.compute_map_bound_polygon(self.params)
 
-        # Updating prev_pos, cur_pos, cur_orient, footprint in global frame, and getting new local goal
-        self.cur_pos = self.webots_env.robot_position
-        self.cur_orient_matrix = self.webots_env.robot_orientation
-        self.footprint_glob = et.get_global_footprint_location(
-            self.cur_pos, 
-            self.cur_orient_matrix, 
-            self.params['polygon_coords']
-        )
-        self.local_goal_pos = et.get_local_goal_pos(
-            self.cur_pos, 
-            self.cur_orient_matrix, 
-            self.goal_pose
-        )
-        self.cur_vel, self.cmd_vel = np.array([0.0, 0.0]), np.array([0.0, 0.0])
+        # # Updating prev_pos, cur_pos, cur_orient, footprint in global frame, and getting new local goal
+        # self.cur_pos = self.webots_env.robot_position
+        # self.cur_orient_matrix = self.webots_env.robot_orientation
+        # self.footprint_glob = et.get_global_footprint_location(
+        #     self.cur_pos, 
+        #     self.cur_orient_matrix, 
+        #     self.params['polygon_coords']
+        # )
+        # self.local_goal_pos = et.get_local_goal_pos(
+        #     self.cur_pos, 
+        #     self.cur_orient_matrix, 
+        #     self.goal_pose
+        # )
+        # self.cur_vel, self.cmd_vel = np.array([0.0, 0.0]), np.array([0.0, 0.0])
         
-        self.observation = self.get_obs()
-        # self.render(method='reset')
+        # self.observation = self.get_obs()
+        # # self.render(method='reset')
 
-        return self.observation, {} # = info
+        # return self.observation, {} # = info
 
     def step(self, action):
         # NOTE: u must use an action wrapper for turning the action vector into a cmd_vel
@@ -106,6 +113,16 @@ class BaseEnv(gym.Env):
 
         return self.observation, self.reward, self.done, False, {} # last 3: done, truncated, info
     
+    def get_data(self):
+        try:
+            data_point = next(self.data_iterator)
+        except StopIteration:
+            print("No more data points available. Resetting iterator.")
+            self. data_iterator = iter(self.data_set)
+            self.get_data()
+            
+        return data_point['grid'], data_point['proto_name'], data_point['init_pose'], data_point['goal_pose']
+    
     def reward(self, done, done_cause):
         # NOTE: u must use a reward wrapper
         return 0.0 # = reward
@@ -140,94 +157,3 @@ class BaseEnv(gym.Env):
     
     def close(self):
         self.webots_env.close()
-
-    # def render(self, method=None):
-    #     if not self.cfg.render:
-    #         return
-    #     # Initialize the plot or remove the previous data 
-    #     if self.render_canvas_drawn == False:
-    #         self.render_init_plot()
-    #     else:
-    #         self.render_remove_data(method)
-            
-    #     # Add new data to the plot
-    #     self.render_add_data(method)
-    #     self.fig.canvas.draw()
-    #     self.fig.canvas.flush_events()
-        
-    # def render_init_plot(self):
-    #     self.render_canvas_drawn = True
-
-    #     plt.ion()
-    #     self.fig, ((self.ax1, self.ax3), (self.ax2, self.ax4)) = plt.subplots(2, 2)
-        
-    #     # ax1 - Lidar data and footprint (axis fixed to base_link)
-    #     polygon = Polygon(self.params['polygon_coords'])
-    #     patch = plt_polygon(np.array(polygon.exterior.coords), alpha=0.75, closed=True, facecolor='grey')
-    #     self.ax1.add_patch(patch)
-    #     self.ax1.set_xlim([-3.0, 3.0])
-    #     self.ax1.set_ylim([-3.0, 3.0])
-    #     self.ax1.set_xlabel('x [m]')
-    #     self.ax1.set_ylabel('y [m]')
-    #     self.ax1.set_aspect('equal')
-    #     self.ax1.grid()
-            
-    #     # ax2 - Path, init pose and goal pose data (axis fixed to map)
-    #     self.ax2.set_aspect('equal', adjustable='box')
-    #     self.ax2.set_xlabel('x [m]')
-    #     self.ax2.set_ylabel('y [m]')
-
-    #     # Assuming self.reward_style_map is defined as before
-    #     legend_handles = [
-    #         Line2D([0], [0], color=style['color'], linestyle=style['linestyle'], label=label)
-    #         for label, style in self.reward_style_map.items()
-    #     ]
-
-    #     # Adjust the legend in your plotting method
-    #     self.fig.legend(handles=legend_handles, loc='upper right', bbox_to_anchor=(1, 1), bbox_transform=self.fig.transFigure)
-    
-    # def render_add_data(self, method):
-    #     # ax1 - Lidar data
-    #     self.lidar_points = et.lidar_to_point_cloud(self.params, self.precomputed_lidar_values, self.lidar_range_image) #NOTE: double computation in case of e.g vo observation wrapper
-    #     self.lidar_plot = self.ax1.scatter(self.lidar_points[:,0], self.lidar_points[:,1], alpha=1.0, c='black')
-    #     self.local_goal_plot = self.ax1.scatter(self.local_goal_pos[0], self.local_goal_pos[1], alpha=1.0, c='purple')
-            
-    #     # ax2 - Path and poses
-    #     self.cur_pos_plot = self.ax2.scatter(self.cur_pos[0], self.cur_pos[1], c='blue', alpha=0.33)
-    #     x, y = self.footprint_glob.exterior.xy
-    #     self.footprint_plot = self.ax2.fill(x, y, color='blue', alpha=0.5)
-    #     if method == 'reset':
-    #         self.grid_plots = []  # Initialize a list to store all rectangle patches
-    #         indices = np.argwhere(self.grid == 1)
-    #         for index in indices:
-    #             x, y = index
-    #             x_scaled, y_scaled = x * self.params['map_res'], y * self.params['map_res']
-    #             rect = plt.Rectangle((x_scaled, y_scaled), self.params['map_res'], self.params['map_res'], color='black')
-    #             self.grid_plots.append(self.ax2.add_patch(rect))  # Add each patch to the list
-
-    #         self.path_plot = self.ax2.scatter(self.path[:,0], self.path[:,1], c='grey', alpha=0.5)
-    #         self.init_pose_plot = self.ax2.scatter(self.init_pose[0], self.init_pose[1], c='green')
-    #         self.goal_pose_plot = self.ax2.scatter(self.goal_pose[0], self.goal_pose[1], c='red')
-
-    # def render_remove_data(self, method):
-    #     # ax1 - Clear lidar data
-    #     try:
-    #         self.lidar_plot.remove()
-    #         self.local_goal_plot.remove()
-    #     except AttributeError:
-    #         pass
-
-    #     # ax2 - Clear path and poses
-    #     try:
-    #         self.cur_pos_plot.remove()
-    #         for patch in self.footprint_plot:
-    #             patch.remove()
-    #         if method == 'reset':
-    #             for patch in self.grid_plots:
-    #                 patch.remove()
-    #             self.grid_plots.clear()
-    #             self.path_plot.remove()
-    #             self.init_pose_plot.remove()
-    #             self.goal_pose_plot.remove()
-    #     except AttributeError:
-    #         pass

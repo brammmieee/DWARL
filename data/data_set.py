@@ -41,11 +41,6 @@ class Dataset(torch.utils.data.Dataset):
         grid_file_path = self.grid_dir / f"{dataset_name}_{map_idx}_grid.npy"
         grid = np.load(grid_file_path)
 
-        # Load proto file as string
-        proto_file_path = self.proto_dir / f"{dataset_name}_{map_idx}.proto"
-        with open(proto_file_path, 'r') as f:
-            proto = f.read()
-
         # Load start and goal poses from YAML
         with open(data_point_path, 'r') as f:
             data_point = yaml.safe_load(f)
@@ -54,7 +49,7 @@ class Dataset(torch.utils.data.Dataset):
 
         return {
             "grid": grid,
-            "proto": proto,
+            "proto_name": f"{dataset_name}_{map_idx}",
             "init_pose": init_pose,
             "goal_pose": goal_pose,
         }

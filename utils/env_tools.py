@@ -1,4 +1,5 @@
 from controller import Supervisor
+from pathlib import Path
 from shapely.affinity import translate, rotate
 from shapely.geometry import Point, Polygon
 from shapely.geometry import Polygon
@@ -10,29 +11,15 @@ import numpy as np
 import os
 import yaml
 
+STATIC_ROBOT_Z_POS = 0.05
+
 class WebotsEnv(Supervisor):
-    @staticmethod
-    def killall():
-        command = "ps aux | grep webots | grep -v grep | awk '{print $2}' | xargs -r kill"
-        os.system(command)
-
-    @staticmethod
-    def open_world(cfg, path_to_worlds):       
-        # Create Webots command with specified mode and world file
-        world_file = os.path.join(path_to_worlds, 'webots_world_file.wbt')
-        cmd = ['webots','--extern-urls', '--no-rendering', f'--mode={cfg.mode}', world_file]
-
-        # Open Webots
-        wb_process = Popen(cmd, stdout=PIPE)
-
-        # Set the environment variable for the controller to connect to the supervisor
-        output = wb_process.stdout.readline().decode("utf-8")
-        ipc_prefix = 'ipc://'
-        start_index = output.find(ipc_prefix)
-        port_nr = output[start_index + len(ipc_prefix):].split('/')[0]
-        os.environ["WEBOTS_CONTROLLER_URL"] = ipc_prefix + str(port_nr)
+    def __init__(self, cfg, paths):
+        # Open the world
+        world_file = Path(paths.resources.worlds) / "webots_world_file.wbt"
+        self.open_world(cfg.mode, world_file)
         
-    def __init__(self, cfg, path_to_worlds):
+        # Connect to the supervisor robot
         super().__init__()
 
         self.basic_timestep = int(self.getBasicTimeStep())
@@ -48,28 +35,27 @@ class WebotsEnv(Supervisor):
         # Lidar sensor and keyboard
         self.lidar_node = self.getDevice('lidar')
         self.lidar_node.enable(int(self.getBasicTimeStep()))
-
-        # Open the world
-        self.open_world(cfg, path_to_worlds)
     
-    def reset(self, map_nr):
+    def reset(self):
         self.simulationReset()
         super().step(self.basic_timestep) # super prevents confusion with self.step() defined below
-        self.reset_map(map_nr)
-        self.reset_robot()
 
-    def reset_map(self, map_nr):
+    def reset_map(self, proto_name):
+        print(f"Resetting map with proto string: \n{proto_name}")
         # Loading and translating map into position
-        self.root_children_field.importMFNodeFromString(position=-1, nodeString='DEF MAP ' + 'yaml_' + str(self.map_nr) + '{}')
+        self.root_children_field.importMFNodeFromString(position=-1, nodeString='DEF MAP ' + proto_name + '{}')
+
+        # import ipdb; ipdb.set_trace()
+        
         map_node = self.getFromDef('MAP')
         map_node_translation_field = map_node.getField('translation')
         map_node_translation_field.setSFVec3f([self.params['map_res']*self.params['map_width'], -(self.params['map_res']*self.params['map_width'])-3*self.params['map_res'], 0.0])
         super().step(self.basic_timestep)
 
-    def reset_robot(self):
+    def reset_robot(self, init_pose):
         # Positioning the robot at init_pos
-        self.robot_translation_field.setSFVec3f([self.init_pose[0], self.init_pose[1], self.params['z_pos']]) #TODO: add z_pos to init_pose[2]
-        self.robot_rotation_field.setSFRotation([0.0, 0.0, 1.0, self.init_pose[3]])
+        self.robot_translation_field.setSFVec3f([init_pose[0], init_pose[1], STATIC_ROBOT_Z_POS])
+        self.robot_rotation_field.setSFRotation([0.0, 0.0, 1.0, init_pose[3]])
         super().step(2*self.basic_timestep) #NOTE: 2 timesteps needed in order to succesfully set the init position
     
     def step(self, new_position, new_orientation):
@@ -98,6 +84,27 @@ class WebotsEnv(Supervisor):
     @property
     def robot_orientation(self):
         return np.array(self.robot_node.getOrientation())
+    
+    @staticmethod
+    def killall():
+        command = "ps aux | grep webots | grep -v grep | awk '{print $2}' | xargs -r kill"
+        os.system(command)
+
+    @staticmethod
+    def open_world(mode, world_file):   
+        # Create Webots command with specified mode and world file
+        cmd = ['webots','--extern-urls', '--no-rendering', f'--mode={mode}', world_file]
+
+        # Open Webots
+        wb_process = Popen(cmd, stdout=PIPE)
+
+        # Set the environment variable for the controller to connect to the supervisor
+        output = wb_process.stdout.readline().decode("utf-8")
+        ipc_prefix = 'ipc://'
+        start_index = output.find(ipc_prefix)
+        port_nr = output[start_index + len(ipc_prefix):].split('/')[0]
+        os.environ["WEBOTS_CONTROLLER_URL"] = ipc_prefix + str(port_nr)
+        
     
 def compute_collision_detection_tree(gridmap, resolution):
     occupied_boxes = []
