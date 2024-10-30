@@ -25,7 +25,9 @@ def main(cfg : DictConfig):
     
     base_env = BaseEnv(cfg.environment, cfg.paths, data_set)
     base_env.reset()
+    
     # import ipdb; ipdb.set_trace()
+    
     # wrapped_env = wt.wrap_env(cfg.wrappers, base_env)
     # vec_env=make_vec_env( #NOTE: Wraps the environment in a Monitor wrapper to have additional training information
     #     env_id=wrapped_env,

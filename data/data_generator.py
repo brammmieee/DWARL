@@ -22,12 +22,11 @@ class DataGenerator:
         
         if cfg.logging:
             logging.basicConfig(
-                level=logging.INFO,
+                level=logging.debug,
                 filename=paths.outputs.data_generator_logs
             )
         
     def erase_data(self):
-        import ipdb; ipdb.set_trace()
         data_sets_folder = Path(self.paths.data_sets_root)
         if data_sets_folder.exists() and data_sets_folder.is_dir():
             shutil.rmtree(data_sets_folder)    
@@ -37,8 +36,10 @@ class DataGenerator:
             return yaml.load(f, Loader=yaml.BaseLoader)
             
     def generate_data(self):
-        for data_set_paths in self.paths.data_sets:
-            Path(data_set_paths).mkdir(parents=True, exist_ok=True)
+        # Create directories for data sets
+        Path(self.paths.data_sets_root).mkdir(parents=True, exist_ok=True)
+        for data_set_path in self.paths.data_sets.values():
+            Path(data_set_path).mkdir(parents=True, exist_ok=True)
 
         # Generate data for each map
         for map_name in self.map_names:
@@ -47,7 +48,7 @@ class DataGenerator:
             
             self.webots_generator.save_proto(
                 map_raster=map_raster, 
-                output_file=self.paths.data_sets.protos / f"{map_name}.proto"
+                output_file=Path(self.paths.data_sets.protos) / f"{map_name}.proto"
             )
             self.webots_generator.save_world(
                 input_world_file=Path(self.paths.resources.worlds) / WEBOTS_WORLD_FILE_NAME,
@@ -55,19 +56,19 @@ class DataGenerator:
             )
             self.map_loader.save_grid(
                 map_raster=map_raster, 
-                output_file=self.paths.data_sets.grids / f"{map_name}_grid.npy"
+                output_file=Path(self.paths.data_sets.grids) / f"{map_name}_grid.npy"
             )
             
-            logging.info(f"\n Generating data for map: {map_name}")
-            logging.info(f" Number of paths found: {len(path_file_path_list)}")
+            logging.debug(f"\n Generating data for map: {map_name}")
+            logging.debug(f" Number of paths found: {len(path_file_path_list)}")
             
             # Process paths for current map (paths are not regenerated into npy files!)
             for path_file_path in path_file_path_list:
                 path = self.path_loader.load_path(path_file_path)
                 path_name = Path(path_file_path).stem
                 
-                logging.info(f"\t Processing path: {path_name}")
-                logging.info(f"\t Number of init goal pairs: {self.cfg.pose_sampler.max_combinations}, using mode: {self.cfg.pose_sampler.mode}")
+                logging.debug(f"\t Processing path: {path_name}")
+                logging.debug(f"\t Number of init goal pairs: {self.cfg.pose_sampler.max_combinations}, using mode: {self.cfg.pose_sampler.mode}")
                 
                 # Generate multiple unique combinations of init and goal poses per path
                 self.pose_sampler.reset() # Reset unique combinations for current path
@@ -77,11 +78,11 @@ class DataGenerator:
                         mode=self.cfg.pose_sampler.mode
                     )
                     data_point = {"init_pose": init_pose.tolist(), "goal_pose": goal_pose.tolist()}
-                    data_point_path = self.paths.data_sets.data_points / f"{path_name}_{len(self.pose_sampler.unique_combinations)}.yaml"
+                    data_point_path = Path(self.paths.data_sets.data_points) / f"{path_name}_{len(self.pose_sampler.unique_combinations)}.yaml"
                     with open(data_point_path, 'w') as file:
                         yaml.dump(data_point, file)
                     
-                    logging.info(f"\t\t init_pose: {init_pose}, goal_pose: {goal_pose}")
+                    logging.debug(f"\t\t init_pose: {init_pose}, goal_pose: {goal_pose}")
                     if len(self.pose_sampler.unique_combinations) >= self.cfg.pose_sampler.max_combinations:
                         break
 
@@ -227,7 +228,10 @@ class WebotsGenerator:
         # Read the world file
         with open(input_world_file, 'r') as wb_world_file:
             content = wb_world_file.read()
-            
+        
+        # Add absolute file path for robot proto file
+        content = content.replace("../protos", str(self.paths.resources.protos))    
+        
         import_lines = "\n".join(
             f'IMPORTABLE EXTERNPROTO "{self.paths.data_sets.protos}/{file_name}.proto"' 
             for file_name in file_name_list
@@ -240,7 +244,7 @@ class WebotsGenerator:
         )
         
         # Write the updated world file
-        with open(output_world_file, 'w') as write_file:
+        with open(Path(output_world_file) / WEBOTS_WORLD_FILE_NAME, 'w') as write_file:
             write_file.write(updated_content)
         
     @staticmethod

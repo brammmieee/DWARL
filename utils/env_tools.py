@@ -12,11 +12,12 @@ import os
 import yaml
 
 STATIC_ROBOT_Z_POS = 0.05
+WEBOTS_WORLD_FILE_NAME = 'webots_world_file.wbt'
 
 class WebotsEnv(Supervisor):
     def __init__(self, cfg, paths):
         # Open the world
-        world_file = Path(paths.resources.worlds) / "webots_world_file.wbt"
+        world_file = Path(paths.data_sets.worlds) / WEBOTS_WORLD_FILE_NAME
         self.open_world(cfg.mode, world_file)
         
         # Connect to the supervisor robot

@@ -8,10 +8,8 @@ class Dataset(torch.utils.data.Dataset):
         self.cfg = cfg
         self.paths = paths
         
-        self.grid_dir = Path(paths.outputs.data_sets) / "grids"
-        self.proto_dir = Path(paths.outputs.data_sets) / "protos"
-        self.data_point_dir = Path(paths.outputs.data_sets) / "data_points"
-        self.data_points = sorted(self.data_point_dir.glob("*.yaml"))
+        data_point_dir = Path(paths.data_sets.data_points)
+        self.data_points = sorted(data_point_dir.glob("*.yaml"))
 
     def __len__(self):
         return len(self.data_points)
@@ -38,7 +36,7 @@ class Dataset(torch.utils.data.Dataset):
         dataset_name, map_idx, path_idx, data_point_idx = self._parse_path_name(path_name)
 
         # Load grid
-        grid_file_path = self.grid_dir / f"{dataset_name}_{map_idx}_grid.npy"
+        grid_file_path = Path(self.paths.data_sets.grids) / f"{dataset_name}_{map_idx}_grid.npy"
         grid = np.load(grid_file_path)
 
         # Load start and goal poses from YAML
