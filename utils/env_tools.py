@@ -11,111 +11,6 @@ import numpy as np
 import os
 import yaml
 
-STATIC_ROBOT_Z_POS = 0.05
-WEBOTS_WORLD_FILE_NAME = 'webots_world_file.wbt'
-
-class WebotsEnv(Supervisor):
-    def __init__(self, cfg, paths):
-        # Open the world
-        world_file = Path(paths.data_sets.worlds) / WEBOTS_WORLD_FILE_NAME
-        self.open_world(cfg.mode, world_file)
-        
-        # Connect to the supervisor robot
-        super().__init__()
-
-        self.basic_timestep = int(self.getBasicTimeStep())
-        self.timestep = 2*self.basic_timestep #NOTE: basic timestep set 0.5*timestep for lidar update
-        
-        # Static node references
-        self.robot_node = self.getFromDef('ROBOT')
-        self.root_node = self.getRoot() # root node (the nodes seen in the Webots scene tree editor window are children of the root node)
-        self.robot_translation_field = self.robot_node.getField('translation')
-        self.robot_rotation_field = self.robot_node.getField('rotation')
-        self.root_children_field = self.root_node.getField('children') # used for inserting map node
-
-        # Lidar sensor and keyboard
-        self.lidar_node = self.getDevice('lidar')
-        self.lidar_node.enable(int(self.getBasicTimeStep()))
-    
-    def reset(self):
-        self.simulationReset()
-        super().step(self.basic_timestep) # super prevents confusion with self.step() defined below
-
-    def reset_map(self, proto_name):
-        # Loading and translating map into position
-        self.root_children_field.importMFNodeFromString(position=-1, nodeString='DEF MAP ' + proto_name + '{}')
-
-        # import ipdb; ipdb.set_trace()
-        
-        # map_node = self.getFromDef('MAP')
-        # map_node_translation_field = map_node.getField('translation')
-        # NOTE: resolution shouldn't be necessary here!
-        # map_node_translation_field.setSFVec3f([
-        #     self.params['map_res']*self.params['map_width'], 
-        #     -(self.params['map_res']*self.params['map_width'])-3*self.params['map_res'], 
-        #     0.0
-        # ])
-        super().step(self.basic_timestep)
-
-    def reset_robot(self, init_pose):
-        # Positioning the robot at init_pos
-        print(f"Setting robot position to {init_pose}")
-        
-        self.robot_translation_field.setSFVec3f([init_pose[0], init_pose[1], STATIC_ROBOT_Z_POS])
-        self.robot_rotation_field.setSFRotation([0.0, 0.0, 1.0, init_pose[3]])
-        super().step(2*self.basic_timestep) #NOTE: 2 timesteps needed in order to succesfully set the init position
-        # NOTE: could the issue be caused by the lidar frequency?
-        # NOTE: could the issue be caused by basic timestep defined in the world file?
-        # NOTE: could the issue be caused by the FPS of the simulation?
-    
-    def step(self, new_position, new_orientation):
-        self.robot_translation_field.setSFVec3f([
-            new_position[0], 
-            new_position[1], 
-            new_position[2]
-        ])
-        self.robot_rotation_field.setSFRotation([
-            0.0,
-            0.0,
-            1.0,
-            new_orientation
-        ])
-        super().step(self.basic_timestep)
-        super().step(self.basic_timestep) #NOTE: only after this timestep will the lidar data of the previous step be available
-
-    def close_webots(self):
-        self.simulationQuit(0)
-        self.killall()
-
-    @property
-    def robot_position(self):
-        return np.array(self.robot_node.getPosition())
-
-    @property
-    def robot_orientation(self):
-        return np.array(self.robot_node.getOrientation())
-    
-    @staticmethod
-    def killall():
-        command = "ps aux | grep webots | grep -v grep | awk '{print $2}' | xargs -r kill"
-        os.system(command)
-
-    @staticmethod
-    def open_world(mode, world_file):   
-        # Create Webots command with specified mode and world file
-        cmd = ['webots','--extern-urls', '--no-rendering', f'--mode={mode}', world_file]
-
-        # Open Webots
-        wb_process = Popen(cmd, stdout=PIPE)
-
-        # Set the environment variable for the controller to connect to the supervisor
-        output = wb_process.stdout.readline().decode("utf-8")
-        ipc_prefix = 'ipc://'
-        start_index = output.find(ipc_prefix)
-        port_nr = output[start_index + len(ipc_prefix):].split('/')[0]
-        os.environ["WEBOTS_CONTROLLER_URL"] = ipc_prefix + str(port_nr)
-        
-    
 def compute_collision_detection_tree(gridmap, resolution):
     occupied_boxes = []
     
@@ -251,7 +146,7 @@ def apply_kinematic_constraints(params, cur_vel, target_vel):
 
     return np.array([omega_clipped, v])
 
-def precompute_lidar_values(num_lidar_rays):
+def lidar_precomputation(num_lidar_rays):
     lidar_delta_psi = (2 * np.pi) / num_lidar_rays
     lidar_angles = np.arange(0, 2 * np.pi, lidar_delta_psi)
     lidar_cosines = np.cos(lidar_angles)
@@ -279,58 +174,3 @@ def lidar_to_point_cloud(parameters, precomputed, lidar_range_image, replace_val
     # Add lidar position offset
     lidar_points[:,1] += parameters['lidar_y_pos']
     return lidar_points
-
-def replace_placeholders(content, substitutions):
-    """
-    Replace placeholders in the content with values from the substitutions dictionary.
-
-    Args:
-    content (str): The content string to be modified.
-    substitutions (dict): A dictionary containing the placeholder-value pairs.
-
-    Returns:
-    str: The modified content string.
-    """
-    for key, value in substitutions.items():
-        placeholder = f"{{{{{key}}}}}"
-        if placeholder not in content:
-            content = content.replace(placeholder, str(value))
-            print(f"Replacing '{placeholder}' with '{value}' in the proto file.")
-        content = content.replace(placeholder, str(value))
-    return content
-
-def update_protos(cfg, path_to_proto):
-    """
-    Update the proto files based on the provided configuration.
-
-    Args:
-    config_file_name (str): The name of the configuration file.
-    package_dir (str, optional): The directory of the config file. Defaults to the parent directory of the current directory.
-
-    Raises:
-    FileNotFoundError: If the config file or template proto file is not found.
-    """
-    try:
-        template_proto_file_name = cfg.template_name
-        output_proto_file_name = cfg.output_name
-        
-        # Load the template proto file
-        template_proto_file_path = find_file(
-            filename=template_proto_file_name, 
-            start_dir=path_to_proto
-        )
-        with open(template_proto_file_path, 'r') as file:
-            template_proto_content = file.read()
-    except FileNotFoundError:
-        raise FileNotFoundError("Template proto file not found.")
-
-    # Replace placeholders in the content with values from the config
-    output_proto_content = replace_placeholders(
-        template_proto_content, 
-        cfg.substitutions
-    )
-
-    # Write the updated content to the output file
-    output_proto_file_path = template_proto_file_path.replace(template_proto_file_name, output_proto_file_name)
-    with open(output_proto_file_path, 'w') as file:
-        file.write(output_proto_content)

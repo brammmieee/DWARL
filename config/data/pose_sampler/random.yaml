@@ -1,3 +1,0 @@
-mode: random                      # Random pose sampling (nominal distance apart)
-max_combinations: 10              # Maximum number of combinations of initial and goal poses 
-nominal_distance: 1.5             # Nominal distance between initial and goal position [m]

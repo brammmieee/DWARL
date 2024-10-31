@@ -1,6 +1,6 @@
 paths:
-  root: ${hydra:runtime.cwd}/..
-  data_sets_root: /tmp/DWARL_data_sets
+  root: ${hydra:runtime.cwd}
+  tmp: /tmp/DWARL
   resources: 
     maps: ${paths.root}/resources/maps
     paths: ${paths.root}/resources/paths
@@ -12,22 +12,28 @@ paths:
     models: ${hydra:runtime.output_dir}/models
     data_generator_logs: ${hydra:runtime.output_dir}/data_generator_logs
   data_sets:
-    protos: ${paths.data_sets_root}/protos
-    grids: ${paths.data_sets_root}/grids
-    data_points: ${paths.data_sets_root}/data_points
-    worlds: ${paths.data_sets_root}/worlds
+    root: ${paths.tmp}/data_sets
+    config: ${paths.data_sets.root}/config
+    paths: ${paths.data_sets.root}/paths
+    grids: ${paths.data_sets.root}/grids
+    data_points: ${paths.data_sets.root}/data_points
+  sim_resources:
+    root: ${paths.tmp}/sim_resources
+    worlds: ${paths.sim_resources.root}/worlds
+    protos: ${paths.sim_resources.root}/protos
 
 defaults:
 - _self_
 - environment:
     - cindy
 - wrappers:
-    - parameterized_reward
     - sparse_lidar_observation
     - command_velocity_action
     - time_limit
-- data:
-    - barn
+- data_generator:
+    - cindy
+- simulation:
+    - webots
 
 steps: 10000000             # number of training steps
 envs: 6    # number of parallel environments (and Webots instances)
