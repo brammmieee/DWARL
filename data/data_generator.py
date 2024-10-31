@@ -77,6 +77,10 @@ class DataGenerator:
                         path=path,
                         mode=self.cfg.pose_sampler.mode
                     )
+                    # Scale the poses to the map resolution
+                    init_pose[:2] *= self.cfg.map.resolution
+                    goal_pose[:2] *= self.cfg.map.resolution
+                    
                     data_point = {"init_pose": init_pose.tolist(), "goal_pose": goal_pose.tolist()}
                     data_point_path = Path(self.paths.data_sets.data_points) / f"{path_name}_{len(self.pose_sampler.unique_combinations)}.yaml"
                     with open(data_point_path, 'w') as file:
@@ -256,10 +260,10 @@ class WebotsGenerator:
         """append 4 3D points to the 'points' array,
         link to these points in the 'index' array,
         together the 4 points make up a 2D vertex, front and back"""
-        points.append([-origin[0] + x1*map_res, 0, (y1 - image_height)*map_res + origin[1]])
-        points.append([-origin[0] + x2*map_res, 0, (y2 - image_height)*map_res + origin[1]])
-        points.append([-origin[0] + x2*map_res, 1, (y2 - image_height)*map_res + origin[1]])
-        points.append([-origin[0] + x1*map_res, 1, (y1 - image_height)*map_res + origin[1]])
+        points.append([-origin[0] + x1*map_res, -origin[1] + (image_height - y1)*map_res, origin[2]])
+        points.append([-origin[0] + x2*map_res, -origin[1] + (image_height - y2)*map_res, origin[2]])
+        points.append([-origin[0] + x2*map_res, -origin[1] + (image_height - y2)*map_res, origin[2] + 1])
+        points.append([-origin[0] + x1*map_res, -origin[1] + (image_height - y1)*map_res, origin[2] + 1])
 
         # link to the points in the 'points' array, end with '-1'
         index.append([i, i+1, i+2, i+3, -1])  # front side of the vertex
@@ -268,14 +272,13 @@ class WebotsGenerator:
         return i + 4
 
     def convert_pgm_to_proto(self, map_cfg, map_raster, output_file, proto_name):
-        origin = [-30.0 * map_cfg.resolution, 0, 0]
-        origin = [-float(coord) for coord in origin]
+        image_height = len(map_raster)
+        origin = [0, image_height*map_cfg.resolution, 0]
         occupied_thresh = 255 * (1 - float(map_cfg.occupied_thresh))
         free_thresh = 255 * (1 - float(map_cfg.free_tresh))
 
         coords = []
         indices = []
-        image_height = len(map_raster)
 
         i = 0
         for r, row in enumerate(map_raster[1:-1], start=1):
@@ -317,7 +320,7 @@ class WebotsGenerator:
         # Define PROTO with name 'map' and params translation and rotation
         pf.write('PROTO ' + proto_name + ' [\n')
         pf.write('  field  SFVec3f     translation     0 0 0\n')
-        pf.write('  field  SFRotation  rotation        1 0 0 1.5708\n')
+        pf.write('  field  SFRotation  rotation        0 0 0 0\n')
         pf.write(']\n')
         pf.write('{\n')
 

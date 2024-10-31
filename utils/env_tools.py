@@ -42,22 +42,31 @@ class WebotsEnv(Supervisor):
         super().step(self.basic_timestep) # super prevents confusion with self.step() defined below
 
     def reset_map(self, proto_name):
-        print(f"Resetting map with proto string: \n{proto_name}")
         # Loading and translating map into position
         self.root_children_field.importMFNodeFromString(position=-1, nodeString='DEF MAP ' + proto_name + '{}')
 
         # import ipdb; ipdb.set_trace()
         
-        map_node = self.getFromDef('MAP')
-        map_node_translation_field = map_node.getField('translation')
-        map_node_translation_field.setSFVec3f([self.params['map_res']*self.params['map_width'], -(self.params['map_res']*self.params['map_width'])-3*self.params['map_res'], 0.0])
+        # map_node = self.getFromDef('MAP')
+        # map_node_translation_field = map_node.getField('translation')
+        # NOTE: resolution shouldn't be necessary here!
+        # map_node_translation_field.setSFVec3f([
+        #     self.params['map_res']*self.params['map_width'], 
+        #     -(self.params['map_res']*self.params['map_width'])-3*self.params['map_res'], 
+        #     0.0
+        # ])
         super().step(self.basic_timestep)
 
     def reset_robot(self, init_pose):
         # Positioning the robot at init_pos
+        print(f"Setting robot position to {init_pose}")
+        
         self.robot_translation_field.setSFVec3f([init_pose[0], init_pose[1], STATIC_ROBOT_Z_POS])
         self.robot_rotation_field.setSFRotation([0.0, 0.0, 1.0, init_pose[3]])
         super().step(2*self.basic_timestep) #NOTE: 2 timesteps needed in order to succesfully set the init position
+        # NOTE: could the issue be caused by the lidar frequency?
+        # NOTE: could the issue be caused by basic timestep defined in the world file?
+        # NOTE: could the issue be caused by the FPS of the simulation?
     
     def step(self, new_position, new_orientation):
         self.robot_translation_field.setSFVec3f([
@@ -174,7 +183,7 @@ def get_local_goal_pos(cur_pos, cur_orient_matrix, goal_pose): #TODO: remove 3rd
     # Calculate the translation vector
     translation = cur_pos - goal_pos
 
-    #Compensate for different axis convention compared to Webots
+    # Compensate for different axis convention compared to Webots
     rot_z = np.array([[0., -1., 0.], [1., 0., 0.], [0., 0., 1.]]) 
     cur_orient_matrix = np.dot(rot_z, cur_orient_matrix) # 90-degree rotation around the z-axis
     
