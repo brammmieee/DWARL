@@ -1,1 +1,1 @@
-command_velocity_action: {}
+CommandVelocityAction: {}   # Name must be the name of the wrapper class

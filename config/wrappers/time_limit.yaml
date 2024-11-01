@@ -1,2 +1,2 @@
-time_limit:
+TimeLimit:    # Name must be the name of the wrapper class
   max_episode_steps: 600                 # maximum episode steps [s]

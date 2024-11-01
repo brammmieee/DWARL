@@ -14,6 +14,7 @@ import hydra
 import torch as th
 import utils.wrapper_tools as wt
 from torch.utils.data import DataLoader
+from utils.wrapper_tools import wrap_env
 
 from omegaconf import DictConfig, OmegaConf
 
@@ -27,19 +28,31 @@ def main(cfg : DictConfig):
     # batch_size = round(len(data_set) / cfg.envs)
     # data_loader = DataLoader(data_set, batch_size=batch_size, shuffle=True, num_workers=0)
     
-    # import ipdb; ipdb.set_trace()
-
-    sim_env = WebotsEnv(cfg.simulation, cfg.paths)
+    # sim_env = WebotsEnv(cfg.simulation, cfg.paths)
     # base_env = BaseEnv(cfg.environment, cfg.paths, data_set, sim_env)
     # base_env.reset()
     
-    # # TODO: Check environment
     
-    # wrapped_env = wt.wrap_env(cfg.wrappers, base_env)
-    # vec_env=make_vec_env( #NOTE: Wraps the environment in a Monitor wrapper to have additional training information
-    #     env_id=wrapped_env,
+    # import ipdb; ipdb.set_trace()
+    wrap_env("env_to_wrap_debug", cfg.wrappers)
+        
+    # TODO: Check environment
+    
+    # vec_env=make_vec_env( #NOTE: Adds the monitor wrapper which might lead to issues with time limit wrapper! (see __init__ description)
+    #     env_id=BaseEnv,
     #     n_envs=cfg.envs, 
     #     vec_env_cls=SubprocVecEnv, 
+    #     wrapper_class=wt.wrap_env(cfg.wrappers),
+    #     env_kwargs={
+    #         'cfg': cfg.environment,
+    #         'paths': cfg.paths,
+    #         'data_set': data_set,
+    #         'sim_env': sim_env
+    #     }
+    #     wrapper_kwargs={
+    #         'cfg': cfg.environment,
+    #         'paths': cfg.paths,
+    #     }
     # )
 
     # model=PPO(

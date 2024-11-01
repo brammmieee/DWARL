@@ -64,10 +64,11 @@ class DataGenerator:
     def check_for_data(self):
         if not Path(self.paths.data_sets.config).exists():
             return False
+        
         old_cfg = self.load_old_config()
-        print(f"old_cfg: {old_cfg}")
         if old_cfg != OmegaConf.to_yaml(self.cfg):
             return False
+        
         return True
     
     def load_old_config(self):

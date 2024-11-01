@@ -14,26 +14,26 @@ class WebotsEnv(Supervisor):
         self.webots_generator = WebotsResourceGenerator(cfg, paths)
         self.webots_generator.generate_resources()
 
-        # # Open the world
-        # world_file = Path(paths.data_sets.worlds) / WEBOTS_WORLD_FILE_NAME
-        # self.open_world(cfg.mode, world_file)
+        # Open the world
+        world_file = Path(paths.sim_resources.worlds) / WEBOTS_WORLD_FILE_NAME
+        self.open_world(cfg.mode, world_file)
         
-        # # Connect to the supervisor robot
-        # super().__init__()
+        # Connect to the supervisor robot
+        super().__init__()
 
-        # self.basic_timestep = int(self.getBasicTimeStep())
-        # self.timestep = 2*self.basic_timestep #NOTE: basic timestep set 0.5*timestep for lidar update
+        self.basic_timestep = int(self.getBasicTimeStep())
+        self.timestep = 2*self.basic_timestep #NOTE: basic timestep set 0.5*timestep for lidar update
         
-        # # Static node references
-        # self.robot_node = self.getFromDef('ROBOT')
-        # self.root_node = self.getRoot() # root node (the nodes seen in the Webots scene tree editor window are children of the root node)
-        # self.robot_translation_field = self.robot_node.getField('translation')
-        # self.robot_rotation_field = self.robot_node.getField('rotation')
-        # self.root_children_field = self.root_node.getField('children') # used for inserting map node
+        # Static node references
+        self.robot_node = self.getFromDef('ROBOT')
+        self.root_node = self.getRoot() # root node (the nodes seen in the Webots scene tree editor window are children of the root node)
+        self.robot_translation_field = self.robot_node.getField('translation')
+        self.robot_rotation_field = self.robot_node.getField('rotation')
+        self.root_children_field = self.root_node.getField('children') # used for inserting map node
 
-        # # Lidar sensor and keyboard
-        # self.lidar_node = self.getDevice('lidar')
-        # self.lidar_node.enable(int(self.getBasicTimeStep()))
+        # Lidar sensor and keyboard
+        self.lidar_node = self.getDevice('lidar')
+        self.lidar_node.enable(int(self.getBasicTimeStep()))
     
     def reset(self):
         self.simulationReset()

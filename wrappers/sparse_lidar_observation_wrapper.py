@@ -1,27 +1,23 @@
 import numpy as np
 import gymnasium as gym
 
-import utils.admin_tools as at
 import matplotlib.pyplot as plt
 
 def normalize(value, min_val, max_val):
     return (value - min_val) / (max_val - min_val)
 
-class SparseLidarObservationWrapper(gym.ObservationWrapper):
+class SparseLidarObservation(gym.ObservationWrapper):
     params_file_name = 'sparse_lidar_observation.yaml'
 
-    def __init__(self, env):
+    def __init__(self, env, cfg):
         super().__init__(env)
         
-        # Load parameters
-        self.params = at.load_parameters([
-            'base_parameters.yaml', 
-            'sparse_lidar_proto_config.json',
-            self.params_file_name
-        ])
+        self.cfg = cfg
+        self.kinematic_cfg = self.unwrapped.cfg.vehicle.kinematics
+        self.proto_cfg = self.unwrapped.sim_env.cfg.proto_substitution.substitutions
         
         # Observation space definition
-        num_lidar_rays = self.params['proto_substitutions']['horizontalResolution']
+        num_lidar_rays = self.proto_cfg.horizontalResolution
         low_array = np.concatenate([
             np.zeros(num_lidar_rays), #NOTE: since the lidar range image is normalized
             np.zeros(4)
@@ -38,8 +34,8 @@ class SparseLidarObservationWrapper(gym.ObservationWrapper):
         )
 
         # Some checks
-        if self.params['goal_pos_dist_max'] != self.params['proto_substitutions']['maxRange'] \
-            or self.params['goal_pos_dist_min'] != self.params['proto_substitutions']['minRange']:
+        if self.cfg.goal_pos_dist_max != self.proto_cfg.maxRange \
+            or self.cfg.goal_pos_dist_min != self.proto_cfg.minRange:
             print("Warning: The max/min goal distance is not equal to the max/min range of the lidar sensor. This may decrease consistency in the observation space.")
         
         # Plotting
@@ -49,8 +45,8 @@ class SparseLidarObservationWrapper(gym.ObservationWrapper):
     def process_lidar_data(self, lidar_data):
         # NOTE - the lidar data contains an offset wrt the robot's position!!!
         # Parameters
-        min_range = float(self.params['proto_substitutions']['minRange'])
-        max_range = float(self.params['proto_substitutions']['maxRange'])
+        min_range = float(self.proto_cfg.minRange)
+        max_range = float(self.proto_cfg.maxRange)
 
         # Convert lidar data to numpy array and limit limit
         lidar_data_array = np.array(lidar_data)
@@ -73,10 +69,10 @@ class SparseLidarObservationWrapper(gym.ObservationWrapper):
         goal_pos_dist = np.linalg.norm(goal_pos)
         
         # Clip then normalize goal position
-        goal_pos_angle_min = self.params['goal_pos_angle_min']
-        goal_pos_angle_max = self.params['goal_pos_angle_max']
-        goal_pos_dist_min=self.params['goal_pos_dist_min']
-        goal_pos_dist_max=self.params['goal_pos_dist_max']
+        goal_pos_angle_min = self.cfg.goal_pos_angle_min
+        goal_pos_angle_max = self.cfg.goal_pos_angle_max
+        goal_pos_dist_min=self.cfg.goal_pos_dist_min
+        goal_pos_dist_max=self.cfg.goal_pos_dist_max
 
         clipped_goal_pos_angle = np.clip(goal_pos_angle, goal_pos_angle_min, goal_pos_angle_max)
         clipped_goal_pos_dist = np.clip(goal_pos_dist, goal_pos_dist_min, goal_pos_dist_max)
@@ -89,10 +85,10 @@ class SparseLidarObservationWrapper(gym.ObservationWrapper):
         return np.array([goal_pos_angle_normalized, goal_pos_dist_normalized])
     
     def process_prev_vel(self, prev_vel):
-        omega_min=self.params['omega_min']
-        omega_max=self.params['omega_max']
-        v_min=self.params['v_min']
-        v_max=self.params['v_max']
+        omega_min=self.kinematic_cfg.omega_min
+        omega_max=self.kinematic_cfg.omega_max
+        v_min=self.kinematic_cfg.v_min
+        v_max=self.kinematic_cfg.v_max
 
         omega_normalized = normalize(prev_vel[0], omega_min, omega_max)
         v_normalized = normalize(prev_vel[1], v_min, v_max)
