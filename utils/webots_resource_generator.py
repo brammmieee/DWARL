@@ -1,54 +1,64 @@
 from pathlib import Path
 import yaml
 import re
-
-WEBOTS_WORLD_FILE_NAME = 'webots_world_file.wbt'
-
+import numpy as np
+from omegaconf import OmegaConf
 
 class WebotsResourceGenerator:
     """ Generates the proto and world files for the Webots environment """
     def __init__(self, cfg, paths):
         self.cfg = cfg
         self.paths = paths
+        self.generate_folder_structure()
     
-    def generate_resources(self, map_name_list):
+    def generate_resources(self):
         print(f"Webots Resource Generator - Generating simulation resources based on data set configuration in {self.paths.data_sets.config}")
         
         data_set_config = self.load_data_set_config()
-        map_name_list = self.load_map_name_list(data_set_config.list)
+        map_name_list = self.load_map_name_list(data_set_config.map.list)
         
         # Generate proto files for each map
-        for map_name in self.load_map_name_list(map_name_list):
-            self.generate_proto(
+        for map_name in map_name_list:
+            map_raster = self.load_grid(map_name)
+            path_to_proto = Path(self.paths.sim_resources.protos) / f"{map_name}.proto"
+            self.convert_pgm_to_proto(
+                map_cfg=data_set_config.map, 
                 map_raster=map_raster, 
-                output_file=Path(self.paths.data_sets.protos) / f"{map_name}.proto"
+                output_file=path_to_proto, 
+                proto_name=path_to_proto.stem
             )
         
         # Generate world file that includes all the map protos (required for importing the proto files)
         self.generate_world(
-            input_world_file=Path(self.paths.resources.worlds) / WEBOTS_WORLD_FILE_NAME,
-            output_world_file=Path(self.paths.data_sets.worlds)
+            input_world_file=Path(self.paths.resources.worlds) / self.cfg.world_file_name,
+            output_world_file=Path(self.paths.sim_resources.worlds)
         )
+        
+    def generate_folder_structure(self):
+        print("Webots Resource Generator - Generating folder structure")
+        Path(self.paths.sim_resources.root).mkdir(parents=True, exist_ok=True)
+        for path_to_sim_resources in self.paths.sim_resources.values():
+            Path(path_to_sim_resources).mkdir(parents=True, exist_ok=True)
+        
+    def load_grid(self, map_name):
+        path_to_grid= Path(self.paths.data_sets.grids) / f"{map_name}_grid.npy"
+        return np.load(path_to_grid)
         
     def load_data_set_config(self):
         path_to_config = Path(self.paths.data_sets.config) / "config.yaml"
         with open(path_to_config) as f:
-            return yaml.load(f, Loader=yaml.BaseLoader)
+            config_dict = yaml.load(f, Loader=yaml.BaseLoader)
+        return OmegaConf.create(config_dict)
     
     def load_map_name_list(self, map_list_name):
         path_to_map_list = Path(self.paths.resources.map_name_lists) / f"{map_list_name}.yaml"   
         with open(path_to_map_list) as f:
             return yaml.load(f, Loader=yaml.BaseLoader)
-        
-    def generate_proto(self, map_raster: list, output_file):
-        """ Saves the map as a proto file """
-        with open(output_file, 'w') as f:
-            self.convert_pgm_to_proto(self.cfg, map_raster, f, proto_name=output_file.stem)
 
     def generate_world(self, input_world_file, output_world_file):
         """Adds externproto import statements to the specified world file."""
-        self.paths.data_sets.protos = Path(self.paths.data_sets.protos)
-        file_name_list = [f.stem for f in self.paths.data_sets.protos.glob("*.proto")]
+        path_to_protos = Path(self.paths.sim_resources.protos)
+        file_name_list = [f.stem for f in path_to_protos.glob("*.proto")]
         
         # Read the world file
         with open(input_world_file, 'r') as wb_world_file:
@@ -58,7 +68,7 @@ class WebotsResourceGenerator:
         content = content.replace("../protos", str(self.paths.resources.protos))    
         
         import_lines = "\n".join(
-            f'IMPORTABLE EXTERNPROTO "{self.paths.data_sets.protos}/{file_name}.proto"' 
+            f'IMPORTABLE EXTERNPROTO "{self.paths.sim_resources.protos}/{file_name}.proto"' 
             for file_name in file_name_list
         )
         updated_content = re.sub(
@@ -69,7 +79,7 @@ class WebotsResourceGenerator:
         )
         
         # Write the updated world file
-        with open(Path(output_world_file) / WEBOTS_WORLD_FILE_NAME, 'w') as write_file:
+        with open(Path(output_world_file) / self.cfg.world_file_name, 'w') as write_file:
             write_file.write(updated_content)
     
     @staticmethod
@@ -101,7 +111,7 @@ class WebotsResourceGenerator:
             raise FileNotFoundError("Template proto file not found.")
 
         # Replace placeholders in the content with values from the config
-        output_proto_content = WebotsAssetGenerator.replace_placeholders(
+        output_proto_content = WebotsResourceGenerator.replace_placeholders(
             template_proto_content, 
             cfg.substitutions
         )
@@ -161,62 +171,63 @@ class WebotsResourceGenerator:
                         coords.append(points)
                         indices.append(index)
 
-        pf = open(output_file.name, 'w+')
+        with open(output_file, 'w') as f:
+            pf = open(f.name, 'w+')
 
-        # Write proto-file header
-        pf.write('#VRML_SIM R2019a utf8\n')
-        pf.write('# license: Apache License 2.0\n')
-        pf.write('# license url: http://www.apache.org/licenses/LICENSE-2.0\n')
-        pf.write('\n')
+            # Write proto-file header
+            pf.write('#VRML_SIM R2019a utf8\n')
+            pf.write('# license: Apache License 2.0\n')
+            pf.write('# license url: http://www.apache.org/licenses/LICENSE-2.0\n')
+            pf.write('\n')
 
-        # Add appearance EXTERNPROTO
-        pf.write('EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2022b/projects/robots/kuka/youbot/protos/BlackMetalAppearance.proto"')
-        pf.write('\n\n')
+            # Add appearance EXTERNPROTO
+            pf.write('EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2022b/projects/robots/kuka/youbot/protos/BlackMetalAppearance.proto"')
+            pf.write('\n\n')
 
-        # Define PROTO with name 'map' and params translation and rotation
-        pf.write('PROTO ' + proto_name + ' [\n')
-        pf.write('  field  SFVec3f     translation     0 0 0\n')
-        pf.write('  field  SFRotation  rotation        0 0 0 0\n')
-        pf.write(']\n')
-        pf.write('{\n')
+            # Define PROTO with name 'map' and params translation and rotation
+            pf.write('PROTO ' + proto_name + ' [\n')
+            pf.write('  field  SFVec3f     translation     0 0 0\n')
+            pf.write('  field  SFRotation  rotation        0 0 0 0\n')
+            pf.write(']\n')
+            pf.write('{\n')
 
-        # Transform map based on params
-        pf.write('  Transform {\n')
-        pf.write('      translation IS translation\n')
-        pf.write('      rotation    IS rotation\n')
-        pf.write('      children [\n')
+            # Transform map based on params
+            pf.write('  Transform {\n')
+            pf.write('      translation IS translation\n')
+            pf.write('      rotation    IS rotation\n')
+            pf.write('      children [\n')
 
-        # Open Shape with BlackMetalAppearance
-        pf.write('          Shape {\n')
-        pf.write('              appearance BlackMetalAppearance {\n')
-        pf.write('              }\n')
-        pf.write('              geometry IndexedFaceSet {\n')
-        pf.write('                  coord Coordinate {\n')
-        pf.write('                      point [\n')
+            # Open Shape with BlackMetalAppearance
+            pf.write('          Shape {\n')
+            pf.write('              appearance BlackMetalAppearance {\n')
+            pf.write('              }\n')
+            pf.write('              geometry IndexedFaceSet {\n')
+            pf.write('                  coord Coordinate {\n')
+            pf.write('                      point [\n')
 
-        # Write all coordinates
-        pf.write('                          ')
-        for p in coords:
-            for i in p:
-                for j in i:
-                    pf.write(' ' + str(j))
-                pf.write(',')
-        pf.write('\n                      ]\n')
-        pf.write('                  }\n')
-        pf.write('                  coordIndex [\n')
+            # Write all coordinates
+            pf.write('                          ')
+            for p in coords:
+                for i in p:
+                    for j in i:
+                        pf.write(' ' + str(j))
+                    pf.write(',')
+            pf.write('\n                      ]\n')
+            pf.write('                  }\n')
+            pf.write('                  coordIndex [\n')
 
-        # Write all indices that point to the coordinates
-        pf.write('                      ')
-        for p in indices:
-            for i in p:
-                for j in i:
-                    pf.write(' ' + str(j))
-        pf.write('\n                ]\n')
-        pf.write('                  creaseAngle 0\n')
-        pf.write('              }\n')
-        pf.write('          }\n')
-        pf.write('      ]\n')
-        pf.write('  }\n')
-        pf.write('}\n')
+            # Write all indices that point to the coordinates
+            pf.write('                      ')
+            for p in indices:
+                for i in p:
+                    for j in i:
+                        pf.write(' ' + str(j))
+            pf.write('\n                ]\n')
+            pf.write('                  creaseAngle 0\n')
+            pf.write('              }\n')
+            pf.write('          }\n')
+            pf.write('      ]\n')
+            pf.write('  }\n')
+            pf.write('}\n')
 
-        pf.close()
+            pf.close()

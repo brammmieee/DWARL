@@ -2,6 +2,7 @@ name: webots
 sample_time: 0.05       # sample time [s]
 mode: fast              # simulation mode (fast or real-time)
 no_rendering: true      # rendering mode (true or false)
+world_file_name: webots_world_file.wbt
 proto_reconfiguration:    # reconfiguration of the Webots proto files
   template_name: RpLidarA2_template.proto  # name of the proto template file (input)
   output_name: RpLidarA2.proto  # name of the output proto file (output)

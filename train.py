@@ -19,7 +19,7 @@ from omegaconf import DictConfig, OmegaConf
 
 @hydra.main(config_path='config', config_name='train')
 def main(cfg : DictConfig):
-    print(OmegaConf.to_yaml(cfg))
+    # print(OmegaConf.to_yaml(cfg))
     
     data_generator = dg.DataGenerator(cfg.data_generator, cfg.paths)
     data_set = ds.Dataset(cfg.paths)
