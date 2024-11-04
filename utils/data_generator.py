@@ -4,6 +4,7 @@ import numpy as np
 import shutil
 import yaml
 from omegaconf import DictConfig, OmegaConf
+from utils.admin_tools import load_map_name_list, generate_folder_structure
 
 def convert_point_from_image_base(point, resolution, image_height):
         point[:2] *= resolution  # Convert to meters
@@ -49,11 +50,13 @@ class DataGenerator:
     def __init__(self, cfg, paths):
         self.cfg = cfg
         self.paths = paths
-        
+    
+    def prepare_and_generate_data(self):
         if not self.check_for_data():
             print("Data Generator - Data does not exist with the configuration provided. Erasing old data and generating new data.")
             self.erase_data()
-            self.generate_folder_structure()
+            print("Data Generator - Generating folder structure")
+            generate_folder_structure(self.paths.data_sets.root, self.paths.data_sets)
             self.save_config()
             self.generate_data()
         else:
@@ -87,17 +90,6 @@ class DataGenerator:
         if data_sets_folder.exists() and data_sets_folder.is_dir():
             shutil.rmtree(data_sets_folder)
         
-    def generate_folder_structure(self):
-        print("Data Generator - Generating folder structure")
-        Path(self.paths.data_sets.root).mkdir(parents=True, exist_ok=True)
-        for data_set_path in self.paths.data_sets.values():
-            Path(data_set_path).mkdir(parents=True, exist_ok=True)
-        
-    def load_map_name_list(self, map_list_name):
-        path_to_map_list = Path(self.paths.resources.map_name_lists) / f"{map_list_name}.yaml"   
-        with open(path_to_map_list) as f:
-            return yaml.load(f, Loader=yaml.BaseLoader)
-        
     def load_grid_from_pgm(self, map_name):
         path_to_map_pgm = Path(self.paths.resources.maps) / f"{map_name}.pgm"
         with open(path_to_map_pgm, 'rb') as map_pgm_file:
@@ -124,11 +116,12 @@ class DataGenerator:
     def generate_data(self):
         print("Data Generator - Generating data")
         # Generate data for each map
-        for map_name in self.load_map_name_list(self.cfg.map.list):
+        path_to_map_list = Path(self.paths.resources.map_name_lists) / f"{self.cfg.map.list}.yaml"  
+        for map_name in load_map_name_list(path_to_map_list):
             # Load map from pgm and save it as a numpy array 
             map_grid = self.load_grid_from_pgm(map_name)
             self.save_grid_to_npy(map_name, map_grid)
-            image_height = map_grid.shape[0] # [px]
+            # image_height = map_grid.shape[0] # [px]
             
             # Loop over all paths belonging to the map
             path_to_path_list = list(Path(self.paths.resources.paths).glob(f"{map_name}_*"))
@@ -149,9 +142,9 @@ class DataGenerator:
                     sign = 1 if init_index < goal_index else -1
                     second_point_idx = init_index + sign
 
-                    second_pos = convert_point_from_image_base(path[second_point_idx], self.cfg.map.resolution, image_height)
-                    init_pos = convert_point_from_image_base(path[init_index], self.cfg.map.resolution, image_height)
-                    goal_pos = convert_point_from_image_base(path[goal_index], self.cfg.map.resolution, image_height)
+                    second_pos = converted_path[second_point_idx]
+                    init_pos = converted_path[init_index]
+                    goal_pos = converted_path[goal_index]
                     
                     # Create pose that aligns the robot with the first path segment
                     aligned_orientation = np.arctan2(second_pos[1] - init_pos[1], second_pos[0] - init_pos[0])

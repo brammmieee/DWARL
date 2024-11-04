@@ -12,6 +12,7 @@ matplotlib
 numexpr
 numpy
 pandas
+pygame
 scipy
 shapely
 stable-baselines3[extra]

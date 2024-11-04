@@ -12,46 +12,50 @@ import utils.data_generator as dg
 import utils.data_set as ds
 import hydra
 import torch as th
-import utils.wrapper_tools as wt
-from torch.utils.data import DataLoader
-from utils.wrapper_tools import wrap_env
+from utils.wrapper_tools import env_wrapper
+from utils.data_loader import InfiniteDataLoader
+from functools import partial
 
 from omegaconf import DictConfig, OmegaConf
 
 @hydra.main(config_path='config', config_name='train')
 def main(cfg : DictConfig):
-    # print(OmegaConf.to_yaml(cfg))
-    
+    # Generate data from maps and paths
     data_generator = dg.DataGenerator(cfg.data_generator, cfg.paths)
+    data_generator.prepare_and_generate_data()
     data_set = ds.Dataset(cfg.paths)
+    
+    # Create infinite data loader
+    infinite_loader = InfiniteDataLoader(data_set, cfg.envs)
+    
+    
+    env=BaseEnv(
+        cfg=cfg.environment,
+        paths=cfg.paths,
+        sim_env=WebotsEnv(cfg.simulation, cfg.paths),
+        data_loader=infinite_loader,
+        env_idx=0
+    )
+    env.reset()
+    
+    import numpy as np
+    for i in range(100):
+        env.step(np.array([0.0, 0.0]))
         
-    # batch_size = round(len(data_set) / cfg.envs)
-    # data_loader = DataLoader(data_set, batch_size=batch_size, shuffle=True, num_workers=0)
-    
-    # sim_env = WebotsEnv(cfg.simulation, cfg.paths)
-    # base_env = BaseEnv(cfg.environment, cfg.paths, data_set, sim_env)
-    # base_env.reset()
-    
-    
-    # import ipdb; ipdb.set_trace()
-    wrap_env("env_to_wrap_debug", cfg.wrappers)
-        
-    # TODO: Check environment
-    
     # vec_env=make_vec_env( #NOTE: Adds the monitor wrapper which might lead to issues with time limit wrapper! (see __init__ description)
     #     env_id=BaseEnv,
     #     n_envs=cfg.envs, 
     #     vec_env_cls=SubprocVecEnv, 
-    #     wrapper_class=wt.wrap_env(cfg.wrappers),
+    #     wrapper_class=env_wrapper,
     #     env_kwargs={
     #         'cfg': cfg.environment,
     #         'paths': cfg.paths,
-    #         'data_set': data_set,
-    #         'sim_env': sim_env
-    #     }
+    #         'sim_env': WebotsEnv(cfg.simulation, cfg.paths),
+    #         'data_loader': infinite_loader,
+    #         'env_idx': 0 # TODO: Change this to a list of indices
+    #     },
     #     wrapper_kwargs={
-    #         'cfg': cfg.environment,
-    #         'paths': cfg.paths,
+    #         'cfg': cfg.wrappers,
     #     }
     # )
 

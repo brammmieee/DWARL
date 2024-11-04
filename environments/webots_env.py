@@ -74,8 +74,16 @@ class WebotsEnv(Supervisor):
         return np.array(self.robot_node.getOrientation())
     
     @property
+    def lidar_range_image(self):
+        return self.lidar_node.getRangeImage()
+    
+    @property
     def lidar_resolution(self):
         return self.lidar_node.getHorizontalResolution()
+    
+    @property
+    def sample_time(self):
+        return self.timestep/1000.0
     
     @staticmethod
     def killall():

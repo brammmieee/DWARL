@@ -3,19 +3,23 @@ import yaml
 import re
 import numpy as np
 from omegaconf import OmegaConf
+from utils.admin_tools import load_data_set_config, load_map_name_list, generate_folder_structure
 
 class WebotsResourceGenerator:
     """ Generates the proto and world files for the Webots environment """
     def __init__(self, cfg, paths):
         self.cfg = cfg
         self.paths = paths
-        self.generate_folder_structure()
+        print("Webots Resource Generator - Generating folder structure")
+        generate_folder_structure(self.paths.sim_resources.root, self.paths.sim_resources)
     
     def generate_resources(self):
         print(f"Webots Resource Generator - Generating simulation resources based on data set configuration in {self.paths.data_sets.config}")
         
-        data_set_config = self.load_data_set_config()
-        map_name_list = self.load_map_name_list(data_set_config.map.list)
+        path_to_config = Path(self.paths.data_sets.config) / "config.yaml"
+        data_set_config = load_data_set_config(path_to_config)
+        path_to_map_list = Path(self.paths.resources.map_name_lists) / f"{data_set_config.map.list}.yaml"  
+        map_name_list = load_map_name_list(path_to_map_list)
         
         # Generate proto files for each map
         for map_name in map_name_list:
@@ -34,27 +38,10 @@ class WebotsResourceGenerator:
             output_world_file=Path(self.paths.sim_resources.worlds)
         )
         
-    def generate_folder_structure(self):
-        print("Webots Resource Generator - Generating folder structure")
-        Path(self.paths.sim_resources.root).mkdir(parents=True, exist_ok=True)
-        for path_to_sim_resources in self.paths.sim_resources.values():
-            Path(path_to_sim_resources).mkdir(parents=True, exist_ok=True)
-        
     def load_grid(self, map_name):
         path_to_grid= Path(self.paths.data_sets.grids) / f"{map_name}_grid.npy"
         return np.load(path_to_grid)
-        
-    def load_data_set_config(self):
-        path_to_config = Path(self.paths.data_sets.config) / "config.yaml"
-        with open(path_to_config) as f:
-            config_dict = yaml.load(f, Loader=yaml.BaseLoader)
-        return OmegaConf.create(config_dict)
     
-    def load_map_name_list(self, map_list_name):
-        path_to_map_list = Path(self.paths.resources.map_name_lists) / f"{map_list_name}.yaml"   
-        with open(path_to_map_list) as f:
-            return yaml.load(f, Loader=yaml.BaseLoader)
-
     def generate_world(self, input_world_file, output_world_file):
         """Adds externproto import statements to the specified world file."""
         path_to_protos = Path(self.paths.sim_resources.protos)
@@ -139,7 +126,7 @@ class WebotsResourceGenerator:
     
     def convert_pgm_to_proto(self, map_cfg, map_raster, output_file, proto_name):
         image_height = len(map_raster)
-        origin = [0, image_height*map_cfg.resolution, 0]
+        origin = [0, 0, 0]
         occupied_thresh = 255 * (1 - float(map_cfg.occupied_thresh))
         free_thresh = 255 * (1 - float(map_cfg.free_tresh))
 

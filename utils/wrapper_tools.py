@@ -20,14 +20,14 @@ def load_wrapper_classes(class_names):
                 
     return loaded_classes
 
-def wrap_env(env, wrapper_cfg):
+def env_wrapper(env, cfg):
     """ Wrap the environment with the wrappers specified in the configuration. """    
-    class_names = wrapper_cfg.keys()
+    class_names = cfg.keys()
     loaded_classes = load_wrapper_classes(class_names)
     
     # Chain the wrappers
     for wrapper_class in loaded_classes:
-        cfg = wrapper_cfg.get(wrapper_class.__name__)
-        env=wrapper_class(env, cfg)
+        wrapper_cfg = cfg.get(wrapper_class.__name__)
+        env=wrapper_class(env, wrapper_cfg)
         
     return env

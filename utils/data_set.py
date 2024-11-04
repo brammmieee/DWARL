@@ -32,6 +32,7 @@ class Dataset(torch.utils.data.Dataset):
         
         # Use the parsing method to extract components
         dataset_name, map_idx, path_idx, data_point_idx = self._parse_path_name(data_point_name)
+        proto_name = f"{dataset_name}_{map_idx}"
 
         # Load grid
         grid_file_path = Path(self.paths.data_sets.grids) / f"{dataset_name}_{map_idx}_grid.npy"
@@ -48,7 +49,7 @@ class Dataset(torch.utils.data.Dataset):
             goal_pose = np.array(data_point["goal_pose"])
 
         return {
-            "data_point_name": data_point_name,
+            "proto_name": proto_name,
             "grid": grid,
             "path": path,
             "init_pose": init_pose,

@@ -11,6 +11,8 @@ import numpy as np
 import os
 import yaml
 
+WEBOTS_ROBOT_Z_POS = 0.05
+
 def compute_collision_detection_tree(gridmap, resolution):
     occupied_boxes = []
     
@@ -29,20 +31,16 @@ def compute_collision_detection_tree(gridmap, resolution):
     # Create an STRTree from all occupied boxes
     return STRtree(occupied_boxes)
 
-def compute_map_bound_polygon(parameters):
-    map_res = parameters['map_res']
-    map_width = parameters['map_width']
-    map_bound_buffer = parameters['map_bound_buffer']
-
+def compute_map_bound_polygon(res, width, height, padding):
     map_bounds = [
         [0.0, 0.0], 
-        [(map_width*map_res - map_res), 0.0], 
-        [(map_width*map_res - map_res), (map_width*map_res - map_res)], 
-        [0.0, (map_width*map_res - map_res)]
+        [(width * res - res), 0.0], 
+        [(width * res - res), (height * res - res)], 
+        [0.0, (height * res - res)]
     ]
 
     map_bound_polygon = Polygon(map_bounds)
-    buffered_map_bound_polygon = map_bound_polygon.buffer(map_bound_buffer)
+    buffered_map_bound_polygon = map_bound_polygon.buffer(padding)
     
     return Polygon(buffered_map_bound_polygon)
 
@@ -86,18 +84,18 @@ def get_local_goal_pos(cur_pos, cur_orient_matrix, goal_pose): #TODO: remove 3rd
     local_goal_pos = np.dot(cur_orient_matrix.T, translation)
     return local_goal_pos
 
-def compute_new_pose(parameters, cur_pos, cur_orient_matrix, cur_vel):
+def compute_new_pose(dt, cur_pos, cur_orient_matrix, cur_vel):
     '''
     Kinematic compution of the new pose based on the current pose and velocity.
     '''
     # Computing the orientation
     psi = (np.arctan2(cur_orient_matrix[3], cur_orient_matrix[0])) % (2*np.pi)
-    local_rotation = cur_vel[0]*parameters['sample_time']
+    local_rotation = cur_vel[0]*dt
     global_rotation = -local_rotation #NOTE: minus to account for our conventions
     orientation = psi + global_rotation 
     
     # Computing the position
-    distance = cur_vel[1]*parameters['sample_time']
+    distance = cur_vel[1]*dt
     if abs(cur_vel[0]) > 1e-10 and abs(cur_vel[1]) > 1e-10: # Curve
         radius = cur_vel[1]/cur_vel[0]
         gamma = distance/radius
@@ -113,7 +111,7 @@ def compute_new_pose(parameters, cur_pos, cur_orient_matrix, cur_vel):
     position = np.array([
         cur_pos[0] + global_translation[0], 
         cur_pos[1] + global_translation[1], 
-        parameters['z_pos']
+        WEBOTS_ROBOT_Z_POS
         ])
 
     return position, orientation
@@ -125,24 +123,15 @@ def get_cmd_vel(robot_node):
     lin_vel = np.sqrt(webots_vel[0]**2 + webots_vel[1]**2) # in plane global velocities (x and y) to forward vel
     return np.array([ang_vel, lin_vel])
 
-def apply_kinematic_constraints(params, cur_vel, target_vel):
-    omega_max = params['omega_max']
-    omega_min = params['omega_min']
-    alpha_max = params['alpha_max']
-    alpha_min = params['alpha_min']
-    a_max = params['a_max']
-    a_min = params['a_min']
-    v_max = params['v_max']
-    v_min = params['v_min']
-    dt = params['sample_time']
+def apply_kinematic_constraints(dt, cfg, cur_vel, target_vel):
 
     domega = target_vel[0] - cur_vel[0]
-    domega_clipped = np.clip(domega, alpha_min*dt, alpha_max*dt) 
-    omega_clipped = np.clip((cur_vel[0] + domega_clipped), omega_min, omega_max)
+    domega_clipped = np.clip(domega, cfg.alpha_min*dt, cfg.alpha_max*dt) 
+    omega_clipped = np.clip((cur_vel[0] + domega_clipped), cfg.omega_min, cfg.omega_max)
 
     dv = target_vel[1] - cur_vel[1]
-    dv_clipped = np.clip(dv, a_min*dt, a_max*dt)
-    v = np.clip((cur_vel[1] + dv_clipped), v_min, v_max)
+    dv_clipped = np.clip(dv, cfg.a_min*dt, cfg.a_max*dt)
+    v = np.clip((cur_vel[1] + dv_clipped), cfg.v_min, cfg.v_max)
 
     return np.array([omega_clipped, v])
 
