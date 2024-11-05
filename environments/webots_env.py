@@ -3,7 +3,6 @@ from pathlib import Path
 from subprocess import Popen, PIPE
 import numpy as np
 import os
-from utils.webots_resource_generator import WebotsResourceGenerator
 
 STATIC_ROBOT_Z_POS = 0.05
 WEBOTS_WORLD_FILE_NAME = 'webots_world_file.wbt'
@@ -11,9 +10,6 @@ WEBOTS_WORLD_FILE_NAME = 'webots_world_file.wbt'
 
 class WebotsEnv(Supervisor):
     def __init__(self, cfg, paths):
-        self.webots_generator = WebotsResourceGenerator(cfg, paths)
-        self.webots_generator.generate_resources()
-
         # Open the world
         world_file = Path(paths.sim_resources.worlds) / WEBOTS_WORLD_FILE_NAME
         self.open_world(cfg.mode, world_file)

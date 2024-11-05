@@ -13,9 +13,8 @@ paths:
     data_generator_logs: ${hydra:runtime.output_dir}/data_generator_logs
   data_sets:
     root: ${paths.tmp}/data_sets
-    config: ${paths.data_sets.root}/config
     paths: ${paths.data_sets.root}/paths
-    grids: ${paths.data_sets.root}/grids
+    maps: ${paths.data_sets.root}/maps
     data_points: ${paths.data_sets.root}/data_points
   sim_resources:
     root: ${paths.tmp}/sim_resources
@@ -35,6 +34,7 @@ defaults:
 - simulation:
     - webots
 
+generate_data: true
 steps: 10000000             # number of training steps
 envs: 6    # number of parallel environments (and Webots instances)
 continue_training: false    # continue training from a previous model

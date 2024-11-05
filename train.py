@@ -15,29 +15,44 @@ import torch as th
 from utils.wrapper_tools import env_wrapper
 from utils.data_loader import InfiniteDataLoader
 from functools import partial
-
+from utils.webots_resource_generator import WebotsResourceGenerator
 from omegaconf import DictConfig, OmegaConf
 
 @hydra.main(config_path='config', config_name='train')
 def main(cfg : DictConfig):
-    # Generate data from maps and paths
-    data_generator = dg.DataGenerator(cfg.data_generator, cfg.paths)
-    data_generator.prepare_and_generate_data()
-    data_set = ds.Dataset(cfg.paths)
-    infinite_loader = InfiniteDataLoader(data_set, cfg.envs)
-    
-    env=BaseEnv(
-        cfg=cfg.environment,
-        paths=cfg.paths,
-        sim_env=WebotsEnv(cfg.simulation, cfg.paths),
-        data_loader=infinite_loader,
-        env_idx=0
-    )
+    if cfg.generate_data:
+        # Generate map, path and data points in our axis convention
+        data_generator = dg.DataGenerator(cfg.data_generator, cfg.paths)
+        data_generator.erase_old_data()
+        data_generator.generate_data()
+        
+        # Generate the proto and world files for the Webots environment from the generated data
+        webots_resource_generator = WebotsResourceGenerator(cfg.simulation, cfg.paths)
+        webots_resource_generator.erase_old_data()
+        webots_resource_generator.generate_resources()
+        
+    # DEBUG
     import numpy as np
-    for i in range(300):
-        env.reset()
-        for i in range(15):
-            env.step(np.array([0.0, 0.0]))
+    webots_env = WebotsEnv(cfg.simulation, cfg.paths)
+    webots_env.reset()
+    webots_env.reset_map("barn_0")
+    webots_env.reset_robot(np.array([0.0, 0.0, 0.0, 0.0]))
+    
+    # data_set = ds.Dataset(cfg.paths)
+    # infinite_loader = InfiniteDataLoader(data_set, cfg.envs)
+    
+    # env=BaseEnv(
+    #     cfg=cfg.environment,
+    #     paths=cfg.paths,
+    #     sim_env=WebotsEnv(cfg.simulation, cfg.paths),
+    #     data_loader=infinite_loader,
+    #     env_idx=0
+    # )
+    # import numpy as np
+    # for i in range(300):
+    #     env.reset()
+    #     for i in range(100000):
+    #         env.step(np.array([0.0, 0.0]))
             
     # vec_env=make_vec_env( #NOTE: Adds the monitor wrapper which might lead to issues with time limit wrapper! (see __init__ description)
     #     env_id=BaseEnv,

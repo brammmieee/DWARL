@@ -11,7 +11,6 @@ from shapely.geometry import Point, Polygon
 from shapely.affinity import translate, rotate
 from scipy.interpolate import interp1d
 from pathlib import Path
-from utils.admin_tools import load_data_set_config, convert_point_from_image_base
 
 import utils.env_tools as et
 
@@ -200,6 +199,14 @@ class BaseEnv(gym.Env):
                 converted_point = convert_point_from_image_base(point, self.map_cfg.resolution, self.grid.shape[0])
                 rect = plt.Rectangle((converted_point[0], converted_point[1]), self.map_cfg.resolution, self.map_cfg.resolution, color='black')
                 self.grid_plots.append(self.ax.add_patch(rect))  # Add each patch to the list
+            
+            # # DEBUG - Add grid overlay
+            # grid_size = 0.1
+            # x_ticks = np.arange(0, 3, grid_size)
+            # y_ticks = np.arange(0, 7, grid_size)
+            # self.ax.set_xticks(x_ticks, minor=True)
+            # self.ax.set_yticks(y_ticks, minor=True)
+            # self.ax.grid(which='both', color='grey', linestyle='-', linewidth=0.5, alpha=0.5)
         
             self.path_plot = self.ax.scatter(self.path[:,0], self.path[:,1], c='grey', alpha=0.5)
             self.init_pose_plot = self.ax.scatter(self.init_pose[0], self.init_pose[1], c='green')
