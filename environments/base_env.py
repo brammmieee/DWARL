@@ -11,10 +11,8 @@ from shapely.geometry import Point, Polygon
 from shapely.affinity import translate, rotate
 from scipy.interpolate import interp1d
 from pathlib import Path
-
 import utils.env_tools as et
 
-GRID_TRESHOLD = 255
 
 class BaseEnv(gym.Env):
     def __init__(self, cfg, paths, sim_env, data_loader, env_idx, render_mode='something'):
@@ -29,14 +27,6 @@ class BaseEnv(gym.Env):
         # Simulation environment properties
         self.lidar_resolution = sim_env.lidar_resolution
         self.sample_time = sim_env.sample_time
-        
-        # Dataset properties
-        path_to_config = Path(self.paths.data_sets.config) / "config.yaml"
-        data_set_config = load_data_set_config(path_to_config)
-        self.map_cfg = data_set_config.map
-                
-        # Update the proto files according to the configuration
-        # et.update_protos(self.cfg.proto_reconfiguration, self.paths.resources.protos) # NOTE: moved to asset_generator
         
         # Precomputations
         self.lidar_precomputation = et.lidar_precomputation(num_lidar_rays=sim_env.lidar_resolution)
@@ -54,23 +44,15 @@ class BaseEnv(gym.Env):
         
         # Reset map, path, init/goal pose, simulation and collision tree
         self.current_data = self.data_loader.get_data_for_env(self.env_idx)
-        proto_name, self.grid, self.path, self.init_pose, self.goal_pose = self.current_data.values()
-        # print(f"\nproto_name: {proto_name}")
-        # print(f"init_pose: {self.init_pose}")
-        # print(f"goal_pose: {self.goal_pose}")
+        proto_name, self.map, self.path, self.init_pose, self.goal_pose = self.current_data.values()
             
         # Resetting the simulation
         self.sim_env.reset()
         self.sim_env.reset_map(proto_name)
         self.sim_env.reset_robot(self.init_pose)
         
-        self.collision_tree = et.compute_collision_detection_tree(self.grid, self.map_cfg.resolution)
-        self.map_bounds_polygon = et.compute_map_bound_polygon(
-            res=self.map_cfg.resolution,
-            width=self.grid.shape[1],
-            height=self.grid.shape[0],
-            padding=self.map_cfg.padding
-        )
+        self.collision_tree = et.compute_collision_detection_tree(self.map)
+        self.map_bounds_polygon = et.compute_map_bound_polygon(self.map, self.cfg.map_padding)
 
         # # Updating prev_pos, cur_pos, cur_orient, footprint in global frame, and getting new local goal
         self.cur_pos = self.sim_env.robot_position
@@ -142,7 +124,7 @@ class BaseEnv(gym.Env):
         done_cause = None
 
         # Arrived at the goal
-        if (np.linalg.norm(self.cur_pos[:2] - self.goal_pose[:2]) <= self.map_cfg.goal_tolerance): #and (self.cur_vel[1] < self.params['v_goal_threshold']):
+        if (np.linalg.norm(self.cur_pos[:2] - self.goal_pose[:2]) <= self.cfg.goal_tolerance): #and (self.cur_vel[1] < self.params['v_goal_threshold']):
             done_cause = 'at_goal'
             return True, done_cause
             
@@ -191,14 +173,14 @@ class BaseEnv(gym.Env):
         x, y = self.footprint_glob.exterior.xy
         self.footprint_plot = self.ax.fill(x, y, color='blue', alpha=0.5)
         if method == 'reset':
-            self.grid_plots = []  # Initialize a list to store all rectangle patches
-            indices = np.argwhere(self.grid < GRID_TRESHOLD)           
-            for index in indices:
-                y, x = index
-                point = np.array([float(x),float(y)])
-                converted_point = convert_point_from_image_base(point, self.map_cfg.resolution, self.grid.shape[0])
-                rect = plt.Rectangle((converted_point[0], converted_point[1]), self.map_cfg.resolution, self.map_cfg.resolution, color='black')
-                self.grid_plots.append(self.ax.add_patch(rect))  # Add each patch to the list
+            self.map_plots = []  # Initialize a list to store all rectangle patches
+            for box in self.map:
+                min_x = min(vertex[0] for vertex in box)
+                min_y = min(vertex[1] for vertex in box)
+                width = max(vertex[0] for vertex in box) - min_x
+                height = max(vertex[1] for vertex in box) - min_y
+                rect = plt.Rectangle((min_x, min_y), width, height, color='black')
+                self.map_plots.append(self.ax.add_patch(rect))  # Add each patch to the list
             
             # # DEBUG - Add grid overlay
             # grid_size = 0.1
@@ -218,9 +200,9 @@ class BaseEnv(gym.Env):
             for patch in self.footprint_plot:
                 patch.remove()
             if method == 'reset':
-                for patch in self.grid_plots:
+                for patch in self.map_plots:
                     patch.remove()
-                self.grid_plots.clear()
+                self.map_plots.clear()
                 self.path_plot.remove()
                 self.init_pose_plot.remove()
                 self.goal_pose_plot.remove()

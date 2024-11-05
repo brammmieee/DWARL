@@ -1,5 +1,7 @@
 name: cindy             # environment name
 render: false           # rendering enabled (true or false)
+map_padding: 0.2             # [m]
+goal_tolerance: 0.2      # [m] # TODO: place more conveniently
 vehicle:
   kinematics:
     v_max: 0.2        # maximum linear velocity [m/s]

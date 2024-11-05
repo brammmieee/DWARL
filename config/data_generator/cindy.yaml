@@ -1,5 +1,3 @@
 map:
   list: barn          # name of the list containing the map names
   resolution: 0.1        # [m/pxl]
-  padding: 0.2             # [m]
-  goal_tolerance: 0.2      # [m] # TODO: place more conveniently

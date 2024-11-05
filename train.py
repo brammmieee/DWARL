@@ -30,29 +30,23 @@ def main(cfg : DictConfig):
         webots_resource_generator = WebotsResourceGenerator(cfg.simulation, cfg.paths)
         webots_resource_generator.erase_old_data()
         webots_resource_generator.generate_resources()
-        
-    # DEBUG
+        # TODO: Update the proto files according to the configuration
+    
+    data_set = ds.Dataset(cfg.paths)
+    infinite_loader = InfiniteDataLoader(data_set, cfg.envs)
+    
+    env=BaseEnv(
+        cfg=cfg.environment,
+        paths=cfg.paths,
+        sim_env=WebotsEnv(cfg.simulation, cfg.paths),
+        data_loader=infinite_loader,
+        env_idx=0
+    )
     import numpy as np
-    webots_env = WebotsEnv(cfg.simulation, cfg.paths)
-    webots_env.reset()
-    webots_env.reset_map("barn_0")
-    webots_env.reset_robot(np.array([0.0, 0.0, 0.0, 0.0]))
-    
-    # data_set = ds.Dataset(cfg.paths)
-    # infinite_loader = InfiniteDataLoader(data_set, cfg.envs)
-    
-    # env=BaseEnv(
-    #     cfg=cfg.environment,
-    #     paths=cfg.paths,
-    #     sim_env=WebotsEnv(cfg.simulation, cfg.paths),
-    #     data_loader=infinite_loader,
-    #     env_idx=0
-    # )
-    # import numpy as np
-    # for i in range(300):
-    #     env.reset()
-    #     for i in range(100000):
-    #         env.step(np.array([0.0, 0.0]))
+    for i in range(300):
+        env.reset()
+        for i in range(20):
+            env.step(np.array([0.0, 0.0]))
             
     # vec_env=make_vec_env( #NOTE: Adds the monitor wrapper which might lead to issues with time limit wrapper! (see __init__ description)
     #     env_id=BaseEnv,

@@ -64,8 +64,8 @@ class DataGenerator:
 
         for orient_idx, orientation in enumerate([aligned_orientation, reversed_orientation]):
             data_point = {
-                "init_pose": [init_pos[0], init_pos[1], 0, orientation],
-                "goal_pose": [goal_pos[0], goal_pos[1], 0, 0]
+                "init_pose": [float(init_pos[0]), float(init_pos[1]), float(0), float(orientation)],
+                "goal_pose": [float(goal_pos[0]), float(goal_pos[1]), float(0), float(0)]
             }
             path_to_data_point = Path(self.paths.data_sets.data_points) / f"{path_name}_{idx}_{orient_idx}.yaml"
             with open(path_to_data_point, 'w') as f:

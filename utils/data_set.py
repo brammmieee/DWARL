@@ -14,33 +14,30 @@ class Dataset(torch.utils.data.Dataset):
 
     def _parse_path_name(self, path_name):
         # Split from the end to handle dataset names with underscores
-        parts = path_name.rsplit('_', 3)
+        parts = path_name.rsplit('_', 4)
         
-        if len(parts) < 4:
+        if len(parts) < 5:
             raise ValueError(f"Unexpected format in path name: {path_name}")
         
-        dataset_name = '_'.join(parts[:-3])
-        map_idx = parts[-3]
-        path_idx = parts[-2]
-        data_point_idx = parts[-1]
+        dataset_name = '_'.join(parts[:-4])
+        map_idx = parts[-4]
+        path_idx = parts[-3]
+        data_point_idx = parts[-2]
+        orientation = parts[-1]
         
-        return dataset_name, map_idx, path_idx, data_point_idx
+        return dataset_name, map_idx, path_idx, data_point_idx, orientation
 
     def __getitem__(self, idx):
         data_point_path = self.path_to_datapoint_list[idx]
         data_point_name = data_point_path.stem
         
         # Use the parsing method to extract components
-        dataset_name, map_idx, path_idx, data_point_idx = self._parse_path_name(data_point_name)
+        dataset_name, map_idx, path_idx, data_point_idx, orientation = self._parse_path_name(data_point_name)
         proto_name = f"{dataset_name}_{map_idx}"
 
-        # Load grid
-        grid_file_path = Path(self.paths.data_sets.grids) / f"{dataset_name}_{map_idx}_grid.npy"
-        grid = np.load(grid_file_path)
-        
-        # Load path
-        path_file_path = Path(self.paths.data_sets.paths) / f"{dataset_name}_{map_idx}_{path_idx}.npy"
-        path = np.load(path_file_path)
+        # Load map and grid
+        map_array = np.load(Path(self.paths.data_sets.maps) / f"{dataset_name}_{map_idx}.npy")        
+        path = np.load(Path(self.paths.data_sets.paths) / f"{dataset_name}_{map_idx}_{path_idx}.npy")
         
         # Load start and goal poses
         with open(data_point_path, 'r') as f:
@@ -50,7 +47,7 @@ class Dataset(torch.utils.data.Dataset):
 
         return {
             "proto_name": proto_name,
-            "grid": grid,
+            "map": map_array,
             "path": path,
             "init_pose": init_pose,
             "goal_pose": goal_pose,

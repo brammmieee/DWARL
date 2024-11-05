@@ -13,30 +13,34 @@ import yaml
 
 WEBOTS_ROBOT_Z_POS = 0.05
 
-def compute_collision_detection_tree(gridmap, resolution):
+
+def compute_collision_detection_tree(box_array):
     occupied_boxes = []
     
-    # Create a shapely box for each occupied cell in the gridmap
-    for x in range(len(gridmap)):
-        for y in range(len(gridmap[0])):
-            if gridmap[x][y] == 1:
-                # Convert grid indices to spatial coordinates based on the resolution
-                min_x = x * resolution
-                min_y = y * resolution
-                max_x = min_x + resolution
-                max_y = min_y + resolution
-                # Create a box for the occupied cell
-                occupied_boxes.append(box(min_x, min_y, max_x, max_y))
+    # Create a shapely box for each box in the box_array
+    for box_vertices in box_array:
+        min_x = min(vertex[0] for vertex in box_vertices)
+        min_y = min(vertex[1] for vertex in box_vertices)
+        max_x = max(vertex[0] for vertex in box_vertices)
+        max_y = max(vertex[1] for vertex in box_vertices)
+        # Create a box for the occupied cell
+        occupied_boxes.append(box(min_x, min_y, max_x, max_y))
     
     # Create an STRTree from all occupied boxes
     return STRtree(occupied_boxes)
 
-def compute_map_bound_polygon(res, width, height, padding):
+def compute_map_bound_polygon(box_array, padding):
+    # Find the extremes of the box_array
+    min_x = min(vertex[0] for box in box_array for vertex in box)
+    min_y = min(vertex[1] for box in box_array for vertex in box)
+    max_x = max(vertex[0] for box in box_array for vertex in box)
+    max_y = max(vertex[1] for box in box_array for vertex in box)
+
     map_bounds = [
-        [0.0, 0.0], 
-        [(width * res - res), 0.0], 
-        [(width * res - res), (height * res - res)], 
-        [0.0, (height * res - res)]
+        [min_x, min_y],
+        [max_x, min_y],
+        [max_x, max_y],
+        [min_x, max_y]
     ]
 
     map_bound_polygon = Polygon(map_bounds)

@@ -41,9 +41,7 @@ class WebotsEnv(Supervisor):
         super().step(self.basic_timestep)
 
     def reset_robot(self, init_pose):
-        # Positioning the robot at init_pos
-        print(f"Setting robot position to {init_pose}")
-        
+        # Positioning the robot at init_pos        
         self.robot_translation_field.setSFVec3f([init_pose[0], init_pose[1], STATIC_ROBOT_Z_POS])
         self.robot_rotation_field.setSFRotation([0.0, 0.0, 1.0, init_pose[3]])
         super().step(2*self.basic_timestep) #NOTE: 2 timesteps needed in order to succesfully set the init position
