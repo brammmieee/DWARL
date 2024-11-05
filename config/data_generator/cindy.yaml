@@ -3,5 +3,5 @@ map:
   resolution: 0.1        # [m/pxl]
   occupied_thresh:  0.65 # threshold for occupied cells
   free_tresh: 0.196      # threshold for free cells
-  padding: 0.2             # [m] # TODO: place more conveniently
+  padding: 0.2             # [m]
   goal_tolerance: 0.2      # [m] # TODO: place more conveniently

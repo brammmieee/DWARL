@@ -4,12 +4,7 @@ import numpy as np
 import shutil
 import yaml
 from omegaconf import DictConfig, OmegaConf
-from utils.admin_tools import load_map_name_list, generate_folder_structure
-
-def convert_point_from_image_base(point, resolution, image_height):
-        point[:2] *= resolution  # Convert to meters
-        point[1] = (resolution * image_height) - point[1]  # Invert y-axis
-        return point
+from utils.admin_tools import load_map_name_list, generate_folder_structure, convert_point_from_image_base, load_data_set_config
     
 def convert_path_from_image_to_base(path, resolution, image_height):
     converted_path = []
@@ -68,16 +63,12 @@ class DataGenerator:
         if not Path(self.paths.data_sets.config).exists():
             return False
         
-        old_cfg = self.load_old_config()
+        path_to_config = Path(self.paths.data_sets.config) / "config.yaml"
+        old_cfg = load_data_set_config(path_to_config)
         if old_cfg != OmegaConf.to_yaml(self.cfg):
             return False
         
         return True
-    
-    def load_old_config(self):
-        path_to_config = Path(self.paths.data_sets.config) / "config.yaml"
-        with open(path_to_config) as f:
-            return yaml.load(f, Loader=yaml.BaseLoader)
         
     def save_config(self):
         path_to_config = Path(self.paths.data_sets.config) / "config.yaml"

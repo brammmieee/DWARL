@@ -15,3 +15,8 @@ def generate_folder_structure(root_dir, path_dict):
     Path(root_dir).mkdir(parents=True, exist_ok=True)
     for path_to in path_dict.values():
         Path(path_to).mkdir(parents=True, exist_ok=True)
+        
+def convert_point_from_image_base(point, resolution, image_height):
+        point[:2] *= resolution  # Convert to meters
+        point[1] = (resolution * image_height) - point[1]  # Invert y-axis
+        return point

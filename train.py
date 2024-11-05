@@ -36,12 +36,13 @@ def main(cfg : DictConfig):
         data_loader=infinite_loader,
         env_idx=0
     )
-    env.reset()
-    
     import numpy as np
-    for i in range(100):
-        env.step(np.array([0.0, 0.0]))
-        
+    for i in range(20):
+        env.reset()
+        for i in range(1000):
+            env.step(np.array([0.0, 0.0]))
+            # import ipdb; ipdb.set_trace()
+            
     # vec_env=make_vec_env( #NOTE: Adds the monitor wrapper which might lead to issues with time limit wrapper! (see __init__ description)
     #     env_id=BaseEnv,
     #     n_envs=cfg.envs, 
