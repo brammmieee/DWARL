@@ -24,10 +24,7 @@ def main(cfg : DictConfig):
     data_generator = dg.DataGenerator(cfg.data_generator, cfg.paths)
     data_generator.prepare_and_generate_data()
     data_set = ds.Dataset(cfg.paths)
-    
-    # Create infinite data loader
     infinite_loader = InfiniteDataLoader(data_set, cfg.envs)
-    
     
     env=BaseEnv(
         cfg=cfg.environment,
@@ -39,7 +36,8 @@ def main(cfg : DictConfig):
     import numpy as np
     for i in range(20):
         env.reset()
-        for i in range(1000):
+        import ipdb; ipdb.set_trace()
+        for i in range(10000):
             env.step(np.array([0.0, 0.0]))
             # import ipdb; ipdb.set_trace()
             

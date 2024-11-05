@@ -113,17 +113,20 @@ class WebotsResourceGenerator:
         """append 4 3D points to the 'points' array,
         link to these points in the 'index' array,
         together the 4 points make up a 2D vertex, front and back"""
-        points.append([-origin[0] + x1*map_res, -origin[1] + (image_height - y1)*map_res, origin[2]])
-        points.append([-origin[0] + x2*map_res, -origin[1] + (image_height - y2)*map_res, origin[2]])
-        points.append([-origin[0] + x2*map_res, -origin[1] + (image_height - y2)*map_res, origin[2] + 1])
-        points.append([-origin[0] + x1*map_res, -origin[1] + (image_height - y1)*map_res, origin[2] + 1])
+        # Adjust the coordinates to center the obstacle on the pixel location
+        x_offset = map_res / 2
+        y_offset = -map_res / 2
+
+        points.append([-origin[0] + (x1 * map_res) - x_offset, -origin[1] + ((image_height - y1) * map_res) - y_offset, origin[2]])
+        points.append([-origin[0] + (x2 * map_res) - x_offset, -origin[1] + ((image_height - y2) * map_res) - y_offset, origin[2]])
+        points.append([-origin[0] + (x2 * map_res) - x_offset, -origin[1] + ((image_height - y2) * map_res) - y_offset, origin[2] + 1])
+        points.append([-origin[0] + (x1 * map_res) - x_offset, -origin[1] + ((image_height - y1) * map_res) - y_offset, origin[2] + 1])
 
         # link to the points in the 'points' array, end with '-1'
         index.append([i, i+1, i+2, i+3, -1])  # front side of the vertex
         index.append([i+3, i+2, i+1, i, -1])  # back side of the vertex
 
         return i + 4
-    
     def convert_pgm_to_proto(self, map_cfg, map_raster, output_file, proto_name):
         image_height = len(map_raster)
         origin = [0, 0, 0]
@@ -132,27 +135,29 @@ class WebotsResourceGenerator:
 
         coords = []
         indices = []
+        
+        print("map_raster: ", map_raster)
 
         i = 0
-        for r, row in enumerate(map_raster[1:-1], start=1):
-            for c, pixel in enumerate(row[1:-1], start=1):
+        for row_idx, row in enumerate(map_raster[1:-1], start=1):
+            for col_idx, pixel in enumerate(row[1:-1], start=1):
                 # check if pixel == wall
                 if pixel < occupied_thresh:
                     prev_i = i
                     points = []
                     index = []
                     # free space above pixel?
-                    if map_raster[r-1][c] > free_thresh:
-                        i = self.add_vertex_points(points, index, i, c, r, c+1, r, image_height, origin, map_cfg.resolution)
+                    if map_raster[row_idx-1][col_idx] > free_thresh:
+                        i = self.add_vertex_points(points, index, i, col_idx, row_idx, col_idx+1, row_idx, image_height, origin, map_cfg.resolution)
                     # free space below pixel?
-                    if map_raster[r+1][c] > free_thresh:
-                        i = self.add_vertex_points(points, index, i, c, r+1, c+1, r+1, image_height, origin, map_cfg.resolution)
+                    if map_raster[row_idx+1][col_idx] > free_thresh:
+                        i = self.add_vertex_points(points, index, i, col_idx, row_idx+1, col_idx+1, row_idx+1, image_height, origin, map_cfg.resolution)
                     # free space left pixel?
-                    if map_raster[r][c-1] > free_thresh:
-                        i = self.add_vertex_points(points, index, i, c, r, c, r+1, image_height, origin, map_cfg.resolution)
+                    if map_raster[row_idx][col_idx-1] > free_thresh:
+                        i = self.add_vertex_points(points, index, i, col_idx, row_idx, col_idx, row_idx+1, image_height, origin, map_cfg.resolution)
                     # free space right pixel?
-                    if map_raster[r][c+1] > free_thresh:
-                        i = self.add_vertex_points(points, index, i, c+1, r, c+1, r+1, image_height, origin, map_cfg.resolution)
+                    if map_raster[row_idx][col_idx+1] > free_thresh:
+                        i = self.add_vertex_points(points, index, i, col_idx+1, row_idx, col_idx+1, row_idx+1, image_height, origin, map_cfg.resolution)
                     # new indexFace added?
                     if i > prev_i:
                         coords.append(points)

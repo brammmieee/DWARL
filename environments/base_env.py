@@ -56,6 +56,9 @@ class BaseEnv(gym.Env):
         # Reset map, path, init/goal pose, simulation and collision tree
         self.current_data = self.data_loader.get_data_for_env(self.env_idx)
         proto_name, self.grid, self.path, self.init_pose, self.goal_pose = self.current_data.values()
+        # print(f"\nproto_name: {proto_name}")
+        # print(f"init_pose: {self.init_pose}")
+        # print(f"goal_pose: {self.goal_pose}")
             
         # Resetting the simulation
         self.sim_env.reset()
@@ -190,11 +193,10 @@ class BaseEnv(gym.Env):
         self.footprint_plot = self.ax.fill(x, y, color='blue', alpha=0.5)
         if method == 'reset':
             self.grid_plots = []  # Initialize a list to store all rectangle patches
-            indices = np.argwhere(self.grid < GRID_TRESHOLD)
+            indices = np.argwhere(self.grid < GRID_TRESHOLD)           
             for index in indices:
-                x, y = index
+                y, x = index
                 point = np.array([float(x),float(y)])
-                print(f"Point: {point}, type: {type(point)}, type[0]: {type(point[0])}")
                 converted_point = convert_point_from_image_base(point, self.map_cfg.resolution, self.grid.shape[0])
                 rect = plt.Rectangle((converted_point[0], converted_point[1]), self.map_cfg.resolution, self.map_cfg.resolution, color='black')
                 self.grid_plots.append(self.ax.add_patch(rect))  # Add each patch to the list
@@ -202,9 +204,7 @@ class BaseEnv(gym.Env):
             self.path_plot = self.ax.scatter(self.path[:,0], self.path[:,1], c='grey', alpha=0.5)
             self.init_pose_plot = self.ax.scatter(self.init_pose[0], self.init_pose[1], c='green')
             self.goal_pose_plot = self.ax.scatter(self.goal_pose[0], self.goal_pose[1], c='red')
-            
-            # import ipdb; ipdb.set_trace()
-            
+                        
     def render_remove_data(self, method):
         try:
             self.cur_pos_plot.remove()

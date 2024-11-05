@@ -65,6 +65,7 @@ class DataGenerator:
         
         path_to_config = Path(self.paths.data_sets.config) / "config.yaml"
         old_cfg = load_data_set_config(path_to_config)
+        
         if old_cfg != OmegaConf.to_yaml(self.cfg):
             return False
         
