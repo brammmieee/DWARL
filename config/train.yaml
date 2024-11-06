@@ -22,7 +22,7 @@ defaults:
 - wrappers: # order matters
     - sparse_lidar_observation
     - command_velocity_action
-    # - time_limit
+    - time_limit
 - data_generator:
     - cindy
 - simulation:
