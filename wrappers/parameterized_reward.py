@@ -84,7 +84,6 @@ class ParameterizedReward(gym.RewardWrapper):
         
         # Determine the number of subplots based on the reward_plot_map
         num_subplots = max(self.reward_plot_map.values())
-        
         self.fig, self.axes = plt.subplots(num_subplots, 1, figsize=(10, 5*num_subplots))
         
         # If there's only one subplot, wrap it in a list for consistency
