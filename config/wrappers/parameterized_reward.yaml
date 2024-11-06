@@ -1,5 +1,5 @@
 ParameterizedReward:
-  render: false  # Whether to plot the rewards
+  render: true  # Whether to plot the rewards
   # The reward function is calculated as follows:
   # - At episode end: One of the 'done' values based on the done_cause
   # - During episode: Sum of the 'running' values at each step

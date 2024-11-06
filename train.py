@@ -60,7 +60,6 @@ def main(cfg : DictConfig):
     env.reset()
     while True:
         obs, rew, done, _, _  = env.step(np.array([0.4, 0.3]))
-        print(f"reward: {rew}")
         if done:
             env.reset()
 

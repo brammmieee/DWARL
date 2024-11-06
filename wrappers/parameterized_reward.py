@@ -13,20 +13,22 @@ class ParameterizedReward(gym.RewardWrapper):
 
         # Reward plotting
         if self.cfg.render:
-            self.render_count = 0
             self.reward_buffers = {component: [] for component in self.running_rewards.keys()}
             self.reward_buffers['total'] = []
-        
+            
             # Define reward style map
             self.reward_style_map = {
                 'linear': {'color': 'blue', 'linestyle': '-'},
                 'total': {'color': 'red', 'linestyle': '-'},
             }
-            
+            # Define reward plot number per component
             self.reward_plot_map = {
                 'linear': 1,
                 'total': 2,
             }
+            # Initialize the plot
+            self.render_init_plot()
+
 
     def reward(self, reward):
         reward = self.get_reward(self.unwrapped.done, self.unwrapped.done_cause)
@@ -75,20 +77,12 @@ class ParameterizedReward(gym.RewardWrapper):
     def update_reward_buffers(self, component, value):
         self.reward_buffers[component].append(value)
 
-    def render(self):
-        if not self.cfg.plot_rewards or self.render_mode is None:
-            return
-        
-        if self.render_count == 0:
-            self.render_init_plot()
-        else:
-            self.render_remove_data()
-            
+    def render(self):       
+        self.render_remove_old_data()
         self.render_add_data()
         
         self.fig.canvas.draw()
         self.fig.canvas.flush_events()
-        self.render_count += 1
 
     def render_init_plot(self):
         plt.ion()
@@ -123,7 +117,7 @@ class ParameterizedReward(gym.RewardWrapper):
                 style = self.reward_style_map.get(component, {'color': 'gray', 'linestyle': ':'})
                 self.reward_plots_2[component] = self.ax4.plot(range(len(buffer)), buffer, **style)
 
-    def render_remove_data(self):
+    def render_remove_old_data(self):
         try:
             for reward_plot in self.reward_plots_1.values():
                 for plot in reward_plot:
