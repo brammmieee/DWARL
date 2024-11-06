@@ -51,3 +51,8 @@ paths:
     root: ${paths.tmp}/sim_resources
     worlds: ${paths.sim_resources.root}/worlds
     protos: ${paths.sim_resources.root}/protos
+
+# Configuration for Hydra
+hydra:
+  job:
+    chdir: true

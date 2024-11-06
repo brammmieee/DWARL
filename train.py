@@ -1,5 +1,9 @@
 #!/usr/bin/python3
 
+# Prevent TensorFlow from spamming messages
+import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+
 from environments.base_env import BaseEnv
 from environments.webots_env import WebotsEnv
 from functools import partial
@@ -18,8 +22,9 @@ import torch as th
 import utils.data_generator as dg
 import utils.data_set as ds
 
-@hydra.main(config_path='config', config_name='train')
-def main(cfg : DictConfig):
+@hydra.main(config_path='config', config_name='train', version_base='1.1')
+def main(cfg : DictConfig):    
+    # Generate data
     if cfg.generate_data:
         # Generate map, path and data points in our axis convention
         data_generator = dg.DataGenerator(cfg.data_generator, cfg.paths)
