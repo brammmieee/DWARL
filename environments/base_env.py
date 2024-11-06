@@ -149,14 +149,28 @@ class BaseEnv(gym.Env):
         if self.render_mode == 'none':
             return
         
-        # Initialize the plot
+        # Initialize the plot   
         plt.ion()
-        self.fig, self.ax = plt.subplots()
+        self.fig, (self.ax, self.ax1) = plt.subplots(1, 2)
+        
+        # ax - Map, path, robot, goal, and local goal (axis fixed to map)
         self.ax.set_aspect('equal', adjustable='box')
         self.ax.set_xlabel('x [m]')
         self.ax.set_ylabel('y [m]')
-    
+        
+        # ax1 - Lidar data and footprint (axis fixed to base_link)
+        polygon = Polygon(self.cfg.vehicle.dimensions.polygon_coordinates)
+        patch = plt_polygon(np.array(polygon.exterior.coords), alpha=0.75, closed=True, facecolor='grey')
+        self.ax1.add_patch(patch)
+        self.ax1.set_xlim([-3.0, 3.0])
+        self.ax1.set_ylim([-3.0, 3.0])
+        self.ax1.set_xlabel('x [m]')
+        self.ax1.set_ylabel('y [m]')
+        self.ax1.set_aspect('equal')
+        self.ax1.grid()
+        
     def render_add_data(self, method):
+        # ax - Map, path, robot, goal, and local goal (axis fixed to map)
         self.cur_pos_plot = self.ax.scatter(self.cur_pos[0], self.cur_pos[1], c='blue', alpha=0.33)
         x, y = self.footprint_glob.exterior.xy
         self.footprint_plot = self.ax.fill(x, y, color='blue', alpha=0.5)
@@ -173,8 +187,14 @@ class BaseEnv(gym.Env):
             self.path_plot = self.ax.scatter(self.path[:,0], self.path[:,1], c='grey', alpha=0.5)
             self.init_pose_plot = self.ax.scatter(self.init_pose[0], self.init_pose[1], c='green')
             self.goal_pose_plot = self.ax.scatter(self.goal_pose[0], self.goal_pose[1], c='red')
-                        
+        
+        # ax1 - Lidar data
+        self.lidar_points = et.lidar_to_point_cloud(self.cfg.vehicle.dimensions.lidar_y_offset, self.lidar_precomputation, self.lidar_range_image) #NOTE: double computation in case of e.g vo observation wrapper
+        self.lidar_plot = self.ax1.scatter(self.lidar_points[:,0], self.lidar_points[:,1], alpha=1.0, c='black')
+        self.local_goal_plot = self.ax1.scatter(self.local_goal_pos[0], self.local_goal_pos[1], alpha=1.0, c='purple')               
+    
     def render_remove_data(self, method):
+        # ax - Map, path, robot, goal, and local goal (axis fixed to map)
         try:
             self.cur_pos_plot.remove()
             for patch in self.footprint_plot:
@@ -186,5 +206,12 @@ class BaseEnv(gym.Env):
                 self.path_plot.remove()
                 self.init_pose_plot.remove()
                 self.goal_pose_plot.remove()
+        except AttributeError:
+            pass
+        
+        # ax1 - Lidar data
+        try:
+            self.lidar_plot.remove()
+            self.local_goal_plot.remove()
         except AttributeError:
             pass

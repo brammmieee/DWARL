@@ -14,5 +14,5 @@ vehicle:
     alpha_min: -0.8   # minimum angular acceleration [rad/s^2]
   dimensions: 
     polygon_coordinates: [[0.16, 0.08], [0.16, -0.24], [0.0, -0.4], [-0.16, -0.24], [-0.16, 0.08]] # robot footprint polygon coordinates
-    lidar_y_pos: -0.07075 # y position of the lidar [m]
+    lidar_y_offset: -0.07075 # y position of the lidar [m]
     z_pos: 0.05           # z position of the robot [m] (used for kinematic robot movement)

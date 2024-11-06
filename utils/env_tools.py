@@ -150,7 +150,7 @@ def lidar_precomputation(num_lidar_rays):
         "lidar_sines": lidar_sines,
     }
 
-def lidar_to_point_cloud(parameters, precomputed, lidar_range_image, replace_value=0):
+def lidar_to_point_cloud(lidar_y_offset, precomputed, lidar_range_image, replace_value=0):
     # NOTE: Webots axis conventions w.r.t. the conventions of this package
     lidar_range_image = np.array(lidar_range_image)
     lidar_range_image[np.isinf(lidar_range_image)] = replace_value
@@ -165,5 +165,5 @@ def lidar_to_point_cloud(parameters, precomputed, lidar_range_image, replace_val
     lidar_points = lidar_points[~invalid_indices]
 
     # Add lidar position offset
-    lidar_points[:,1] += parameters['lidar_y_pos']
+    lidar_points[:,1] += lidar_y_offset
     return lidar_points
