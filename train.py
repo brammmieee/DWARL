@@ -2,21 +2,21 @@
 
 from environments.base_env import BaseEnv
 from environments.webots_env import WebotsEnv
+from functools import partial
 from omegaconf import DictConfig
+from omegaconf import DictConfig, OmegaConf
 from stable_baselines3.common.callbacks import CheckpointCallback, EvalCallback
 from stable_baselines3.common.env_checker import check_env
 from stable_baselines3.common.env_util import make_vec_env
 from stable_baselines3.common.vec_env import SubprocVecEnv
 from stable_baselines3.ppo import PPO
-import utils.data_generator as dg
-import utils.data_set as ds
+from utils.data_loader import InfiniteDataLoader
+from utils.webots_resource_generator import WebotsResourceGenerator
+from utils.wrapper_tools import wrap_env
 import hydra
 import torch as th
-from utils.wrapper_tools import env_wrapper
-from utils.data_loader import InfiniteDataLoader
-from functools import partial
-from utils.webots_resource_generator import WebotsResourceGenerator
-from omegaconf import DictConfig, OmegaConf
+import utils.data_generator as dg
+import utils.data_set as ds
 
 @hydra.main(config_path='config', config_name='train')
 def main(cfg : DictConfig):
@@ -42,12 +42,18 @@ def main(cfg : DictConfig):
         data_loader=infinite_loader,
         env_idx=0
     )
+    
+    # env = wrap_env(env, cfg.wrappers)
+    
     import numpy as np
-    for i in range(300):
-        env.reset()
-        for i in range(20):
-            env.step(np.array([0.0, 0.0]))
-            
+    # for i in range(300):
+    env.reset()
+    while True:
+        obs, rew, done, _, _  = env.step(np.array([0.4, 0.3]))
+        if done:
+            env.reset()
+
+
     # vec_env=make_vec_env( #NOTE: Adds the monitor wrapper which might lead to issues with time limit wrapper! (see __init__ description)
     #     env_id=BaseEnv,
     #     n_envs=cfg.envs, 

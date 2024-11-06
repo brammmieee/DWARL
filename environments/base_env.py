@@ -105,6 +105,8 @@ class BaseEnv(gym.Env):
 
         self.observation = self.get_obs()
         self.done, self.done_cause = self.get_done()
+        if self.done:
+            print(f"Done cause: {self.done_cause}")            
         self.reward = self.get_reward()
         self.render(method='step')
 
@@ -119,28 +121,23 @@ class BaseEnv(gym.Env):
         self.lidar_range_image = self.sim_env.lidar_range_image
 
         return self.lidar_range_image
-    
-    def get_done(self):
-        done_cause = None
-
-        # Arrived at the goal
-        if (np.linalg.norm(self.cur_pos[:2] - self.goal_pose[:2]) <= self.cfg.goal_tolerance): #and (self.cur_vel[1] < self.params['v_goal_threshold']):
-            done_cause = 'at_goal'
-            return True, done_cause
-            
-        # Driving outside map limit
-        cur_pos_point = Point(self.cur_pos[0], self.cur_pos[1])
-        if not (self.map_bounds_polygon.contains(cur_pos_point) or self.map_bounds_polygon.boundary.contains(cur_pos_point)):
-            done_cause = 'outside_map'
-            return True, done_cause
         
-        # Collision with obstacles
-        if len(self.collision_tree.query(self.footprint_glob, predicate='intersects')) > 0:
-            done_cause = 'collision'
-            return True, done_cause
+    def get_done(self):
+        # Define conditions and their corresponding done causes
+        conditions = {
+            'at_goal': np.linalg.norm(self.cur_pos[:2] - self.goal_pose[:2]) <= self.cfg.goal_tolerance,
+            'outside_map': not (self.map_bounds_polygon.contains(Point(self.cur_pos[0], self.cur_pos[1])) or 
+                                self.map_bounds_polygon.boundary.contains(Point(self.cur_pos[0], self.cur_pos[1]))),
+            'collision': len(self.collision_tree.query(self.footprint_glob, predicate='intersects')) > 0
+        }
+
+        # Check for done conditions
+        for cause, condition in conditions.items():
+            if condition:
+                return True, cause
 
         # When none of the done conditions are met
-        return False, done_cause
+        return False, None
     
     def close(self):
         self.sim_env.close()
@@ -181,14 +178,6 @@ class BaseEnv(gym.Env):
                 height = max(vertex[1] for vertex in box) - min_y
                 rect = plt.Rectangle((min_x, min_y), width, height, color='black')
                 self.map_plots.append(self.ax.add_patch(rect))  # Add each patch to the list
-            
-            # # DEBUG - Add grid overlay
-            # grid_size = 0.1
-            # x_ticks = np.arange(0, 3, grid_size)
-            # y_ticks = np.arange(0, 7, grid_size)
-            # self.ax.set_xticks(x_ticks, minor=True)
-            # self.ax.set_yticks(y_ticks, minor=True)
-            # self.ax.grid(which='both', color='grey', linestyle='-', linewidth=0.5, alpha=0.5)
         
             self.path_plot = self.ax.scatter(self.path[:,0], self.path[:,1], c='grey', alpha=0.5)
             self.init_pose_plot = self.ax.scatter(self.init_pose[0], self.init_pose[1], c='green')

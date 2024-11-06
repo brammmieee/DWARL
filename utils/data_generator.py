@@ -65,7 +65,7 @@ class DataGenerator:
         for orient_idx, orientation in enumerate([aligned_orientation, reversed_orientation]):
             data_point = {
                 "init_pose": [float(init_pos[0]), float(init_pos[1]), float(0), float(orientation)],
-                "goal_pose": [float(goal_pos[0]), float(goal_pos[1]), float(0), float(0)]
+                "goal_pose": [float(goal_pos[0]), float(goal_pos[1]), float(0), float(0)] # NOTE: The goal orientation is always 0
             }
             path_to_data_point = Path(self.paths.data_sets.data_points) / f"{path_name}_{idx}_{orient_idx}.yaml"
             with open(path_to_data_point, 'w') as f:
@@ -92,6 +92,7 @@ class DataGenerator:
     
     @staticmethod
     def pixel_to_point(point, resolution, image_height):
+        # TODO: add docstring for the axis convention
         point = np.array(point, dtype=float)
         point[:2] *= resolution  # Convert to meters
         point[1] = (resolution * image_height) - point[1]  # Invert y-axis
