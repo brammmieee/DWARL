@@ -32,6 +32,9 @@ defaults:
 paths:
   root: ${hydra:runtime.cwd}
   tmp: /tmp/DWARL
+  scripts:
+    root: ${paths.root}/scripts
+    killall_webots: ${paths.scripts.root}/killall_webots.bash
   resources: 
     maps: ${paths.root}/resources/maps
     paths: ${paths.root}/resources/paths

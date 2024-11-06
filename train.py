@@ -21,9 +21,14 @@ import hydra
 import torch as th
 import utils.data_generator as dg
 import utils.data_set as ds
+import subprocess
+from pathlib import Path
 
 @hydra.main(config_path='config', config_name='train', version_base='1.1')
-def main(cfg : DictConfig):    
+def main(cfg : DictConfig):
+    # Kill all the Webots processes that are running
+    subprocess.run(["bash", str(Path(cfg.paths.scripts.killall_webots))])
+        
     # Generate data
     if cfg.generate_data:
         # Generate map, path and data points in our axis convention
