@@ -34,5 +34,4 @@ class CommandVelocityAction(gym.ActionWrapper):
     
     def action(self, act):
         cmd_vel = self.map_normalized_action_to_cmd_vel(act)
-    
         return cmd_vel # = action

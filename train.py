@@ -43,7 +43,7 @@ def main(cfg : DictConfig):
         env_idx=0
     )
     
-    # env = wrap_env(env, cfg.wrappers)
+    env = wrap_env(env, cfg.wrappers)
     
     import numpy as np
     # for i in range(300):

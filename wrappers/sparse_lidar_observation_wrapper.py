@@ -14,10 +14,9 @@ class SparseLidarObservation(gym.ObservationWrapper):
         
         self.cfg = cfg
         self.kinematic_cfg = self.unwrapped.cfg.vehicle.kinematics
-        self.proto_cfg = self.unwrapped.sim_env.cfg.proto_substitution.substitutions
         
         # Observation space definition
-        num_lidar_rays = self.proto_cfg.horizontalResolution
+        num_lidar_rays = self.unwrapped.sim_env.lidar_resolution
         low_array = np.concatenate([
             np.zeros(num_lidar_rays), #NOTE: since the lidar range image is normalized
             np.zeros(4)
@@ -34,19 +33,19 @@ class SparseLidarObservation(gym.ObservationWrapper):
         )
 
         # Some checks
-        if self.cfg.goal_pos_dist_max != self.proto_cfg.maxRange \
-            or self.cfg.goal_pos_dist_min != self.proto_cfg.minRange:
+        if self.cfg.goal_pos_dist_max != self.unwrapped.sim_env.lidar_max_range \
+            or self.cfg.goal_pos_dist_min != self.unwrapped.sim_env.lidar_min_range:
             print("Warning: The max/min goal distance is not equal to the max/min range of the lidar sensor. This may decrease consistency in the observation space.")
         
         # Plotting
-        if self.unwrapped.plot_wrapped_obs == True:
+        if self.cfg.plot_wrapped_obs == True:
             self.init_plot()
 
     def process_lidar_data(self, lidar_data):
         # NOTE - the lidar data contains an offset wrt the robot's position!!!
         # Parameters
-        min_range = float(self.proto_cfg.minRange)
-        max_range = float(self.proto_cfg.maxRange)
+        min_range = float(self.unwrapped.sim_env.lidar_min_range)
+        max_range = float(self.unwrapped.sim_env.lidar_max_range)
 
         # Convert lidar data to numpy array and limit limit
         lidar_data_array = np.array(lidar_data)
@@ -107,7 +106,7 @@ class SparseLidarObservation(gym.ObservationWrapper):
         )
 
         # Plot observation created by the wrapper to verify correctness
-        if self.unwrapped.plot_wrapped_obs == True:
+        if self.cfg.plot_wrapped_obs == True:
             self.plot_observation(
                 normalized_lidar_data, 
                 normalized_local_goal, 

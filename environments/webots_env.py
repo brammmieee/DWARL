@@ -70,6 +70,14 @@ class WebotsEnv(Supervisor):
     @property
     def lidar_range_image(self):
         return self.lidar_node.getRangeImage()
+
+    @property
+    def lidar_max_range(self):
+        return self.lidar_node.getMaxRange()
+    
+    @property
+    def lidar_min_range(self):
+        return self.lidar_node.getMinRange()
     
     @property
     def lidar_resolution(self):
