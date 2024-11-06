@@ -12,27 +12,22 @@ class ParameterizedReward(gym.RewardWrapper):
         self.running_rewards = self.cfg.running
 
         # Reward plotting
-        if self.cfg.render:
+        if self.cfg.render.enabled:
             self.reward_buffers = {component: [] for component in self.running_rewards.keys()}
             self.reward_buffers['total'] = []
             
-            # Define reward style map
-            self.reward_style_map = {
-                'linear': {'color': 'blue', 'linestyle': '-'},
-                'total': {'color': 'red', 'linestyle': '-'},
-            }
-            # Define reward plot number per component
-            self.reward_plot_map = {
-                'linear': 1,
-                'total': 2,
-            }
+            # Use the style map from the configuration
+            self.reward_style_map = self.cfg.render.style_map
+            
+            # Use the plot map from the configuration
+            self.reward_plot_map = self.cfg.render.plot_map
+            
             # Initialize the plot
             self.render_init_plot()
 
-
     def reward(self, reward):
         reward = self.get_reward(self.unwrapped.done, self.unwrapped.done_cause)
-        if self.cfg.render:
+        if self.cfg.render.enabled:
             self.render()
         return reward
 
@@ -40,7 +35,7 @@ class ParameterizedReward(gym.RewardWrapper):
         # If the episode is done, return the done reward
         if done:
             done_reward = self.done_rewards[done_cause]
-            if self.cfg.render:
+            if self.cfg.render.enabled:
                 self.update_reward_buffers('total', done_reward)
             return done_reward
         # Otherwise, calculate the running reward
@@ -51,9 +46,9 @@ class ParameterizedReward(gym.RewardWrapper):
                     continue
                 component_reward = getattr(self, f"calculate_{fn_name}_reward")() * coeff
                 running_reward += component_reward
-                if self.cfg.render:
+                if self.cfg.render.enabled:
                     self.update_reward_buffers(fn_name, component_reward)
-            if self.cfg.render:
+            if self.cfg.render.enabled:
                 self.update_reward_buffers('total', running_reward)
             return running_reward
         
@@ -86,22 +81,26 @@ class ParameterizedReward(gym.RewardWrapper):
 
     def render_init_plot(self):
         plt.ion()
-        self.fig, (self.ax3, self.ax4) = plt.subplots(2, 1)
         
-        self.ax3.set_xlabel('Step')
-        self.ax3.set_ylabel('Reward')
-        self.ax3.set_ylim(-15, 15)
-        self.ax3.grid()
-        self.reward_plots_1 = {}
-
-        self.ax4.set_xlabel('Step')
-        self.ax4.set_ylabel('Reward')
-        self.ax4.set_ylim(-15, 15)
-        self.ax4.grid()
-        self.reward_plots_2 = {}
-
+        # Determine the number of subplots based on the reward_plot_map
+        num_subplots = max(self.reward_plot_map.values())
+        
+        self.fig, self.axes = plt.subplots(num_subplots, 1, figsize=(10, 5*num_subplots))
+        
+        # If there's only one subplot, wrap it in a list for consistency
+        if num_subplots == 1:
+            self.axes = [self.axes]
+        
+        self.reward_plots = [{} for _ in range(num_subplots)]
+        
+        for i, ax in enumerate(self.axes):
+            ax.set_xlabel('Step')
+            ax.set_ylabel('Reward')
+            ax.set_ylim(-15, 15)
+            ax.grid()
+        
         legend_handles = [
-            Line2D([0], [0], color=style['color'], linestyle=style['linestyle'], label=label)
+            Line2D([0], [0], **style, label=label)
             for label, style in self.reward_style_map.items()
         ]
 
@@ -109,25 +108,13 @@ class ParameterizedReward(gym.RewardWrapper):
 
     def render_add_data(self):
         for component, buffer in self.reward_buffers.items():
-            if self.reward_plot_map.get(component, 0) == 1:
+            plot_index = self.reward_plot_map.get(component, 0) - 1
+            if plot_index >= 0:
                 style = self.reward_style_map.get(component, {'color': 'gray', 'linestyle': ':'})
-                self.reward_plots_1[component] = self.ax3.plot(range(len(buffer)), buffer, **style)
-
-            if self.reward_plot_map.get(component, 0) == 2:
-                style = self.reward_style_map.get(component, {'color': 'gray', 'linestyle': ':'})
-                self.reward_plots_2[component] = self.ax4.plot(range(len(buffer)), buffer, **style)
+                self.reward_plots[plot_index][component] = self.axes[plot_index].plot(range(len(buffer)), buffer, **style)
 
     def render_remove_old_data(self):
-        try:
-            for reward_plot in self.reward_plots_1.values():
-                for plot in reward_plot:
+        for reward_plot in self.reward_plots:
+            for plot_list in reward_plot.values():
+                for plot in plot_list:
                     plot.remove()
-        except AttributeError:
-            pass
-
-        try:
-            for reward_plot in self.reward_plots_2.values():
-                for plot in reward_plot:
-                    plot.remove()
-        except AttributeError:
-            pass
