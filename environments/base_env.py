@@ -79,7 +79,8 @@ class BaseEnv(gym.Env):
         pos, orient = et.compute_new_pose(self.sample_time, self.cur_pos, self.cur_orient_matrix, self.cur_vel)
         self.sim_env.step(pos, orient)
 
-        # Updating cur_pos, cur_orient, footprint in global frame, and getting new local goal
+        # Updating prev_pos, cur_pos, cur_orient, footprint in global frame, and getting new local goal
+        self.prev_pos = self.cur_pos
         self.cur_pos = self.sim_env.robot_position
         self.cur_orient_matrix = self.sim_env.robot_orientation
         self.footprint_glob = et.get_global_footprint_location(

@@ -60,9 +60,9 @@ def main(cfg : DictConfig):
     env.reset()
     while True:
         obs, rew, done, _, _  = env.step(np.array([0.4, 0.3]))
+        print(f"reward: {rew}")
         if done:
             env.reset()
-
 
     # vec_env=make_vec_env( #NOTE: Adds the monitor wrapper which might lead to issues with time limit wrapper! (see __init__ description)
     #     env_id=BaseEnv,

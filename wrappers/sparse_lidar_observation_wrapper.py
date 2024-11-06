@@ -38,7 +38,7 @@ class SparseLidarObservation(gym.ObservationWrapper):
             print("Warning: The max/min goal distance is not equal to the max/min range of the lidar sensor. This may decrease consistency in the observation space.")
         
         # Plotting
-        if self.cfg.plot_wrapped_obs == True:
+        if self.cfg.render == True:
             self.init_plot()
 
     def process_lidar_data(self, lidar_data):
@@ -106,7 +106,7 @@ class SparseLidarObservation(gym.ObservationWrapper):
         )
 
         # Plot observation created by the wrapper to verify correctness
-        if self.cfg.plot_wrapped_obs == True:
+        if self.cfg.render == True:
             self.plot_observation(
                 normalized_lidar_data, 
                 normalized_local_goal, 
