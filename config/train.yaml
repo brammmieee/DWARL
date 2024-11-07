@@ -1,14 +1,14 @@
 # Configuration for training a model with callbacks, model settings, etc.
 generate_data: true
 steps: 10000000             # number of training steps
-envs: 6    # number of parallel environments (and Webots instances)
+envs: 6                     # number of parallel environments (and Webots instances)
 log_interval: 10            # logging interval for logging callback parsed to model [steps]
 callbacks:
   model_eval_freq: 10000      # model evaluation frequency [steps]
   model_n_eval_episodes: 25   # number of episodes for model evaluation [episodes]
   model_save_freq: 10000      # model saving frequency [steps]
 model:
-  policy_type: MlpPolicy            # policy type for the neural network
+  policy_type: MlpPolicy      # policy type for the neural network
   activation_fn: ReLU         # activation function for the neural network
   net_arch:                         # network architecture for the neural network
     pi: [256, 256, 256, 256, 256]     # policy network architecture
