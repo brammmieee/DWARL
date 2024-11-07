@@ -37,15 +37,14 @@ def wrap_env(env, cfg):
 def make_vec_env(
         env_class,
         n_envs,
-        seed=None,
+        wrapper_class,
+        seed,
+        env_kwargs,
+        vec_env_cls,
+        wrapper_kwargs,
         monitor_dir=None,
-        wrapper_class=None,
-        env_kwargs=None,
-        vec_env_cls=None,
         monitor_kwargs=None,
-        wrapper_kwargs=None,
 ):
-    env_kwargs = env_kwargs or {}
     monitor_kwargs = monitor_kwargs or {}
 
     def make_env(rank):
