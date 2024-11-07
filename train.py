@@ -12,7 +12,7 @@ from stable_baselines3.common.env_checker import check_env
 from stable_baselines3.common.vec_env import SubprocVecEnv
 from stable_baselines3.ppo import PPO
 from stable_baselines3.common.env_util import make_vec_env
-from utils.data_loader import InfiniteDataLoader
+from utils.data_loader import RandomDataLoader
 from utils.webots_resource_generator import WebotsResourceGenerator
 from utils.wrapper_tools import wrap_env
 import hydra
@@ -41,7 +41,7 @@ def main(cfg: DictConfig):
     
     # Initialize the dataset and the data loader
     data_set = ds.Dataset(cfg.paths)
-    infinite_loader = InfiniteDataLoader(data_set, cfg.envs)
+    data_loader = RandomDataLoader(data_set, cfg.envs)
     
     vec_env=make_vec_env( #NOTE: Adds the monitor wrapper which might lead to issues with time limit wrapper! (see __init__ description)
         env_id=BaseEnv,
@@ -52,7 +52,7 @@ def main(cfg: DictConfig):
             'cfg': cfg.environment,
             'paths': cfg.paths,
             'sim_cfg': cfg.simulation,
-            'data_loader': infinite_loader,
+            'data_loader': data_loader,
             'render_mode': None
         },
         wrapper_kwargs={

@@ -1,18 +1,10 @@
-import os
-import random
-import numpy as np
-import math as m
-import gymnasium as gym
-from subprocess import Popen, PIPE
-import matplotlib.pyplot as plt
-from matplotlib.patches import Polygon as plt_polygon
-from matplotlib.lines import Line2D
-from shapely.geometry import Point, Polygon
-from shapely.affinity import translate, rotate
-from scipy.interpolate import interp1d
-from pathlib import Path
-import utils.env_tools as et
 from environments.webots_env import WebotsEnv
+from matplotlib.patches import Polygon as plt_polygon
+from shapely.geometry import Point, Polygon
+import gymnasium as gym
+import matplotlib.pyplot as plt
+import numpy as np
+import utils.env_tools as et
 
 class BaseEnv(gym.Env):
     def __init__(self, cfg, paths, sim_cfg, data_loader, render_mode=None):
