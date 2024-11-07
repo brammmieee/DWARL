@@ -2,6 +2,7 @@
 generate_data: true
 steps: 10000000             # number of training steps
 envs: 2                     # number of parallel environments (and Webots instances)
+seed: 0                     # random seed
 log_interval: 10            # logging interval for logging callback parsed to model [steps]
 callbacks:
   model_eval_freq: 10000      # model evaluation frequency [steps]

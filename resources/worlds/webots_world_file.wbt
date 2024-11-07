@@ -17,6 +17,7 @@ WorldInfo {
   title "Obstacle Avoidance"
   window "obstacle_avoidance"
   basicTimeStep 25
+  randomSeed 0
   contactProperties [
     ContactProperties {
       material1 "omni_mat"

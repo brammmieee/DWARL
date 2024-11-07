@@ -47,8 +47,9 @@ def main(cfg: DictConfig):
         raise ValueError("The number of environments (cfg.envs) must be at least 2.")
     
     vec_env=make_vec_env( #NOTE: Adds the monitor wrapper which might lead to issues with time limit wrapper! (see __init__ description)
-        env_id=BaseEnv,
-        n_envs=cfg.envs, 
+        env_class=BaseEnv,
+        n_envs=cfg.envs,
+        seed=cfg.seed, 
         vec_env_cls=SubprocVecEnv, 
         wrapper_class=wrap_env,
         env_kwargs={
