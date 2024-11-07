@@ -6,7 +6,7 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 from environments.base_env import BaseEnv
 from environments.webots_env import WebotsEnv
-from omegaconf import DictConfig
+from omegaconf import DictConfig, OmegaConf
 from pathlib import Path
 from stable_baselines3.common.callbacks import CheckpointCallback, EvalCallback
 from stable_baselines3.common.env_checker import check_env
@@ -44,35 +44,57 @@ def main(cfg: DictConfig):
     data_set = ds.Dataset(cfg.paths)
     infinite_loader = InfiniteDataLoader(data_set, cfg.envs)
     
-    # Create a vectorized environment
-    def make_env(env_idx, env_kwargs, wrapper_kwargs):
-        """ Based on stable baselines3's make_vec_env """
-        sim_env = WebotsEnv(cfg.simulation, cfg.paths)
-        return lambda: wrap_env(
-            Monitor(BaseEnv(**env_kwargs, env_idx=env_idx, sim_env=sim_env)),
-            **wrapper_kwargs
-        )
-    env_kwargs = {
-        'cfg': cfg.environment,
-        'paths': cfg.paths,
-        'sim_env': WebotsEnv(cfg.simulation, cfg.paths),
-        'data_loader': infinite_loader,
-    }
-    wrapper_kwargs = {
-        'cfg': cfg.wrappers,
-    }
-    vec_env = SubprocVecEnv([
-        make_env(env_idx, env_kwargs, wrapper_kwargs)
-        for env_idx in range(cfg.envs-1)
-    ])
+    # # Create a vectorized environment
+    # if cfg.envs < 2:
+    #     raise ValueError("The number of environments (cfg.envs) must be at least 2.")
+
+    # def make_env(env_idx):
+    #     """ Based on stable baselines3's make_vec_env """
+    #     return lambda: wrap_env(
+    #         Monitor(BaseEnv(
+    #             cfg=cfg.environment,
+    #             paths=cfg.paths,
+    #             data_loader=infinite_loader,
+    #             env_idx=env_idx,
+    #             sim_env=WebotsEnv,
+    #             sim_cfg=cfg.simulation
+    #         )),
+    #         cfg=cfg.wrappers
+    #     )
+
+    # vec_env = SubprocVecEnv([
+    #     make_env(env_idx)
+    #     for env_idx in range(cfg.envs-1)
+    # ])
     
+    from stable_baselines3.common.env_util import make_vec_env
+    vec_env=make_vec_env( #NOTE: Adds the monitor wrapper which might lead to issues with time limit wrapper! (see __init__ description)
+        env_id=BaseEnv,
+        n_envs=cfg.envs, 
+        vec_env_cls=SubprocVecEnv, 
+        wrapper_class=wrap_env,
+        env_kwargs={
+            'cfg': cfg.environment,
+            'paths': cfg.paths,
+            'sim_env': WebotsEnv,
+            'sim_cfg': cfg.simulation,
+            'data_loader': infinite_loader,
+            'env_idx': 0 # TODO: Change this to a list of indices
+        },
+        wrapper_kwargs={
+            'cfg': cfg.wrappers,
+        }
+    )
+    
+    # import ipdb; ipdb.set_trace()
+
     # Initialize the model
     model=PPO(
         env=vec_env,
         policy=cfg.model.policy_type,
         tensorboard_log=cfg.paths.outputs.logs,
         policy_kwargs={
-            'net_arch': cfg.model.net_arch,
+            'net_arch': OmegaConf.to_container(cfg.model.net_arch),
             'activation_fn': getattr(th.nn, cfg.model.activation_fn)
         }
     )
@@ -83,7 +105,7 @@ def main(cfg: DictConfig):
         callback=[
             CheckpointCallback(
                 save_freq=cfg.callbacks.model_eval_freq,
-                save_path=cfg.outputs.models,
+                save_path=cfg.paths.outputs.models,
                 save_replay_buffer=False,
                 save_vecnormalize=False,
                 verbose=0,
@@ -95,14 +117,14 @@ def main(cfg: DictConfig):
                 n_eval_episodes=cfg.callbacks.model_n_eval_episodes,
                 eval_freq=cfg.callbacks.model_eval_freq,
                 log_path=None,
-                best_model_save_path=cfg.ouputs.models,
+                best_model_save_path=cfg.paths.outputs.models,
                 deterministic=False,
                 render=False,
                 verbose=0,
                 warn=True,
             )
         ],
-        log_interval=cfg.callbacks.log_interval,
+        log_interval=cfg.log_interval,
         reset_num_timesteps=False,
         progress_bar=True
     )

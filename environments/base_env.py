@@ -15,21 +15,21 @@ import utils.env_tools as et
 
 
 class BaseEnv(gym.Env):
-    def __init__(self, cfg, paths, sim_env, data_loader, env_idx, render_mode='something'):
+    def __init__(self, cfg, paths, sim_env, sim_cfg, data_loader, env_idx, render_mode=None):
         super().__init__()
 
         self.cfg = cfg
         self.paths = paths
-        self.sim_env = sim_env
+        self.sim_env = sim_env(sim_cfg, paths)
         self.data_loader = data_loader
         self.env_idx = env_idx
         
         # Simulation environment properties
-        self.lidar_resolution = sim_env.lidar_resolution
-        self.sample_time = sim_env.sample_time
+        self.lidar_resolution = self.sim_env.lidar_resolution
+        self.sample_time = self.sim_env.sample_time
         
         # Precomputations
-        self.lidar_precomputation = et.lidar_precomputation(num_lidar_rays=sim_env.lidar_resolution)
+        self.lidar_precomputation = et.lidar_precomputation(num_lidar_rays=self.lidar_resolution)
         
         # Rendering
         self.render_mode = render_mode
