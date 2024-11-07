@@ -1,7 +1,6 @@
+
 import numpy as np
 from torch.utils.data import Subset
-
-
 class InfiniteDataLoader:
     def __init__(self, dataset, num_envs):
         """
@@ -27,18 +26,18 @@ class InfiniteDataLoader:
         # Create subset for each environment
         return [Subset(self.dataset, subset) for subset in split_indices]
     
-    def get_data_for_env(self, env_idx):
+    def get_data(self):
         """
         Get a data sample for a specific environment.
         """
-        env_dataset = self.env_datasets[env_idx]
-        current_idx = self.current_indices[env_idx]
+        env_dataset = self.env_datasets[0]
+        current_idx = self.current_indices[0]
         
         # Wrap around if we've reached the end of the subset
         if current_idx >= len(env_dataset):
             current_idx = 0
         
         data = env_dataset[current_idx]
-        self.current_indices[env_idx] = current_idx + 1
+        self.current_indices[0] = current_idx + 1
         
         return data

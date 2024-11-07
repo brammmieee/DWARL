@@ -12,17 +12,16 @@ from shapely.affinity import translate, rotate
 from scipy.interpolate import interp1d
 from pathlib import Path
 import utils.env_tools as et
-
+from environments.webots_env import WebotsEnv
 
 class BaseEnv(gym.Env):
-    def __init__(self, cfg, paths, sim_env, sim_cfg, data_loader, env_idx, render_mode=None):
+    def __init__(self, cfg, paths, sim_cfg, data_loader, render_mode=None):
         super().__init__()
 
         self.cfg = cfg
         self.paths = paths
-        self.sim_env = sim_env(sim_cfg, paths)
+        self.sim_env = WebotsEnv(sim_cfg, paths)
         self.data_loader = data_loader
-        self.env_idx = env_idx
         
         # Simulation environment properties
         self.lidar_resolution = self.sim_env.lidar_resolution
@@ -43,7 +42,7 @@ class BaseEnv(gym.Env):
         super().reset(seed=seed) # RNG seeding only done once (i.e. when value is not None)
         
         # Reset map, path, init/goal pose, simulation and collision tree
-        self.current_data = self.data_loader.get_data_for_env(self.env_idx)
+        self.current_data = self.data_loader.get_data()
         proto_name, self.map, self.path, self.init_pose, self.goal_pose = self.current_data.values()
             
         # Resetting the simulation
@@ -147,7 +146,7 @@ class BaseEnv(gym.Env):
         self.fig.canvas.flush_events()
         
     def render_init_plot(self):
-        if self.render_mode == 'none':
+        if self.render_mode == None:
             return
         
         # Initialize the plot   

@@ -11,7 +11,7 @@ ParameterizedReward:
   
   # The following parameters are used to create the reward plots
   render:
-    enabled: true  # Whether to plot the rewards
+    enabled: false  # Whether to plot the rewards
     style_map:
       linear:
         color: 'blue'

@@ -5,14 +5,13 @@ import os
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 from environments.base_env import BaseEnv
-from environments.webots_env import WebotsEnv
 from omegaconf import DictConfig, OmegaConf
 from pathlib import Path
 from stable_baselines3.common.callbacks import CheckpointCallback, EvalCallback
 from stable_baselines3.common.env_checker import check_env
-from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.vec_env import SubprocVecEnv
 from stable_baselines3.ppo import PPO
+from stable_baselines3.common.env_util import make_vec_env
 from utils.data_loader import InfiniteDataLoader
 from utils.webots_resource_generator import WebotsResourceGenerator
 from utils.wrapper_tools import wrap_env
@@ -44,30 +43,6 @@ def main(cfg: DictConfig):
     data_set = ds.Dataset(cfg.paths)
     infinite_loader = InfiniteDataLoader(data_set, cfg.envs)
     
-    # # Create a vectorized environment
-    # if cfg.envs < 2:
-    #     raise ValueError("The number of environments (cfg.envs) must be at least 2.")
-
-    # def make_env(env_idx):
-    #     """ Based on stable baselines3's make_vec_env """
-    #     return lambda: wrap_env(
-    #         Monitor(BaseEnv(
-    #             cfg=cfg.environment,
-    #             paths=cfg.paths,
-    #             data_loader=infinite_loader,
-    #             env_idx=env_idx,
-    #             sim_env=WebotsEnv,
-    #             sim_cfg=cfg.simulation
-    #         )),
-    #         cfg=cfg.wrappers
-    #     )
-
-    # vec_env = SubprocVecEnv([
-    #     make_env(env_idx)
-    #     for env_idx in range(cfg.envs-1)
-    # ])
-    
-    from stable_baselines3.common.env_util import make_vec_env
     vec_env=make_vec_env( #NOTE: Adds the monitor wrapper which might lead to issues with time limit wrapper! (see __init__ description)
         env_id=BaseEnv,
         n_envs=cfg.envs, 
@@ -76,18 +51,15 @@ def main(cfg: DictConfig):
         env_kwargs={
             'cfg': cfg.environment,
             'paths': cfg.paths,
-            'sim_env': WebotsEnv,
             'sim_cfg': cfg.simulation,
             'data_loader': infinite_loader,
-            'env_idx': 0 # TODO: Change this to a list of indices
+            'render_mode': None
         },
         wrapper_kwargs={
             'cfg': cfg.wrappers,
         }
     )
     
-    # import ipdb; ipdb.set_trace()
-
     # Initialize the model
     model=PPO(
         env=vec_env,
