@@ -7,13 +7,14 @@ import numpy as np
 import utils.env_tools as et
 
 class BaseEnv(gym.Env):
-    def __init__(self, cfg, paths, sim_cfg, data_loader, render_mode=None):
+    def __init__(self, cfg, paths, sim_cfg, data_loader, render_mode=None, env_idx=None):
         super().__init__()
 
         self.cfg = cfg
         self.paths = paths
         self.sim_env = WebotsEnv(sim_cfg, paths)
         self.data_loader = data_loader
+        self.env_idx = env_idx
         
         # Simulation environment properties
         self.lidar_resolution = self.sim_env.lidar_resolution
@@ -34,7 +35,7 @@ class BaseEnv(gym.Env):
         super().reset(seed=seed) # RNG seeding only done once (i.e. when value is not None)
         
         # Reset map, path, init/goal pose, simulation and collision tree
-        self.current_data = self.data_loader.get_data()
+        self.current_data = self.data_loader.get_data_for_env(self.env_idx)
         proto_name, self.map, self.path, self.init_pose, self.goal_pose = self.current_data.values()
             
         # Resetting the simulation

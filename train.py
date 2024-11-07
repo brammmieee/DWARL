@@ -11,11 +11,9 @@ from stable_baselines3.common.callbacks import CheckpointCallback, EvalCallback
 from stable_baselines3.common.env_checker import check_env
 from stable_baselines3.common.vec_env import SubprocVecEnv
 from stable_baselines3.ppo import PPO
-from stable_baselines3.common.env_util import make_vec_env
-from stable_baselines3.common.monitor import Monitor
-from utils.data_loader import RandomDataLoader
+from utils.data_loader import InfiniteDataLoader
 from utils.webots_resource_generator import WebotsResourceGenerator
-from utils.wrapper_tools import wrap_env
+from utils.wrapper_tools import wrap_env, make_vec_env
 import hydra
 import subprocess
 import torch as th
@@ -42,47 +40,28 @@ def main(cfg: DictConfig):
     
     # Initialize the dataset and the data loader
     data_set = ds.Dataset(cfg.paths)
-    data_loader = RandomDataLoader(data_set, cfg.envs)
+    data_loader = InfiniteDataLoader(data_set, cfg.envs)
     
     # Create a vectorized environment
     if cfg.envs < 2:
         raise ValueError("The number of environments (cfg.envs) must be at least 2.")
-
-    def make_env(env_idx):
-        """ Based on stable baselines3's make_vec_env """
-        return lambda: wrap_env(
-            Monitor(BaseEnv(
-                cfg=cfg.environment,
-                paths=cfg.paths,
-                data_loader=data_loader,
-                env_idx=env_idx,                     # NOTE: add it back into the environment
-                sim_cfg=cfg.simulation,
-                render_mode=None
-            )),
-            cfg=cfg.wrappers
-        )
-
-    vec_env = SubprocVecEnv([
-        make_env(env_idx)
-        for env_idx in range(cfg.envs-1)
-    ])
     
-    # vec_env=make_vec_env( #NOTE: Adds the monitor wrapper which might lead to issues with time limit wrapper! (see __init__ description)
-    #     env_id=BaseEnv,
-    #     n_envs=cfg.envs, 
-    #     vec_env_cls=SubprocVecEnv, 
-    #     wrapper_class=wrap_env,
-    #     env_kwargs={
-    #         'cfg': cfg.environment,
-    #         'paths': cfg.paths,
-    #         'sim_cfg': cfg.simulation,
-    #         'data_loader': data_loader,
-    #         'render_mode': None
-    #     },
-    #     wrapper_kwargs={
-    #         'cfg': cfg.wrappers,
-    #     }
-    # )
+    vec_env=make_vec_env( #NOTE: Adds the monitor wrapper which might lead to issues with time limit wrapper! (see __init__ description)
+        env_id=BaseEnv,
+        n_envs=cfg.envs, 
+        vec_env_cls=SubprocVecEnv, 
+        wrapper_class=wrap_env,
+        env_kwargs={
+            'cfg': cfg.environment,
+            'paths': cfg.paths,
+            'sim_cfg': cfg.simulation,
+            'data_loader': data_loader,
+            'render_mode': None
+        },
+        wrapper_kwargs={
+            'cfg': cfg.wrappers,
+        }
+    )
     
     # Initialize the model
     model=PPO(
