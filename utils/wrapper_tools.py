@@ -38,6 +38,10 @@ def wrap_env(env, cfg):
         
     return env
 
+# def make_env(env, cfg)
+#     """ Helper function that parses the environment index """
+    
+
 # def create_vec_env(
 #     env_id: Union[str, Callable[..., gym.Env]],
 #     n_envs: int = 1,

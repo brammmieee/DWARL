@@ -8,7 +8,6 @@ from environments.base_env import BaseEnv
 from environments.webots_env import WebotsEnv
 from functools import partial
 from omegaconf import DictConfig
-from omegaconf import DictConfig, OmegaConf
 from stable_baselines3.common.callbacks import CheckpointCallback, EvalCallback
 from stable_baselines3.common.env_checker import check_env
 from stable_baselines3.common.env_util import make_vec_env
@@ -23,12 +22,13 @@ import utils.data_generator as dg
 import utils.data_set as ds
 import subprocess
 from pathlib import Path
+import numpy as np
 
 @hydra.main(config_path='config', config_name='train', version_base='1.1')
-def main(cfg : DictConfig):
+def main(cfg: DictConfig):
     # Kill all the Webots processes that are running
     subprocess.run(["bash", str(Path(cfg.paths.scripts.killall_webots))])
-        
+            
     # Generate data
     if cfg.generate_data:
         # Generate map, path and data points in our axis convention
@@ -45,6 +45,7 @@ def main(cfg : DictConfig):
     data_set = ds.Dataset(cfg.paths)
     infinite_loader = InfiniteDataLoader(data_set, cfg.envs)
     
+    # DEBUGGING CODE ==========================================================
     env=BaseEnv(
         cfg=cfg.environment,
         paths=cfg.paths,
@@ -62,6 +63,7 @@ def main(cfg : DictConfig):
         obs, rew, done, _, _  = env.step(np.array([0.4, 0.3]))
         if done:
             env.reset()
+    # =========================================================================
 
     # vec_env=make_vec_env( #NOTE: Adds the monitor wrapper which might lead to issues with time limit wrapper! (see __init__ description)
     #     env_id=BaseEnv,
