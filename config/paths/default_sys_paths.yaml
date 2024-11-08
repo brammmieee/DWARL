@@ -1,0 +1,29 @@
+# System paths used throughout
+root: ${hydra:runtime.cwd}
+tmp: /tmp/DWARL
+scripts:
+  root: ${paths.root}/scripts
+  killall_webots: ${paths.scripts.root}/killall_webots.bash
+resources: 
+  maps: ${paths.root}/resources/maps
+  paths: ${paths.root}/resources/paths
+  map_name_lists: ${paths.root}/resources/map_name_lists
+  protos: ${paths.root}/resources/protos
+  worlds: ${paths.root}/resources/worlds
+outputs:
+  logs: ${hydra:runtime.output_dir}/logs
+  models: ${hydra:runtime.output_dir}/models
+  data_generator_logs: ${hydra:runtime.output_dir}/data_generator_logs
+data_sets:
+  root: ${paths.tmp}/data_sets
+  paths: ${paths.data_sets.root}/paths
+  maps: ${paths.data_sets.root}/maps
+  data_points: ${paths.data_sets.root}/data_points
+sim_resources:
+  root: ${paths.tmp}/sim_resources
+  worlds: ${paths.sim_resources.root}/worlds
+  protos: ${paths.sim_resources.root}/protos
+test_results: ################################################## TODO CHECK IF WE CAN SWITCH TO THIS RUNTIME FOR TESTING
+  root: ${hydra:runtime.output_dir}/test_results
+  plots: ${paths.test_results.root}/plots
+  logs: ${paths.test_results.root}/logs

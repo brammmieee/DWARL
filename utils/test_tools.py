@@ -1,52 +1,141 @@
-from utils.plot_tools import Plotter
 import json
 import numpy as np
 import os
+import matplotlib.pyplot as plt
+from stable_baselines3.common.monitor import Monitor
 
-def evaluate_model(model, env, max_nr_steps, deterministic=False):
+def evaluate_model(map_list, env, model, max_nr_steps, deterministic=False, seed):
+    """ Evaluation of the model inspired by the evaluate function from Sb3 """
+    results = []
+    for map_name in map_list:
+        result = evaluate_single_map(map_name, env, model, max_nr_steps, deterministic, seed)
+        results.append(result)
+    return results
+        
+def evaluate_single_map(map_name, env, model, max_nr_steps, deterministic=False, seed):
+    # Initialize
+    result = {
+        'map_name':,
+        'init_pose':,
+        'goal_pose':,
+        'positions': [],
+        'orientations': [],
+        'velocities': [],
+        'rewards': [],
+        'done_cause': None,
+        'max_nr_steps': max_nr_steps
+    }
+    env = Monitor(env) # See evaluate function script from Sb3
+    obs = env.reset(seed)
+    
+    result['positions'].append(env.cur_pos)
+    result['orientations'].append(env.cur_orient_matrix)
+    result['velocities'].append(env.cur_vel)
+    
     states = None
-    observations, info = env.reset()
-    done = False
-    nr_steps = 0
-    while not done and nr_steps < max_nr_steps:
-        actions, states = model.predict(
-        observations,  # type: ignore[arg-type]
-        state=states,
-        episode_start=1,
-        deterministic=deterministic,
-        )
-        observations, rewards, done, _, info = env.step(actions)
-        nr_steps += 1
-    env.nr_steps = nr_steps
-    if not done and nr_steps == max_nr_steps:
-        env.done_cause = 'max_nr_steps_reached'
-    return env
+    for _ in range(max_nr_steps):
+        action, states = model.predict(
+            observation=obs,
+            state=states,       # NOTE: How does this work?
+            epsisode_start=1,   # NOTE: Why is this 1?
+            deterministic=deterministic)
+        obs, reward, done, _, _ = env.step(action)
+        
+        result['positions'].append(env.cur_pose[:2])
+        result['orientations'].append(env.cur_orient_matrix)
+        result['velocities'].append(env.cur_vel)
+        result['rewards'].append(reward)
+                    
+        if done:
+            result['done_cause'] = env.done_cause
+            result['nr_steps'] = len(result['positions'])
+            break
+        
+    if not done:
+        result['done_cause'] = 'max_nr_steps_reached'
+        result['nr_steps'] = max_nr_steps
 
-def extract_eval_result(env, max_nr_steps=None):
-    eval_result = {}
-    attribute_names = [  #'params',
-                    #    'grid',
-                       'map',
-                       'init_pose',
-                       'goal_pose',
-                       'positions',
-                       'done_cause',
-                       'velocities',
-                       'orientations',
-                       'nr_steps',]
-    for attribute_name in attribute_names:
-        eval_result[attribute_name] = getattr(env, attribute_name)
-    eval_result['max_nr_steps'] = max_nr_steps
+class ResultPlotter:
+    def __init__(self, cfg):
+        self.cfg = cfg
+        self.figs = {}
+        self.nr_figs = 0
 
-    return eval_result
+    def plot_results(self, results, output_folder=None):
+        nr_maps = len(results)
+        self.create_figures(nr_maps, self.cfg.max_axes_per_figure)
+        
+        for i, result in enumerate(results):
+            ax = self.figs[i]['ax']
+            self.plot_grid(result, ax)
+            self.plot_traversed_path(result, ax)
 
-def plot_eval_results(eval_results):
-    plotter = Plotter(eval_results)
-    plotter.initialize_figure()
-    for i, eval_result in enumerate(plotter.eval_results):
-        plotter.plot_grid(eval_result, plotter.figs[i]['ax'])
-        plotter.plot_traversed_path(eval_result, plotter.figs[i]['ax'])
-    return plotter
+        if self.cfg.show:
+            plt.show()
+        
+        if self.save_plots:
+            if output_folder is None:
+                print('No output folder specified. Figures will not be saved.')
+            self.save_plots(output_folder)
+
+    def create_figures(self, nr_maps):
+        self.nr_figs = (nr_maps - 1) // self.cfg.max_axes_per_figure + 1
+        map_inds = list(range(0, nr_maps, self.cfg.max_axes_per_figure)) + [nr_maps]
+        
+        legend_elements = [plt.Line2D([0], [0], color=value, lw=4, label=key) 
+                           for key, value in self.cfg.done_cause_colors.items()]
+        
+        for fig_ind in range(self.nr_figs):
+            fig, axes = self.create_subplot(self.cfg.max_axes_per_figure)
+            fig.legend(handles=legend_elements, loc='upper center', bbox_to_anchor=(0.5, 0.95), ncol=3)
+            
+            for i, map_ind in enumerate(range(map_inds[fig_ind], map_inds[fig_ind+1])):
+                self.figs[map_ind] = {'fig_ind': fig_ind, 'fig': fig, 'ax': axes.flat[i]}
+
+    def create_subplot(self, nr_axes):
+        nr_rows = int(np.ceil(np.sqrt(nr_axes)))
+        nr_cols = int(np.ceil(nr_axes / nr_rows))
+        fig, axes = plt.subplots(nr_rows, nr_cols, figsize=(15, 15))
+        return fig, np.array([axes]) if not isinstance(axes, np.ndarray) else axes
+
+    def plot_grid(self, eval_result, ax):
+        ax.set_aspect('equal', adjustable='box')
+        xlim = [0, 0]
+        ylim = [0, 0]
+        for box in eval_result['map']:
+            min_x = min(vertex[0] for vertex in box)
+            min_y = min(vertex[1] for vertex in box)
+            width = max(vertex[0] for vertex in box) - min_x
+            height = max(vertex[1] for vertex in box) - min_y
+            xlim[0] = min(xlim[0], min_x)
+            xlim[1] = max(xlim[1], min_x + width)
+            ylim[0] = min(ylim[0], min_y)
+            ylim[1] = max(ylim[1], min_y + height)
+            rect = plt.Rectangle((min_x, min_y), width, height, facecolor='purple', edgecolor='purple')
+            ax.add_patch(rect)
+        ax.set_xlim(*xlim)
+        ax.set_ylim(*ylim)
+
+    def plot_traversed_path(self, eval_result, ax):
+        positions = np.array(eval_result['positions'])
+        init_pose = eval_result['init_pose']
+        goal_pose = eval_result['goal_pose']
+        done_cause = eval_result['done_cause']
+        ax.plot(init_pose[0], init_pose[1], 'go')
+        ax.plot(goal_pose[0], goal_pose[1], 'ro')
+        ax.plot(positions[:,0], positions[:, 1], color='k')
+        ax.set_facecolor(self.cfg.done_cause_colors[done_cause])
+
+    def save_plots(self, output_folder):
+        for fig_ind in range(self.nr_figs):
+            for fig in self.figs.values():
+                if fig['fig_ind'] == fig_ind:
+                    png_file_path = os.path.join(output_folder, f'figure_{fig_ind}.png')
+                    fig['fig'].savefig(png_file_path, bbox_inches='tight')
+                    break
+
+
+
 
 class NumpyEncoder(json.JSONEncoder):
     def default(self, obj):
@@ -54,19 +143,15 @@ class NumpyEncoder(json.JSONEncoder):
             return obj.tolist()
         return super(NumpyEncoder, self).default(obj)
 
-def save_eval_results(eval_results, json_file_path):
+def save_eval_result(eval_result, json_file_path):
     with open(json_file_path, 'w') as f:
-        json.dump(eval_results, f, indent=4, cls=NumpyEncoder)
+        json.dump(eval_result, f, indent=4, cls=NumpyEncoder)
 
-def load_eval_results(json_file_path):
+def load_eval_result(json_file_path):
     with open(json_file_path, 'r') as f:
-        eval_results = json.load(f)
-    return eval_results
+        eval_result = json.load(f)
+    return eval_result
 
-def save_figures(plotter, output_folder):
-    for fig_ind in range(plotter.nr_figs):
-        for fig in plotter.figs.values():
-            if fig['fig_ind'] == fig_ind:
-                png_file_path = os.path.join(output_folder, f'figure_{fig_ind}.png')
-                fig['fig'].savefig(png_file_path, bbox_inches='tight')
-                break
+
+
+

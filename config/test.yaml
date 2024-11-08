@@ -1,31 +1,24 @@
-seed: 0   # random seed
-
-# System paths used throughout
-paths:
-  root: ${hydra:runtime.cwd}
-  tmp: /tmp/DWARL
-  scripts:
-    root: ${paths.root}/scripts
-    killall_webots: ${paths.scripts.root}/killall_webots.bash
-  resources: 
-    maps: ${paths.root}/resources/maps
-    paths: ${paths.root}/resources/paths
-    map_name_lists: ${paths.root}/resources/map_name_lists
-    protos: ${paths.root}/resources/protos
-    worlds: ${paths.root}/resources/worlds
-  outputs:
-    logs: ${hydra:runtime.output_dir}/logs
-    models: ${hydra:runtime.output_dir}/models
-    data_generator_logs: ${hydra:runtime.output_dir}/data_generator_logs
-  data_sets:
-    root: ${paths.tmp}/data_sets
-    paths: ${paths.data_sets.root}/paths
-    maps: ${paths.data_sets.root}/maps
-    data_points: ${paths.data_sets.root}/data_points
-  sim_resources:
-    root: ${paths.tmp}/sim_resources
-    worlds: ${paths.sim_resources.root}/worlds
-    protos: ${paths.sim_resources.root}/protos
+defaults:
+  - sys_paths:
+    - default_sys_paths
+    
+seed: 0           # random seed
+max_steps: 1000   # maximum number of steps to run the environment
+model:
+  data: ???           # e.g. '2021-06-01'
+  time: ???           # e.g. '15-42-18'
+  use_best: false   # use the best model for evaluation
+  steps: 10000000         # load model trained up to this number of steps
+  deterministic: false    # use deterministic model
+result_plotter:
+  save: true
+  show: true
+  max_figure_axis: 25
+  done_cause_colors:
+    at_goal: 'lightgreen'
+    outside_map: 'skyblue'
+    collision: 'orange'
+    max_nr_steps_reached: 'lightcoral'
 
 # Configuration for Hydra
 hydra:

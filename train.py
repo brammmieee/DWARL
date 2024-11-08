@@ -24,6 +24,7 @@ import utils.data_set as ds
 def main(cfg: DictConfig):
     # Kill all the Webots processes that are running
     subprocess.run(["bash", str(Path(cfg.paths.scripts.killall_webots))])
+    # TODO: make simple interface for testing on secluded maps (RINUS)
             
     # Generate data
     if cfg.generate_data:
@@ -57,7 +58,7 @@ def main(cfg: DictConfig):
             'paths': cfg.paths,
             'sim_cfg': cfg.simulation,
             'data_loader': data_loader,
-            'render_mode': None
+            'render_mode': None,
         },
         wrapper_kwargs={
             'cfg': cfg.wrappers,

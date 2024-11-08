@@ -1,17 +1,19 @@
 # Included configuration (Hydra creates a single configuration from the included files)
 defaults:
 - _self_
+- paths:
+  - default_sys_paths
 - environment:
-    - cindy
+  - cindy
 - wrappers: # order matters
-    - sparse_lidar_observation
-    - command_velocity_action
-    - parameterized_reward
-    - time_limit
+  - sparse_lidar_observation
+  - command_velocity_action
+  - parameterized_reward
+  - time_limit
 - data_generator:
-    - cindy
+  - cindy
 - simulation:
-    - webots
+  - webots
 
 # Configuration for training a model with callbacks, model settings, etc.
 generate_data: true
@@ -30,33 +32,9 @@ model:
     pi: [256, 256, 256, 256, 256]     # policy network architecture
     vf: [256, 256, 256, 256, 256]     # value function network architecture
 
-# System paths used throughout
-paths:
-  root: ${hydra:runtime.cwd}
-  tmp: /tmp/DWARL
-  scripts:
-    root: ${paths.root}/scripts
-    killall_webots: ${paths.scripts.root}/killall_webots.bash
-  resources: 
-    maps: ${paths.root}/resources/maps
-    paths: ${paths.root}/resources/paths
-    map_name_lists: ${paths.root}/resources/map_name_lists
-    protos: ${paths.root}/resources/protos
-    worlds: ${paths.root}/resources/worlds
-  outputs:
-    logs: ${hydra:runtime.output_dir}/logs
-    models: ${hydra:runtime.output_dir}/models
-  data_sets:
-    root: ${paths.tmp}/data_sets
-    paths: ${paths.data_sets.root}/paths
-    maps: ${paths.data_sets.root}/maps
-    data_points: ${paths.data_sets.root}/data_points
-  sim_resources:
-    root: ${paths.tmp}/sim_resources
-    worlds: ${paths.sim_resources.root}/worlds
-    protos: ${paths.sim_resources.root}/protos
-
 # Configuration for Hydra
 hydra:
+  run:
+    dir: outputs/training/${now:%Y-%m-%d}/${now:%H-%M-%S}
   job:
     chdir: true
