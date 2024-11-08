@@ -7,7 +7,7 @@ import numpy as np
 import utils.env_tools as et
 
 class BaseEnv(gym.Env):
-    def __init__(self, cfg, paths, sim_cfg, data_loader, render_mode=None, env_idx=None):
+    def __init__(self, cfg, paths, sim_cfg, data_loader, render_mode=None, env_idx=None, evaluate=False):
         super().__init__()
 
         self.cfg = cfg
@@ -15,6 +15,7 @@ class BaseEnv(gym.Env):
         self.sim_env = WebotsEnv(sim_cfg, paths)
         self.data_loader = data_loader
         self.env_idx = env_idx
+        self.evaluate = evaluate
         
         # Simulation environment properties
         self.lidar_resolution = self.sim_env.lidar_resolution
@@ -51,14 +52,20 @@ class BaseEnv(gym.Env):
         self.cur_pos = self.sim_env.robot_position
         self.cur_orient_matrix = self.sim_env.robot_orientation
         self.cur_vel, self.cmd_vel = np.array([0.0, 0.0]), np.array([0.0, 0.0])
+        if self.evaluate:
+            self.positions = [self.cur_pos]
+            self.orientations = [self.cur_orient_matrix]
+            self.velocities = [self.cur_vel]
         self.observation, _, done, _, info = self.step(self.cmd_vel)
         
         # Check if the initial pose is valid, if not reset the environment again
         if done:
             self.reset(seed=seed, options=options)
-        
+       
+
         # Rendering
         self.render(method='reset')
+
 
         return self.observation, info
 
@@ -90,6 +97,11 @@ class BaseEnv(gym.Env):
         self.observation = self.get_obs()
         self.done, self.done_cause = self.get_done()        
         self.reward = self.get_reward()
+
+        if self.evaluate:
+            self.positions.append(pos)
+            self.orientations.append(self.cur_orient_matrix)
+            self.velocities.append(self.cur_vel)
         
         # Rendering
         self.render(method='step')
