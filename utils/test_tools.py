@@ -5,22 +5,23 @@ import matplotlib.pyplot as plt
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.evaluation import evaluate_policy
 
-def evaluate_model(map_list, env, model, max_nr_steps, deterministic=False, seed=0):
+def evaluate_model(nr_trials, env, model, max_nr_steps, deterministic=False, seed=0):
     """ Evaluation of the model inspired by the evaluate function from Sb3 """
     results = []
-    for map_name in map_list:
-        result = evaluate_single_map(map_name, env, model, max_nr_steps, deterministic, seed)
+    for _ in range(nr_trials):
+        result = evaluate_single_map(env, model, max_nr_steps, deterministic, seed)
         results.append(result)
     return results
         
-def evaluate_single_map(map_name, env, model, max_nr_steps, deterministic=False, seed=0):
+def evaluate_single_map(env, model, max_nr_steps, deterministic=False, seed=0):
     # Initialize
     env = Monitor(env) # See evaluate function script from Sb3
     obs, _ = env.reset()
     result = {
-        'map_name': None,
-        'init_pose': None,
-        'goal_pose': None,
+        'map_name': env.unwrapped.map_name,
+        'map': env.unwrapped.map,
+        'init_pose': env.unwrapped.init_pose,
+        'goal_pose': env.unwrapped.goal_pose,
         'positions': [],
         'orientations': [],
         'velocities': [],
@@ -56,6 +57,8 @@ def evaluate_single_map(map_name, env, model, max_nr_steps, deterministic=False,
     if not done:
         result['done_cause'] = 'max_nr_steps_reached'
         result['nr_steps'] = max_nr_steps
+    
+    return result
 
 class ResultPlotter:
     def __init__(self, cfg):
@@ -81,14 +84,14 @@ class ResultPlotter:
             self.save_plots_(output_folder)
 
     def create_figures(self, nr_maps):
-        self.nr_figs = (nr_maps - 1) // self.cfg.max_axes_per_figure + 1
-        map_inds = list(range(0, nr_maps, self.cfg.max_axes_per_figure)) + [nr_maps]
+        self.nr_figs = (nr_maps - 1) // self.cfg.max_axis + 1
+        map_inds = list(range(0, nr_maps, self.cfg.max_axis)) + [nr_maps]
         
         legend_elements = [plt.Line2D([0], [0], color=value, lw=4, label=key) 
                            for key, value in self.cfg.done_cause_colors.items()]
         
         for fig_ind in range(self.nr_figs):
-            fig, axes = self.create_subplot(self.cfg.max_axes_per_figure)
+            fig, axes = self.create_subplot(self.cfg.max_axis)
             fig.legend(handles=legend_elements, loc='upper center', bbox_to_anchor=(0.5, 0.95), ncol=3)
             
             for i, map_ind in enumerate(range(map_inds[fig_ind], map_inds[fig_ind+1])):

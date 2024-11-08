@@ -36,7 +36,7 @@ def main(cfg: DictConfig):
                 
     # Initialize the dataset and the data loader
     data_set = ds.Dataset(cfg.paths)
-    data_loader = InfiniteDataLoader(data_set, num_envs=1)
+    data_loader = InfiniteDataLoader(data_set, num_envs=1, seed=cfg.seed)
     
     # Creating wrapped environment
     env = wrap_env(
@@ -59,8 +59,15 @@ def main(cfg: DictConfig):
         model = PPO.load(path_to_models / 'best_model.zip', env=env)
 
     # Evaluate model and plot results
-    results = tt.evaluate_model(cfg.data_generator.map.list, env, model, cfg.max_episode_steps, cfg.model.deterministic, cfg.seed)
-    plotter = tt.ResultPlotter(cfg.result_plotter)
+    results = tt.evaluate_model(
+        nr_trials=cfg.nr_trials, 
+        env=env, 
+        model=model, 
+        max_nr_steps=cfg.max_episode_steps, 
+        deterministic=cfg.model.deterministic, 
+        seed=cfg.seed
+    )
+    plotter = tt.ResultPlotter(cfg.plotter)
     plotter.plot_results(results)
     
 

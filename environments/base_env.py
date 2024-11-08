@@ -36,11 +36,11 @@ class BaseEnv(gym.Env):
         
         # Reset map, path, init/goal pose, simulation and collision tree
         self.current_data = self.data_loader.get_data_for_env(self.env_idx)
-        proto_name, self.map, self.path, self.init_pose, self.goal_pose = self.current_data.values()
+        self.map_name, self.map, self.path, self.init_pose, self.goal_pose = self.current_data.values()
             
         # Resetting the simulation
         self.sim_env.reset()
-        self.sim_env.reset_map(proto_name)
+        self.sim_env.reset_map(self.map_name)
         self.sim_env.reset_robot(self.init_pose)
         
         # Precomputations
