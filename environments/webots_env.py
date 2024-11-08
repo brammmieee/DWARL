@@ -7,7 +7,6 @@ import os
 STATIC_ROBOT_Z_POS = 0.05
 WEBOTS_WORLD_FILE_NAME = 'webots_world_file.wbt'
 
-
 class WebotsEnv(Supervisor):
     def __init__(self, cfg, paths):
         # Open the world

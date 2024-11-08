@@ -1,3 +1,18 @@
+# Included configuration (Hydra creates a single configuration from the included files)
+defaults:
+- _self_
+- environment:
+    - cindy
+- wrappers: # order matters
+    - sparse_lidar_observation
+    - command_velocity_action
+    - parameterized_reward
+    - time_limit
+- data_generator:
+    - cindy
+- simulation:
+    - webots
+
 # Configuration for training a model with callbacks, model settings, etc.
 generate_data: true
 steps: 10000000             # number of training steps
@@ -15,21 +30,6 @@ model:
     pi: [256, 256, 256, 256, 256]     # policy network architecture
     vf: [256, 256, 256, 256, 256]     # value function network architecture
 
-# Included configuration (Hydra creates a single configuration from the included files)
-defaults:
-- _self_
-- environment:
-    - cindy
-- wrappers: # order matters
-    - sparse_lidar_observation
-    - command_velocity_action
-    - parameterized_reward
-    - time_limit
-- data_generator:
-    - cindy
-- simulation:
-    - webots
-
 # System paths used throughout
 paths:
   root: ${hydra:runtime.cwd}
@@ -46,7 +46,6 @@ paths:
   outputs:
     logs: ${hydra:runtime.output_dir}/logs
     models: ${hydra:runtime.output_dir}/models
-    data_generator_logs: ${hydra:runtime.output_dir}/data_generator_logs
   data_sets:
     root: ${paths.tmp}/data_sets
     paths: ${paths.data_sets.root}/paths
