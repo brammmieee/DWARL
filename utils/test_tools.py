@@ -3,6 +3,7 @@ import numpy as np
 import os
 import matplotlib.pyplot as plt
 from stable_baselines3.common.monitor import Monitor
+from stable_baselines3.common.evaluation import evaluate_policy
 
 def evaluate_model(map_list, env, model, max_nr_steps, deterministic=False, seed=0):
     """ Evaluation of the model inspired by the evaluate function from Sb3 """
@@ -14,10 +15,12 @@ def evaluate_model(map_list, env, model, max_nr_steps, deterministic=False, seed
         
 def evaluate_single_map(map_name, env, model, max_nr_steps, deterministic=False, seed=0):
     # Initialize
+    env = Monitor(env) # See evaluate function script from Sb3
+    obs, _ = env.reset()
     result = {
-        'map_name': "DEBUG",
-        'init_pose':"DEBUG",
-        'goal_pose':"DEBUG",
+        'map_name': None,
+        'init_pose': None,
+        'goal_pose': None,
         'positions': [],
         'orientations': [],
         'velocities': [],
@@ -25,29 +28,28 @@ def evaluate_single_map(map_name, env, model, max_nr_steps, deterministic=False,
         'done_cause': None,
         'max_nr_steps': max_nr_steps
     }
-    env = Monitor(env) # See evaluate function script from Sb3
-    obs = env.reset(seed)
     
-    result['positions'].append(env.cur_pos)
-    result['orientations'].append(env.cur_orient_matrix)
-    result['velocities'].append(env.cur_vel)
+    result['positions'].append(env.unwrapped.cur_pos)
+    result['orientations'].append(env.unwrapped.cur_orient_matrix)
+    result['velocities'].append(env.unwrapped.cur_vel)
     
     states = None
     for _ in range(max_nr_steps):
         action, states = model.predict(
-            observation=obs,
+            obs,
             state=states,       # NOTE: How does this work?
-            epsisode_start=1,   # NOTE: Why is this 1?
-            deterministic=deterministic)
+            episode_start=1,   # NOTE: Why is this 1?
+            deterministic=deterministic
+        )
         obs, reward, done, _, _ = env.step(action)
         
-        result['positions'].append(env.cur_pose[:2])
-        result['orientations'].append(env.cur_orient_matrix)
-        result['velocities'].append(env.cur_vel)
+        result['positions'].append(env.unwrapped.cur_pos)
+        result['orientations'].append(env.unwrapped.cur_orient_matrix)
+        result['velocities'].append(env.unwrapped.cur_vel)
         result['rewards'].append(reward)
                     
         if done:
-            result['done_cause'] = env.done_cause
+            result['done_cause'] = env.unwrapped.done_cause
             result['nr_steps'] = len(result['positions'])
             break
         
@@ -63,7 +65,7 @@ class ResultPlotter:
 
     def plot_results(self, results, output_folder=None):
         nr_maps = len(results)
-        self.create_figures(nr_maps, self.cfg.max_axes_per_figure)
+        self.create_figures(nr_maps)
         
         for i, result in enumerate(results):
             ax = self.figs[i]['ax']
@@ -76,7 +78,7 @@ class ResultPlotter:
         if self.save_plots:
             if output_folder is None:
                 print('No output folder specified. Figures will not be saved.')
-            self.save_plots(output_folder)
+            self.save_plots_(output_folder)
 
     def create_figures(self, nr_maps):
         self.nr_figs = (nr_maps - 1) // self.cfg.max_axes_per_figure + 1
@@ -126,7 +128,7 @@ class ResultPlotter:
         ax.plot(positions[:,0], positions[:, 1], color='k')
         ax.set_facecolor(self.cfg.done_cause_colors[done_cause])
 
-    def save_plots(self, output_folder):
+    def save_plots_(self, output_folder):
         for fig_ind in range(self.nr_figs):
             for fig in self.figs.values():
                 if fig['fig_ind'] == fig_ind:

@@ -42,9 +42,10 @@ def main(cfg: DictConfig):
     env = wrap_env(
         BaseEnv(
             cfg=train_cfg.environment,
-            paths=train_cfg.paths,
+            paths=cfg.paths,
             sim_cfg=train_cfg.simulation,
             data_loader=data_loader,
+            env_idx=0,
             render_mode=None,
         ), 
         train_cfg.wrappers
@@ -58,7 +59,7 @@ def main(cfg: DictConfig):
         model = PPO.load(path_to_models / 'best_model.zip', env=env)
 
     # Evaluate model and plot results
-    results = tt.evaluate_model(cfg.data_generator.map.list, env, model, cfg.max_nr_steps, cfg.model.deterministic, cfg.seed)
+    results = tt.evaluate_model(cfg.data_generator.map.list, env, model, cfg.max_episode_steps, cfg.model.deterministic, cfg.seed)
     plotter = tt.ResultPlotter(cfg.result_plotter)
     plotter.plot_results(results)
     

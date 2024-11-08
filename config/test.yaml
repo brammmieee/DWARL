@@ -18,9 +18,8 @@ paths:
 
 killall_webots: false   # kill all Webots instances before testing  
 generate_data: true     # generate data
-max_episode_steps: 600  # maximum episode steps
-
 seed: 0                 # random seed
+max_episode_steps: 600  # maximum episode steps
 model:                  # model settings
   date: ???               # e.g. '2021-06-01'
   time: ???               # e.g. '15-42-18'
