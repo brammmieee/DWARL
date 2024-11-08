@@ -4,7 +4,7 @@ import os
 import matplotlib.pyplot as plt
 from stable_baselines3.common.monitor import Monitor
 
-def evaluate_model(map_list, env, model, max_nr_steps, deterministic=False, seed):
+def evaluate_model(map_list, env, model, max_nr_steps, deterministic=False, seed=0):
     """ Evaluation of the model inspired by the evaluate function from Sb3 """
     results = []
     for map_name in map_list:
@@ -12,12 +12,12 @@ def evaluate_model(map_list, env, model, max_nr_steps, deterministic=False, seed
         results.append(result)
     return results
         
-def evaluate_single_map(map_name, env, model, max_nr_steps, deterministic=False, seed):
+def evaluate_single_map(map_name, env, model, max_nr_steps, deterministic=False, seed=0):
     # Initialize
     result = {
-        'map_name':,
-        'init_pose':,
-        'goal_pose':,
+        'map_name': "DEBUG",
+        'init_pose':"DEBUG",
+        'goal_pose':"DEBUG",
         'positions': [],
         'orientations': [],
         'velocities': [],

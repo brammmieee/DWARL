@@ -1,20 +1,39 @@
 defaults:
-  - sys_paths:
-    - default_sys_paths
-    
-seed: 0           # random seed
-max_steps: 1000   # maximum number of steps to run the environment
-model:
-  data: ???           # e.g. '2021-06-01'
-  time: ???           # e.g. '15-42-18'
-  use_best: false   # use the best model for evaluation
+  - _self_
+  - paths:
+    - general_sys_paths
+  - data_generator:
+    - cindy_test
+
+# System paths for testing
+paths:
+  data_sets:
+    root: ${paths.tmp}/data_sets/testing
+  sim_resources:
+    root: ${paths.tmp}/sim_resources/testing
+  test_results: 
+    root: ${hydra:runtime.output_dir}/test_results
+    plots: ${paths.test_results.root}/plots
+    logs: ${paths.test_results.root}/logs
+
+killall_webots: false   # kill all Webots instances before testing  
+generate_data: true     # generate data
+max_episode_steps: 600  # maximum episode steps
+
+seed: 0                 # random seed
+model:                  # model settings
+  date: ???               # e.g. '2021-06-01'
+  time: ???               # e.g. '15-42-18'
+  use_best: false         # use the best model for evaluation
   steps: 10000000         # load model trained up to this number of steps
   deterministic: false    # use deterministic model
-result_plotter:
-  save: true
-  show: true
-  max_figure_axis: 25
-  done_cause_colors:
+evaluate:               # evaluation settings    
+  max_steps: 1000         # maximum number of steps to run the environment
+result_plotter:         # result plotter settings
+  save: true              # save the plot
+  show: true              # show the plot
+  max_figure_axis: 25   # maximum number of figures in one window
+  done_cause_colors:    # colors for done causes
     at_goal: 'lightgreen'
     outside_map: 'skyblue'
     collision: 'orange'
@@ -22,5 +41,7 @@ result_plotter:
 
 # Configuration for Hydra
 hydra:
+  run:
+    dir: outputs/testing/${now:%Y-%m-%d}/${now:%H-%M-%S}
   job:
     chdir: true

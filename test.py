@@ -1,73 +1,84 @@
-import hydra
-from omegaconf import DictConfig
-import sys
+# Prevent TensorFlow from spamming messages
+import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+
 from environments.base_env import BaseEnv
+from omegaconf import DictConfig, OmegaConf
+from pathlib import Path
 from stable_baselines3.ppo import PPO
-import utils.test_tools as tt
 from utils.data_loader import InfiniteDataLoader
-import utils.data_set as ds
+from utils.webots_resource_generator import WebotsResourceGenerator
 from utils.wrapper_tools import wrap_env
+import hydra
+import utils.data_generator as dg
+import utils.data_set as ds
+import utils.test_tools as tt
 
 @hydra.main(config_path='config', config_name='test', version_base='1.1')
 def main(cfg: DictConfig):
-    # Choose the netwerk to evaluate
-    date_time = '24_09_24__17_24_45'
-    training_steps = 92320000  # Set the number of training steps (optional)
-
-    # Evaluation parameters
-    deterministic = False  # Set whether to use deterministic policy or not
-    nr_maps = 25
-    max_nr_steps = 1000  # Evaluation will stop after this number of steps
+    # Load the training config
+    path_to_training_run_output = Path(cfg.paths.outputs.training) / cfg.model.date / cfg.model.time
+    path_to_train_cfg = path_to_training_run_output / '.hydra/config.yaml'
+    train_cfg = OmegaConf.load(path_to_train_cfg)
     
-    # Load dataset
+    # Generate data
+    if cfg.generate_data:
+        print('Removing old data and generating new...')
+        # Generate map, path and data points in our axis convention
+        data_generator = dg.DataGenerator(cfg.data_generator, cfg.paths)
+        data_generator.erase_old_data()
+        data_generator.generate_data()
+
+        # Generate the proto and world files for the Webots environment from the generated data
+        webots_resource_generator = WebotsResourceGenerator(train_cfg.simulation, cfg.paths)
+        webots_resource_generator.erase_old_data()
+        webots_resource_generator.generate_resources()
+                
+    # Initialize the dataset and the data loader
     data_set = ds.Dataset(cfg.paths)
-    data_loader = InfiniteDataLoader(data_set, cfg.envs)
-    # TODO generate data for testing specific with split on map level
+    data_loader = InfiniteDataLoader(data_set, num_envs=1)
     
-    # Create environment
-    env=BaseEnv(
-        cfg=cfg.environment,
-        paths=cfg.paths,
-        sim_cfg=cfg.simulation,
-        data_loader=data_loader,
-        render_mode=None,
-        evaluate=True
+    # Creating wrapped environment
+    env = wrap_env(
+        BaseEnv(
+            cfg=train_cfg.environment,
+            paths=train_cfg.paths,
+            sim_cfg=train_cfg.simulation,
+            data_loader=data_loader,
+            render_mode=None,
+        ), 
+        train_cfg.wrappers
     )
-    env = wrap_env(env, cfg.wrappers)
-    
+        
     # Load model
+    path_to_models = path_to_training_run_output / 'models'
     if cfg.model.use_best:
-        model = PPO.load(, env=env)
-    # Load model based on training steps
+        model = PPO.load(path_to_models / f'rl_model_{cfg.model.steps}_steps.zip', env=env)
     else:
-        model = PPO.load(, env=env)
+        model = PPO.load(path_to_models / 'best_model.zip', env=env)
 
-    map_name_list = 
-    results = tt.evaluate_model(map_name_list, env, model, cfg.max_nr_steps, cfg.mode.deterministic, cfg.seed)
+    # Evaluate model and plot results
+    results = tt.evaluate_model(cfg.data_generator.map.list, env, model, cfg.max_nr_steps, cfg.model.deterministic, cfg.seed)
     plotter = tt.ResultPlotter(cfg.result_plotter)
     plotter.plot_results(results)
     
-    # TODO: 
-    # - decide on output folder to save plots and or results
-    # - decide on how to load the training configs
-    
 
 
-    # Save evaluation results
-    output_folder = os.path.join(package_dir, 'DWARL', 'testing', 'results', f'{date_time}')
-    os.makedirs(output_folder, exist_ok=True)
-    json_file_path = os.path.join(output_folder, f'eval_results_{training_steps}_steps.json')
-    save_eval_results(eval_results, json_file_path)
+#     # Save evaluation results
+#     output_folder = os.path.join(package_dir, 'DWARL', 'testing', 'results', f'{date_time}')
+#     os.makedirs(output_folder, exist_ok=True)
+#     json_file_path = os.path.join(output_folder, f'eval_results_{training_steps}_steps.json')
+#     save_eval_results(eval_results, json_file_path)
 
-    # Load evaluation results
-    date_time = '24_09_24__17_24_45'
-    training_steps = 92320000  # Set the number of training steps (optional)
-    package_dir = os.path.abspath(os.pardir)
-    output_folder = os.path.join(package_dir, 'DWARL', 'testing', 'results', f'{date_time}')
-    json_file_path = os.path.join(output_folder, f'eval_results_{training_steps}_steps.json')
-    eval_results2 = load_eval_results(json_file_path)
-    plot_eval_results(eval_results2)
-#
+#     # Load evaluation results
+#     date_time = '24_09_24__17_24_45'
+#     training_steps = 92320000  # Set the number of training steps (optional)
+#     package_dir = os.path.abspath(os.pardir)
+#     output_folder = os.path.join(package_dir, 'DWARL', 'testing', 'results', f'{date_time}')
+#     json_file_path = os.path.join(output_folder, f'eval_results_{training_steps}_steps.json')
+#     eval_results2 = load_eval_results(json_file_path)
+#     plot_eval_results(eval_results2)
+# #
 
 if __name__ == "__main__":
     main()

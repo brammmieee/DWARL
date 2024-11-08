@@ -1,5 +1,3 @@
-#!/usr/bin/python3
-
 # Prevent TensorFlow from spamming messages
 import os
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
@@ -15,19 +13,16 @@ from utils.data_loader import InfiniteDataLoader
 from utils.webots_resource_generator import WebotsResourceGenerator
 from utils.wrapper_tools import wrap_env, make_vec_env
 import hydra
-import subprocess
 import torch as th
 import utils.data_generator as dg
 import utils.data_set as ds
 
 @hydra.main(config_path='config', config_name='train', version_base='1.1')
 def main(cfg: DictConfig):
-    # Kill all the Webots processes that are running
-    subprocess.run(["bash", str(Path(cfg.paths.scripts.killall_webots))])
-    # TODO: make simple interface for testing on secluded maps (RINUS)
-            
+
     # Generate data
     if cfg.generate_data:
+        print('Removing old data and generating new...')
         # Generate map, path and data points in our axis convention
         data_generator = dg.DataGenerator(cfg.data_generator, cfg.paths)
         data_generator.erase_old_data()
@@ -38,7 +33,8 @@ def main(cfg: DictConfig):
         webots_resource_generator.erase_old_data()
         webots_resource_generator.generate_resources()
         # TODO: Update the proto files according to the configuration
-    
+        # TODO: make simple interface for testing on secluded maps (RINUS)
+
     # Initialize the dataset and the data loader
     data_set = ds.Dataset(cfg.paths)
     data_loader = InfiniteDataLoader(data_set, cfg.envs)

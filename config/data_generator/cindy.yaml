@@ -1,3 +1,0 @@
-map:
-  list: barn          # name of the list containing the map names
-  resolution: 0.1     # [m/pxl]
