@@ -17,7 +17,7 @@ import utils.test_tools as tt
 @hydra.main(config_path='config', config_name='test', version_base='1.1')
 def main(cfg: DictConfig):
     # Load the training config
-    path_to_training_run_output = Path(cfg.paths.outputs.training) / cfg.model.date / cfg.model.time
+    path_to_training_run_output = Path(cfg.paths.outputs.training) / str(cfg.model.date) / str(cfg.model.time)
     path_to_train_cfg = path_to_training_run_output / '.hydra/config.yaml'
     train_cfg = OmegaConf.load(path_to_train_cfg)
     
