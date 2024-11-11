@@ -5,7 +5,7 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 from environments.base_env import BaseEnv
 from omegaconf import DictConfig, OmegaConf
 from pathlib import Path
-from stable_baselines3.common.callbacks import CheckpointCallback, EvalCallback
+from stable_baselines3.common.callbacks import CheckpointCallback, EvalCallback, StopTrainingOnNoModelImprovement
 from stable_baselines3.common.env_checker import check_env
 from stable_baselines3.common.vec_env import SubprocVecEnv
 from stable_baselines3.ppo import PPO
@@ -85,7 +85,11 @@ def main(cfg: DictConfig):
             EvalCallback(
                 eval_env=vec_env,
                 callback_on_new_best=None,
-                callback_after_eval=None,
+                callback_after_eval=StopTrainingOnNoModelImprovement(
+                    max_no_improvement_evals=cfg.callbacks.max_no_improvement_evals,
+                    min_evals=cfg.callbacks.min_evals,
+                    verbose=1
+                ),
                 n_eval_episodes=cfg.callbacks.model_n_eval_episodes,
                 eval_freq=max(cfg.callbacks.model_eval_freq // cfg.envs, 1),
                 log_path=None,
@@ -94,7 +98,7 @@ def main(cfg: DictConfig):
                 render=False,
                 verbose=0,
                 warn=True,
-            )
+            ),
         ],
         log_interval=cfg.log_interval,
         reset_num_timesteps=False,
