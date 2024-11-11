@@ -19,7 +19,6 @@ import utils.data_set as ds
 
 @hydra.main(config_path='config', config_name='train', version_base='1.1')
 def main(cfg: DictConfig):
-
     # Generate data
     if cfg.generate_data:
         print('Removing old data and generating new...')
