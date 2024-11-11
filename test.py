@@ -53,14 +53,14 @@ def main(cfg: DictConfig):
         
     # Load model
     path_to_models = path_to_training_run_output / 'models'
-    if cfg.model.use_best:
+    if int(cfg.model.steps) > 0:
         model = PPO.load(path_to_models / f'rl_model_{cfg.model.steps}_steps.zip', env=env)
-    else:
+    else: # steps < 0 means load the best model
         model = PPO.load(path_to_models / 'best_model.zip', env=env)
 
     # Evaluate model and plot results
     results = tt.evaluate_model(
-        nr_trials=cfg.nr_trials, 
+        nr_episodes=cfg.nr_episodes, 
         env=env, 
         model=model, 
         max_nr_steps=cfg.max_episode_steps, 

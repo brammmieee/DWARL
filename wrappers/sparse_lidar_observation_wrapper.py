@@ -75,8 +75,8 @@ class SparseLidarObservation(gym.ObservationWrapper):
 
         clipped_goal_pos_angle = np.clip(goal_pos_angle, goal_pos_angle_min, goal_pos_angle_max)
         clipped_goal_pos_dist = np.clip(goal_pos_dist, goal_pos_dist_min, goal_pos_dist_max)
-        if clipped_goal_pos_angle != goal_pos_angle or clipped_goal_pos_dist != goal_pos_dist:
-            print("Warning: Goal position has been clipped.")
+        # if clipped_goal_pos_angle != goal_pos_angle or clipped_goal_pos_dist != goal_pos_dist:
+        #     print("Warning: Goal position has been clipped.")
 
         goal_pos_angle_normalized = normalize(clipped_goal_pos_angle, goal_pos_angle_min, goal_pos_angle_max)
         goal_pos_dist_normalized = normalize(clipped_goal_pos_dist, goal_pos_dist_min, goal_pos_dist_max)

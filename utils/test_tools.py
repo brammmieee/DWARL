@@ -5,17 +5,17 @@ import matplotlib.pyplot as plt
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.evaluation import evaluate_policy
 
-def evaluate_model(nr_trials, env, model, max_nr_steps, deterministic=False, seed=0):
+def evaluate_model(nr_episodes, env, model, max_nr_steps, deterministic=False, seed=0):
     """ Evaluation of the model inspired by the evaluate function from Sb3 """
     results = []
-    for _ in range(nr_trials):
+    for _ in range(nr_episodes):
         result = evaluate_single_map(env, model, max_nr_steps, deterministic, seed)
         results.append(result)
     return results
         
 def evaluate_single_map(env, model, max_nr_steps, deterministic=False, seed=0):
     # Initialize
-    env = Monitor(env) # See evaluate function script from Sb3
+    env = Monitor(env)      # NOTE: See sb3 evaluate, is this necessary?
     obs, _ = env.reset()
     result = {
         'map_name': env.unwrapped.map_name,
@@ -38,7 +38,7 @@ def evaluate_single_map(env, model, max_nr_steps, deterministic=False, seed=0):
     for _ in range(max_nr_steps):
         action, states = model.predict(
             obs,
-            state=states,       # NOTE: How does this work?
+            state=states,      # NOTE: How does this work?
             episode_start=1,   # NOTE: Why is this 1?
             deterministic=deterministic
         )
