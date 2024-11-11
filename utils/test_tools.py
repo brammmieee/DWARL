@@ -140,8 +140,6 @@ class ResultPlotter:
                     break
 
 
-
-
 class NumpyEncoder(json.JSONEncoder):
     def default(self, obj):
         if isinstance(obj, np.ndarray):
