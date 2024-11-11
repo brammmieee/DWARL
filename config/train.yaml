@@ -32,7 +32,7 @@ callbacks:
   model_eval_freq: 10000      # model evaluation frequency [steps]
   model_n_eval_episodes: 25   # number of episodes for model evaluation [episodes]
   model_save_freq: 10000      # model saving frequency [steps]
-  max_no_improvement_evals: 100  # maximum number of evaluations without improvement for early stopping callback
+  max_no_improvement_evals: 100  # maximum number of evaluations without improvement of the eval reward for early stopping callback
   min_evals: 100              # minimum number of evaluations before early stopping callback
 model:
   policy_type: MlpPolicy      # policy type for the neural network
