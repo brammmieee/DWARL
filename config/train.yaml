@@ -24,6 +24,7 @@ paths:
 
 # Configuration for training a model with callbacks, model settings, etc.
 seed: 0                     # random seed
+cleanup_sim: ???            # kill all Webots instances before training
 generate_data: ???
 steps: ???                  # number of training steps
 envs: ???                   # number of parallel environments (and Webots instances)

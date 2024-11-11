@@ -13,12 +13,18 @@ from utils.data_loader import InfiniteDataLoader
 from utils.webots_resource_generator import WebotsResourceGenerator
 from utils.wrapper_tools import wrap_env, make_vec_env
 import hydra
+import subprocess
 import torch as th
 import utils.data_generator as dg
 import utils.data_set as ds
 
 @hydra.main(config_path='config', config_name='train', version_base='1.1')
 def main(cfg: DictConfig):
+    # Kill all the Webots processes that are running
+    if cfg.cleanup_sim:
+        print('Freeing up resources by killing all Webots instances...')
+        subprocess.run(["bash", str(Path(cfg.paths.scripts.killall_webots))])
+    
     # Generate data
     if cfg.generate_data:
         print('Removing old data and generating new...')
