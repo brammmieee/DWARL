@@ -121,3 +121,9 @@ Check out the utilities [here](./utils/):
 - **Wrapper Tools**: Modules specific to wrapper functionality.
 
 For further details and examples, refer to the respective folders and documentation links provided.
+
+## Tab Completion
+Run the following command in the package folder to enable tab completion:s
+```bash
+eval "$(python train.py -sc install=bash)"; eval "$(python3 train.py -sc install=bash)"; eval "$(python test.py -sc install=bash)"; eval "$(python3 test.py -sc install=bash)"
+```
