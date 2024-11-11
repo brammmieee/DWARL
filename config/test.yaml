@@ -16,8 +16,8 @@ paths:
     plots: ${paths.test_results.root}/plots
     logs: ${paths.test_results.root}/logs
 
-generate_data: true     # generate data
 seed: 0                 # random seed
+generate_data: ???      # generate data
 max_episode_steps: 600  # maximum episode steps
 nr_episodes: 10         # number of episodes with random start and init from data loader
 model:                  # model settings

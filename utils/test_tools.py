@@ -2,8 +2,8 @@ import json
 import numpy as np
 import os
 import matplotlib.pyplot as plt
-from stable_baselines3.common.monitor import Monitor
-from stable_baselines3.common.evaluation import evaluate_policy
+# from stable_baselines3.common.monitor import Monitor
+# from stable_baselines3.common.evaluation import evaluate_policy
 
 def evaluate_model(nr_episodes, env, model, max_nr_steps, deterministic=False, seed=0):
     """ Evaluation of the model inspired by the evaluate function from Sb3 """
@@ -15,7 +15,7 @@ def evaluate_model(nr_episodes, env, model, max_nr_steps, deterministic=False, s
         
 def evaluate_single_map(env, model, max_nr_steps, deterministic=False, seed=0):
     # Initialize
-    env = Monitor(env)      # NOTE: See sb3 evaluate, is this necessary?
+    # env = Monitor(env)      # NOTE: See sb3 evaluate, is this necessary?
     obs, _ = env.reset()
     result = {
         'map_name': env.unwrapped.map_name,

@@ -55,7 +55,7 @@ def make_vec_env(
             monitor_path = os.path.join(monitor_dir, str(rank)) if monitor_dir is not None else None
             if monitor_path is not None and monitor_dir is not None:
                 os.makedirs(monitor_dir, exist_ok=True)
-            env = Monitor(env, filename=monitor_path, **monitor_kwargs)
+            # env = Monitor(env, filename=monitor_path, **monitor_kwargs)
             
             # Wrap the environment with the provided wrapper and seed the action space (defined in the actionwrapper)
             env = wrapper_class(env, **wrapper_kwargs)

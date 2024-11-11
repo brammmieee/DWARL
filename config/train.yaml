@@ -23,10 +23,10 @@ paths:
     root: ${paths.tmp}/sim_resources/training
 
 # Configuration for training a model with callbacks, model settings, etc.
-generate_data: true
 seed: 0                     # random seed
-steps: 10000000             # number of training steps
-envs: 2                     # number of parallel environments (and Webots instances)
+generate_data: ???
+steps: ???                  # number of training steps
+envs: ???                   # number of parallel environments (and Webots instances)
 log_interval: 10            # logging interval for logging callback parsed to model [steps]
 callbacks:
   model_eval_freq: 10000      # model evaluation frequency [steps]

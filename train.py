@@ -76,7 +76,7 @@ def main(cfg: DictConfig):
         total_timesteps=cfg.steps,
         callback=[
             CheckpointCallback(
-                save_freq=cfg.callbacks.model_eval_freq,
+                save_freq=max(cfg.callbacks.model_eval_freq // cfg.envs, 1),
                 save_path=cfg.paths.outputs.models,
                 save_replay_buffer=False,
                 save_vecnormalize=False,
@@ -87,7 +87,7 @@ def main(cfg: DictConfig):
                 callback_on_new_best=None,
                 callback_after_eval=None,
                 n_eval_episodes=cfg.callbacks.model_n_eval_episodes,
-                eval_freq=cfg.callbacks.model_eval_freq,
+                eval_freq=max(cfg.callbacks.model_eval_freq // cfg.envs, 1),
                 log_path=None,
                 best_model_save_path=cfg.paths.outputs.models,
                 deterministic=False,
