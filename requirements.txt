@@ -13,10 +13,10 @@ numexpr
 numpy
 pandas
 pygame
+rich
 scipy
 shapely
 stable-baselines3[extra]
 tensorflow
 tensorrt
-rich
 tqdm
