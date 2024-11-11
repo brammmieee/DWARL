@@ -16,7 +16,6 @@ paths:
     plots: ${paths.test_results.root}/plots
     logs: ${paths.test_results.root}/logs
 
-killall_webots: false   # kill all Webots instances before testing  
 generate_data: true     # generate data
 seed: 0                 # random seed
 max_episode_steps: 600  # maximum episode steps
