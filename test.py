@@ -68,7 +68,9 @@ def main(cfg: DictConfig):
         seed=cfg.seed
     )
     plotter = tt.ResultPlotter(cfg.plotter)
-    plotter.plot_results(results)
+    plotter.plot_results(results, cfg.paths.test_results.plots)
+    if cfg.plotter.save:
+        plotter.save_plots(cfg.paths.test_results.plots)
     
 
 

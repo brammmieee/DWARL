@@ -1,3 +1,4 @@
+from pathlib import Path
 import json
 import numpy as np
 import os
@@ -8,7 +9,8 @@ import matplotlib.pyplot as plt
 def evaluate_model(nr_episodes, env, model, max_nr_steps, deterministic=False, seed=0):
     """ Evaluation of the model inspired by the evaluate function from Sb3 """
     results = []
-    for _ in range(nr_episodes):
+    for i in range(nr_episodes):
+        print(f'Evaluating episode {i}/{nr_episodes}')
         result = evaluate_single_map(env, model, max_nr_steps, deterministic, seed)
         results.append(result)
     return results
@@ -38,8 +40,8 @@ def evaluate_single_map(env, model, max_nr_steps, deterministic=False, seed=0):
     for _ in range(max_nr_steps):
         action, states = model.predict(
             obs,
-            state=states,      # NOTE: How does this work?
-            episode_start=1,   # NOTE: Why is this 1?
+            state=states,
+            episode_start=None,   # This parameter is only used for reinforcement learning
             deterministic=deterministic
         )
         obs, reward, done, _, _ = env.step(action)
@@ -64,32 +66,25 @@ class ResultPlotter:
     def __init__(self, cfg):
         self.cfg = cfg
         self.figs = {}
-        self.nr_figs = 0
+        # self.nr_figs = 0
 
     def plot_results(self, results, output_folder=None):
         nr_maps = len(results)
         self.create_figures(nr_maps)
-        
         for i, result in enumerate(results):
             ax = self.figs[i]['ax']
             self.plot_grid(result, ax)
             self.plot_traversed_path(result, ax)
 
         if self.cfg.show:
-            plt.show()
-        
-        if self.save_plots:
-            if output_folder is None:
-                print('No output folder specified. Figures will not be saved.')
-            self.save_plots_(output_folder)
+            plt.draw()
 
     def create_figures(self, nr_maps):
         self.nr_figs = (nr_maps - 1) // self.cfg.max_axis + 1
         map_inds = list(range(0, nr_maps, self.cfg.max_axis)) + [nr_maps]
-        
         legend_elements = [plt.Line2D([0], [0], color=value, lw=4, label=key) 
                            for key, value in self.cfg.done_cause_colors.items()]
-        
+
         for fig_ind in range(self.nr_figs):
             fig, axes = self.create_subplot(self.cfg.max_axis)
             fig.legend(handles=legend_elements, loc='upper center', bbox_to_anchor=(0.5, 0.95), ncol=3)
@@ -131,11 +126,13 @@ class ResultPlotter:
         ax.plot(positions[:,0], positions[:, 1], color='k')
         ax.set_facecolor(self.cfg.done_cause_colors[done_cause])
 
-    def save_plots_(self, output_folder):
+    def save_plots(self, output_folder):
+        Path(output_folder).mkdir(parents=True, exist_ok=True)
         for fig_ind in range(self.nr_figs):
             for fig in self.figs.values():
                 if fig['fig_ind'] == fig_ind:
                     png_file_path = os.path.join(output_folder, f'figure_{fig_ind}.png')
+                    print(f'Saving figure to {png_file_path}')
                     fig['fig'].savefig(png_file_path, bbox_inches='tight')
                     break
 
