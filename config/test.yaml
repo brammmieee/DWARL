@@ -4,6 +4,8 @@ defaults:
     - general_sys_paths
   - data_generator:
     - cindy_test
+  - model:
+    - load_model
 
 # System paths for testing
 paths:
@@ -20,11 +22,6 @@ seed: 0                 # random seed
 generate_data: ???      # generate data
 max_episode_steps: 600  # maximum episode steps
 nr_episodes: 10         # number of episodes with random start and init from data loader
-model:                  # model settings
-  date: ???               # e.g. '2021-06-01'
-  time: ???               # e.g. '15-42-18'
-  steps: ???            # load model trained up to this number of steps (-1 is use_best_model)
-  deterministic: true    # use deterministic model
 plotter:                # result plotter settings
   save: true              # save the plot
   show: true              # show the plot

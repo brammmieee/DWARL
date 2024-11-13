@@ -1,0 +1,6 @@
+envs: ???                   # number of parallel environments (and Webots instances)
+policy_type: MlpPolicy      # policy type for the neural network
+activation_fn: ReLU         # activation function for the neural network
+net_arch:                         # network architecture for the neural network
+  pi: [256, 256, 256, 256, 256]     # policy network architecture
+  vf: [256, 256, 256, 256, 256]     # value function network architecture

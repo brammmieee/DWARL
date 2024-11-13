@@ -14,6 +14,8 @@ defaults:
   - cindy_train
 - simulation:
   - webots
+- model: 
+  - create_model
 
 # System paths for training
 paths:
@@ -24,10 +26,9 @@ paths:
 
 # Configuration for training a model with callbacks, model settings, etc.
 seed: 0                     # random seed
-cleanup_sim: ???            # kill all Webots instances before training
+quit_sim: ???               # kill all Webots instances before training
 generate_data: ???
 steps: ???                  # number of training steps
-envs: ???                   # number of parallel environments (and Webots instances)
 log_interval: 10            # logging interval for logging callback parsed to model [steps]
 callbacks:
   model_eval_freq: 10000      # model evaluation frequency [steps]
@@ -35,12 +36,6 @@ callbacks:
   model_save_freq: 25000      # model saving frequency [steps]
   max_no_improvement_evals: 1000  # maximum number of evaluations without improvement of the eval reward for early stopping callback
   min_evals: 1000             # minimum number of evaluations before early stopping callback
-model:
-  policy_type: MlpPolicy      # policy type for the neural network
-  activation_fn: ReLU         # activation function for the neural network
-  net_arch:                         # network architecture for the neural network
-    pi: [256, 256, 256, 256, 256]     # policy network architecture
-    vf: [256, 256, 256, 256, 256]     # value function network architecture
 
 # Configuration for Hydra
 hydra:
