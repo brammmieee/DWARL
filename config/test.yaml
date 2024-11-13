@@ -13,7 +13,7 @@ paths:
     root: ${paths.tmp}/sim_resources/testing
   test_results: 
     root: ${hydra:runtime.output_dir}
-    plots: ${paths.test_results.root}/plots
+    results: ${paths.test_results.root}/results
     logs: ${paths.test_results.root}/logs
 
 seed: 0                 # random seed
@@ -34,6 +34,8 @@ plotter:                # result plotter settings
     outside_map: 'skyblue'
     collision: 'orange'
     max_nr_steps_reached: 'lightcoral'
+json_results:           # raw results settings
+  save: true              # save the raw results as json file
 
 # Configuration for Hydra
 hydra:

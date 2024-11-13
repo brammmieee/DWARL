@@ -68,7 +68,7 @@ class ResultPlotter:
         self.figs = {}
         # self.nr_figs = 0
 
-    def plot_results(self, results, output_folder=None):
+    def plot_results(self, results):
         nr_maps = len(results)
         self.create_figures(nr_maps)
         for i, result in enumerate(results):
@@ -77,7 +77,7 @@ class ResultPlotter:
             self.plot_traversed_path(result, ax)
 
         if self.cfg.show:
-            plt.draw()
+            plt.show(block=False)
 
     def create_figures(self, nr_maps):
         self.nr_figs = (nr_maps - 1) // self.cfg.max_axis + 1
@@ -132,7 +132,7 @@ class ResultPlotter:
             for fig in self.figs.values():
                 if fig['fig_ind'] == fig_ind:
                     png_file_path = os.path.join(output_folder, f'figure_{fig_ind}.png')
-                    print(f'Saving figure to {png_file_path}')
+                    print(f'Saving figure to:              {png_file_path}') 
                     fig['fig'].savefig(png_file_path, bbox_inches='tight')
                     break
 
@@ -143,7 +143,10 @@ class NumpyEncoder(json.JSONEncoder):
             return obj.tolist()
         return super(NumpyEncoder, self).default(obj)
 
-def save_eval_result(eval_result, json_file_path):
+def save_results(eval_result, results_path):
+    Path(results_path).mkdir(parents=True, exist_ok=True)
+    json_file_path = Path(results_path, 'results.json')
+    print('Saving evaluation results to: ', json_file_path)
     with open(json_file_path, 'w') as f:
         json.dump(eval_result, f, indent=4, cls=NumpyEncoder)
 

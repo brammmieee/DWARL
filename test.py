@@ -68,17 +68,13 @@ def main(cfg: DictConfig):
         seed=cfg.seed
     )
     plotter = tt.ResultPlotter(cfg.plotter)
-    plotter.plot_results(results, cfg.paths.test_results.plots)
+    plotter.plot_results(results)
     if cfg.plotter.save:
-        plotter.save_plots(cfg.paths.test_results.plots)
-    
+        plotter.save_plots(cfg.paths.test_results.results)
 
-
-#     # Save evaluation results
-#     output_folder = os.path.join(package_dir, 'DWARL', 'testing', 'results', f'{date_time}')
-#     os.makedirs(output_folder, exist_ok=True)
-#     json_file_path = os.path.join(output_folder, f'eval_results_{training_steps}_steps.json')
-#     save_eval_results(eval_results, json_file_path)
+    # Save evaluation results
+    if cfg.json_results.save:
+        tt.save_results(results, cfg.paths.test_results.results)
 
 #     # Load evaluation results
 #     date_time = '24_09_24__17_24_45'
@@ -89,6 +85,11 @@ def main(cfg: DictConfig):
 #     eval_results2 = load_eval_results(json_file_path)
 #     plot_eval_results(eval_results2)
 # #
+
+    # Prevent figure from closing when script is done running
+    if cfg.plotter.show:
+        input("Press Enter to exit and close the plots...")
+
 
 if __name__ == "__main__":
     main()
