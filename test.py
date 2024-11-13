@@ -76,16 +76,6 @@ def main(cfg: DictConfig):
     if cfg.json_results.save:
         tt.save_results(results, cfg.json_results.json_file_path)
 
-#     # Load evaluation results
-#     date_time = '24_09_24__17_24_45'
-#     training_steps = 92320000  # Set the number of training steps (optional)
-#     package_dir = os.path.abspath(os.pardir)
-#     output_folder = os.path.join(package_dir, 'DWARL', 'testing', 'results', f'{date_time}')
-#     json_file_path = os.path.join(output_folder, f'eval_results_{training_steps}_steps.json')
-#     eval_results2 = load_eval_results(json_file_path)
-#     plot_eval_results(eval_results2)
-# #
-
     # Prevent figure from closing when script is done running
     if cfg.plotter.show:
         input("Press Enter to exit and close the plots...")
