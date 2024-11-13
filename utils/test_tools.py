@@ -115,6 +115,7 @@ class ResultPlotter:
             ax.add_patch(rect)
         ax.set_xlim(*xlim)
         ax.set_ylim(*ylim)
+        ax.set_title(eval_result['map_name'])
 
     def plot_traversed_path(self, eval_result, ax):
         positions = np.array(eval_result['positions'])
