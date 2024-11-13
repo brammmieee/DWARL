@@ -74,7 +74,7 @@ def main(cfg: DictConfig):
 
     # Save evaluation results
     if cfg.json_results.save:
-        tt.save_results(results, cfg.paths.test_results.results)
+        tt.save_results(results, cfg.json_results.json_file_path)
 
 #     # Load evaluation results
 #     date_time = '24_09_24__17_24_45'

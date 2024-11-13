@@ -36,6 +36,7 @@ plotter:                # result plotter settings
     max_nr_steps_reached: 'lightcoral'
 json_results:           # raw results settings
   save: true              # save the raw results as json file
+  json_file_path: ${paths.test_results.results}/results.json
 
 # Configuration for Hydra
 hydra:
