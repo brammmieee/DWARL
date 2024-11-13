@@ -80,23 +80,21 @@ class ResultPlotter:
             plt.show(block=block)
 
     def create_figures(self, nr_maps):
-        self.nr_figs = (nr_maps - 1) // self.cfg.max_axis + 1
-        map_inds = list(range(0, nr_maps, self.cfg.max_axis)) + [nr_maps]
+        self.nr_figs = (nr_maps - 1) // self.cfg.max_nr_axes + 1
+        map_inds = list(range(0, nr_maps, self.cfg.max_nr_axes)) + [nr_maps]
         legend_elements = [plt.Line2D([0], [0], color=value, lw=4, label=key) 
                            for key, value in self.cfg.done_cause_colors.items()]
 
         for fig_ind in range(self.nr_figs):
-            fig, axes = self.create_subplot(self.cfg.max_axis)
+            nr_axes = map_inds[fig_ind+1] - map_inds[fig_ind]
+            nr_rows = int(np.ceil(np.sqrt(nr_axes)))
+            nr_cols = int(np.ceil(nr_axes / nr_rows))
+            fig, axes = plt.subplots(nr_rows, nr_cols, figsize=(15, 15))
             fig.legend(handles=legend_elements, loc='upper center', bbox_to_anchor=(0.5, 0.95), ncol=3)
-            
+            if not isinstance(axes, np.ndarray):
+                axes = np.array([axes])  # Necessary if nr_rows = nr_cols = 1
             for i, map_ind in enumerate(range(map_inds[fig_ind], map_inds[fig_ind+1])):
-                self.figs[map_ind] = {'fig_ind': fig_ind, 'fig': fig, 'ax': axes.flat[i]}
-
-    def create_subplot(self, nr_axes):
-        nr_rows = int(np.ceil(np.sqrt(nr_axes)))
-        nr_cols = int(np.ceil(nr_axes / nr_rows))
-        fig, axes = plt.subplots(nr_rows, nr_cols, figsize=(15, 15))
-        return fig, np.array([axes]) if not isinstance(axes, np.ndarray) else axes
+                self.figs[map_ind] = {'fig_ind': fig_ind,'fig': fig, 'ax': axes.flat[i]}
 
     def plot_grid(self, eval_result, ax):
         ax.set_aspect('equal', adjustable='box')

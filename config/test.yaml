@@ -28,7 +28,7 @@ model:                  # model settings
 plotter:                # result plotter settings
   save: true              # save the plot
   show: true              # show the plot
-  max_axis: 25            # maximum axis for the plot
+  max_nr_axes: 25         # maximum nr of axes per figure
   done_cause_colors:      # colors for done causes
     at_goal: 'lightgreen'
     outside_map: 'skyblue'
