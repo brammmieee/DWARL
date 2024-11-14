@@ -28,6 +28,20 @@ def main(cfg: DictConfig):
     if cfg.quit_sim:
         print('Freeing up resources by killing all Webots instances...')
         subprocess.run(["bash", str(Path(cfg.paths.scripts.killall_webots))])
+        
+    # Load the parameters for the environment, simulation and wrappers
+    load_model = 'environment' not in cfg.setup.keys()
+    if load_model:
+        print('Loading model setup...')
+        # Load the training config
+        path_to_training_run_output = Path(cfg.paths.outputs.training) / str(cfg.setup.model.date) / str(cfg.setup.model.time)
+        path_to_train_cfg = path_to_training_run_output / '.hydra/config.yaml'
+        loaded_cfg = OmegaConf.load(path_to_train_cfg)
+    
+        # Merging loaded cfg with the new cfg and saving to the output directory
+        cfg = OmegaConf.merge(loaded_cfg, cfg) # later args values overwrite earlier args values
+        output_path = Path.cwd() / '.hydra/config.yaml'
+        OmegaConf.save(cfg, output_path)
     
     # Generate data
     if cfg.generate_data:
@@ -41,20 +55,6 @@ def main(cfg: DictConfig):
         webots_resource_generator = WebotsResourceGenerator(cfg.setup.simulation, cfg.paths)
         webots_resource_generator.erase_old_data()
         webots_resource_generator.generate_resources()
-
-    # Set the parameters for the environment, simulation and wrappers
-    load_model = 'environment' not in cfg.setup.keys()
-    if load_model:
-        print('Loading model setup...')
-        # Load the training config
-        path_to_training_run_output = Path(cfg.paths.outputs.training) / str(cfg.setup.model.date) / str(cfg.setup.model.time)
-        path_to_train_cfg = path_to_training_run_output / '.hydra/config.yaml'
-        loaded_cfg = OmegaConf.load(path_to_train_cfg)
-    
-        # Merging loaded cfg with the new cfg and saving to the output directory
-        cfg = OmegaConf.merge(loaded_cfg, cfg)
-        output_path = Path.cwd() / '.hydra/config.yaml'
-        OmegaConf.save(cfg, output_path)
 
     # Initialize the dataset and the data loader
     data_set = ds.Dataset(cfg.paths)
