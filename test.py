@@ -13,11 +13,15 @@ import hydra
 import utils.data_generator as dg
 import utils.data_set as ds
 import utils.test_tools as tt
+from utils.train_tools import validate_config
 
 @hydra.main(config_path='config', config_name='test', version_base='1.1')
 def main(cfg: DictConfig):
+    # Validate the configuration
+    validate_config(cfg)
+        
     # Load the training config
-    path_to_training_run_output = Path(cfg.paths.outputs.training) / str(cfg.model.date) / str(cfg.model.time)
+    path_to_training_run_output = Path(cfg.paths.outputs.training) / str(cfg.setup.model.date) / str(cfg.setup.model.time)
     path_to_train_cfg = path_to_training_run_output / '.hydra/config.yaml'
     train_cfg = OmegaConf.load(path_to_train_cfg)
     
@@ -30,7 +34,7 @@ def main(cfg: DictConfig):
         data_generator.generate_data()
 
         # Generate the proto and world files for the Webots environment from the generated data
-        webots_resource_generator = WebotsResourceGenerator(train_cfg.simulation, cfg.paths)
+        webots_resource_generator = WebotsResourceGenerator(train_cfg.setup.simulation, cfg.paths)
         webots_resource_generator.erase_old_data()
         webots_resource_generator.generate_resources()
                 
@@ -41,20 +45,20 @@ def main(cfg: DictConfig):
     # Creating wrapped environment
     env = wrap_env(
         BaseEnv(
-            cfg=train_cfg.environment,
+            cfg=train_cfg.setup.environment,
             paths=cfg.paths,
-            sim_cfg=train_cfg.simulation,
+            sim_cfg=train_cfg.setup.simulation,
             data_loader=data_loader,
             env_idx=0,
             render_mode=None,
         ), 
-        train_cfg.wrappers
+        train_cfg.setup.wrappers
     )
         
     # Load model
     path_to_models = path_to_training_run_output / 'models'
-    if int(cfg.model.steps) > 0:
-        model = PPO.load(path_to_models / f'rl_model_{cfg.model.steps}_steps.zip', env=env)
+    if int(cfg.setup.model.steps) > 0:
+        model = PPO.load(path_to_models / f'rl_model_{cfg.setup.model.steps}_steps.zip', env=env)
     else: # steps < 0 means load the best model
         model = PPO.load(path_to_models / 'best_model.zip', env=env)
 
@@ -64,7 +68,7 @@ def main(cfg: DictConfig):
         env=env, 
         model=model, 
         max_nr_steps=cfg.max_episode_steps, 
-        deterministic=cfg.model.deterministic, 
+        deterministic=cfg.setup.model.deterministic, 
         seed=cfg.seed
     )
     plotter = tt.ResultPlotter(cfg.plotter)
@@ -80,15 +84,5 @@ def main(cfg: DictConfig):
     if cfg.plotter.show:
         input("Press Enter to exit and close the plots...")
 
-
 if __name__ == "__main__":
     main()
-    
-    
-
-
-
-
-
-
-#

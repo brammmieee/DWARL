@@ -4,8 +4,8 @@ defaults:
     - general_sys_paths
   - data_generator:
     - cindy_test
-  - model:
-    - load_model
+  - setup:
+    - load_setup
 
 # System paths for testing
 paths:

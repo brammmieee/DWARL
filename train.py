@@ -11,15 +11,19 @@ from stable_baselines3.common.vec_env import SubprocVecEnv
 from stable_baselines3.ppo import PPO
 from utils.data_loader import InfiniteDataLoader
 from utils.webots_resource_generator import WebotsResourceGenerator
-from utils.wrapper_tools import wrap_env, make_vec_env
+from utils.wrapper_tools import wrap_env
 import hydra
 import subprocess
 import torch as th
 import utils.data_generator as dg
 import utils.data_set as ds
+import utils.train_tools as tt
 
 @hydra.main(config_path='config', config_name='train', version_base='1.1')
-def main(cfg: DictConfig):        
+def main(cfg: DictConfig):
+    # Validate the configuration
+    tt.validate_config(cfg)
+      
     # Kill all the Webots processes that are running
     if cfg.quit_sim:
         print('Freeing up resources by killing all Webots instances...')
@@ -34,51 +38,45 @@ def main(cfg: DictConfig):
         data_generator.generate_data()
         
         # Generate the proto and world files for the Webots environment from the generated data
-        webots_resource_generator = WebotsResourceGenerator(cfg.simulation, cfg.paths)
+        webots_resource_generator = WebotsResourceGenerator(cfg.setup.simulation, cfg.paths)
         webots_resource_generator.erase_old_data()
         webots_resource_generator.generate_resources()
-    
+
     # Set the parameters for the environment, simulation and wrappers
-    load_model = 'deterministic' in cfg.model.keys()
+    load_model = 'environment' not in cfg.setup.keys()
     if load_model:
-        print('Loading model setup (i.e. nr_envs + environment, wrapper & sim config)...')
+        print('Loading model setup...')
         # Load the training config
-        path_to_training_run_output = Path(cfg.paths.outputs.training) / str(cfg.model.date) / str(cfg.model.time)
+        path_to_training_run_output = Path(cfg.paths.outputs.training) / str(cfg.setup.model.date) / str(cfg.setup.model.time)
         path_to_train_cfg = path_to_training_run_output / '.hydra/config.yaml'
         loaded_cfg = OmegaConf.load(path_to_train_cfg)
-        
-        nr_envs = loaded_cfg.model.envs
-        env_cfg = loaded_cfg.environment
-        sim_cfg = loaded_cfg.simulation
-        wrapper_cfg = loaded_cfg.wrappers
-        nr_model_step = cfg.model.steps # Set here so hydra can warn about not being set before creating the environment
-    else:
-        nr_envs = cfg.model.envs
-        env_cfg = cfg.environment
-        sim_cfg = cfg.simulation
-        wrapper_cfg = cfg.wrappers
     
+        # Merging loaded cfg with the new cfg and saving to the output directory
+        cfg = OmegaConf.merge(loaded_cfg, cfg)
+        output_path = Path.cwd() / '.hydra/config.yaml'
+        OmegaConf.save(cfg, output_path)
+
     # Initialize the dataset and the data loader
     data_set = ds.Dataset(cfg.paths)
-    data_loader = InfiniteDataLoader(data_set, nr_envs)
+    data_loader = InfiniteDataLoader(data_set, cfg.setup.model.envs)
     
     # Create the environment
     nr_steps = cfg.steps # Set here so hydra can warn about not being set before creating the environment
-    vec_env=make_vec_env( #NOTE: Adds the monitor wrapper which might lead to issues with time limit wrapper! (see __init__ description)
+    vec_env=tt.make_vec_env( #NOTE: Adds the monitor wrapper which might lead to issues with time limit wrapper! (see __init__ description)
         env_class=BaseEnv,
-        n_envs=nr_envs,
+        n_envs=cfg.setup.model.envs,
         seed=cfg.seed, 
         vec_env_cls=SubprocVecEnv, 
         wrapper_class=wrap_env,
         env_kwargs={
-            'cfg': env_cfg,
+            'cfg': cfg.setup.environment,
             'paths': cfg.paths,
-            'sim_cfg': sim_cfg,
+            'sim_cfg': cfg.setup.simulation,
             'data_loader': data_loader,
             'render_mode': None,
         },
         wrapper_kwargs={
-            'cfg': wrapper_cfg,
+            'cfg': cfg.setup.wrappers,
         }
     )
     
@@ -87,19 +85,20 @@ def main(cfg: DictConfig):
         print('Loading initial model...')
         path_to_models = path_to_training_run_output / 'models'
         model = PPO.load(
-            path=path_to_models / f'rl_model_{nr_model_step}_steps.zip',
+            path=path_to_models / f'rl_model_{cfg.setup.model.steps}_steps.zip',
             env=vec_env,
         )
+        model.tensorboard_log = cfg.paths.outputs.logs
         model.set_env(vec_env)
     else:
         print('Initializing new model...')
         model = PPO(
             env=vec_env,
-            policy=cfg.model.policy_type,
+            policy=cfg.setup.model.policy_type,
             tensorboard_log=cfg.paths.outputs.logs,
             policy_kwargs={
-                'net_arch': OmegaConf.to_container(cfg.model.net_arch),
-                'activation_fn': getattr(th.nn, cfg.model.activation_fn)
+                'net_arch': OmegaConf.to_container(cfg.setup.model.net_arch),
+                'activation_fn': getattr(th.nn, cfg.setup.model.activation_fn)
             }
         )
 
@@ -108,7 +107,7 @@ def main(cfg: DictConfig):
         total_timesteps=nr_steps,
         callback=[
             CheckpointCallback(
-                save_freq=max(cfg.callbacks.model_eval_freq // nr_envs, 1),
+                save_freq=max(cfg.callbacks.model_eval_freq // cfg.setup.model.envs, 1),
                 save_path=cfg.paths.outputs.models,
                 save_replay_buffer=False,
                 save_vecnormalize=False,
@@ -123,7 +122,7 @@ def main(cfg: DictConfig):
                     verbose=1
                 ),
                 n_eval_episodes=cfg.callbacks.model_n_eval_episodes,
-                eval_freq=max(cfg.callbacks.model_eval_freq // nr_envs, 1),
+                eval_freq=max(cfg.callbacks.model_eval_freq // cfg.setup.model.envs, 1),
                 log_path=None,
                 best_model_save_path=cfg.paths.outputs.models,
                 deterministic=False,

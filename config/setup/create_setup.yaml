@@ -1,0 +1,12 @@
+defaults:
+- environment:
+  - cindy
+- wrappers: # order matters
+  - sparse_lidar_observation
+  - command_velocity_action
+  - parameterized_reward
+  - time_limit
+- simulation:
+  - webots
+- model: 
+  - create_model

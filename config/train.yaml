@@ -3,19 +3,10 @@ defaults:
 - _self_
 - paths:
   - general_sys_paths
-- environment:
-  - cindy
-- wrappers: # order matters
-  - sparse_lidar_observation
-  - command_velocity_action
-  - parameterized_reward
-  - time_limit
 - data_generator:
   - cindy_train
-- simulation:
-  - webots
-- model: 
-  - create_model
+- setup:
+  - create_setup
 
 # System paths for training
 paths:
