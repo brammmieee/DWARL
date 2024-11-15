@@ -1,0 +1,10 @@
+name: semi_random
+reverse_align: true
+reverse_path: true
+
+nr_points: 250      # Number of data points (i.e. start+goal pose) to sample per path
+nr_attempts: 1000   # Number of attempts to sample a unique data point from path (avoid live lock)
+min_dist: 1       # Should be bigger then the goal tolerance
+max_dist: !!null    # !!null -> max_dist = path_length - 1
+dist_mean: !!null   # !!null -> min_dist + max_dist) / 2
+dist_std: !!null    # !!null -> (max_dist - min_dist) / 4

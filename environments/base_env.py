@@ -7,7 +7,7 @@ import numpy as np
 import utils.env_tools as et
 
 class BaseEnv(gym.Env):
-    def __init__(self, cfg, paths, sim_cfg, data_loader, render_mode=None, env_idx=None):
+    def __init__(self, cfg, paths, sim_cfg, data_loader, render=False, env_idx=None):
         super().__init__()
 
         self.cfg = cfg
@@ -24,7 +24,7 @@ class BaseEnv(gym.Env):
         self.lidar_precomputation = et.lidar_precomputation(num_lidar_rays=self.lidar_resolution)
         
         # Rendering
-        self.render_mode = render_mode
+        self.render_ = render
         self.render_init_plot()
         
         # Space definitions
@@ -127,7 +127,7 @@ class BaseEnv(gym.Env):
         self.sim_env.close()
 
     def render(self, method=None):
-        if self.render_mode == None:
+        if not self.render_:
             return
         
         # Create initial plot or remove data
@@ -139,7 +139,7 @@ class BaseEnv(gym.Env):
         self.fig.canvas.flush_events()
         
     def render_init_plot(self):
-        if self.render_mode == None:
+        if not self.render_:
             return
         
         # Initialize the plot   

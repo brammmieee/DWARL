@@ -5,9 +5,12 @@ import yaml
 import shutil
 
 class DataGenerator:
-    def __init__(self, cfg, paths):
+    """ The data generator is responsibe for generating the maps, paths and data points in our axis convention
+    from the resource files, i.e. the map.pgm and the path.txt files."""
+    def __init__(self, cfg, paths, seed):
         self.cfg = cfg
         self.paths = paths
+        self.seed = seed
 
     def erase_old_data(self):
         data_sets_folder = Path(self.paths.data_sets.root)
@@ -44,9 +47,19 @@ class DataGenerator:
                 self.pixel_to_point(point, self.cfg.map.resolution, map_pixel_height) for point in path
             ])
             np.save(Path(self.paths.data_sets.paths) / f"{path_name}.npy", converted_path)
-            self.generate_data_points(path_name, converted_path)
+            self.generate_data_points(path_name, converted_path, self.cfg.path_sampler, self.seed)
 
-    def generate_data_points(self, path_name, converted_path):
+    def generate_data_points(self, path_name, converted_path, cfg, seed):
+        if cfg.name == 'all':
+            self.generate_all_combinations(path_name, converted_path, cfg)
+        elif cfg.name == 'start2finish':
+            self.generate_start2finish(path_name, converted_path, cfg)
+        elif cfg.name == 'semi_random':
+            self.generate_semi_random(path_name, converted_path, cfg, seed)
+        else:
+            raise ValueError(f"Unknown path sampling strategy: {cfg.name}")
+            
+    def generate_all_combinations(self, path_name, converted_path, cfg):
         indices = np.arange(converted_path.shape[0])
         init_and_goal_indices = [(i, j) for i in indices for j in indices if i != j]
         data_point_indices = np.arange(len(init_and_goal_indices))
@@ -56,21 +69,112 @@ class DataGenerator:
             second_pos = converted_path[second_point_idx]
             init_pos = converted_path[init_index]
             goal_pos = converted_path[goal_index]
-            self.create_data_points(path_name, idx, init_pos, goal_pos, second_pos)
+            self.create_data_points(path_name, idx, init_pos, goal_pos, second_pos, cfg.reverse_align)
 
-    def create_data_points(self, path_name, idx, init_pos, goal_pos, second_pos):
-        aligned_orientation = np.arctan2(second_pos[1] - init_pos[1], second_pos[0] - init_pos[0])
-        reversed_orientation = np.arctan2(init_pos[1] - second_pos[1], init_pos[0] - second_pos[0])
+    def generate_start2finish(self, path_name, converted_path, cfg):
+        init_pos = converted_path[0]
+        goal_pos = converted_path[-1]
+        second_pos = converted_path[1]
+        
+        self.create_data_points(path_name, 0, init_pos, goal_pos, second_pos, cfg.reverse_align)
+        
+        if cfg.reverse_path:
+            second_pos_reverse = converted_path[-2]
+            self.create_data_points(path_name, 1, goal_pos, init_pos, second_pos_reverse, cfg.reverse_align)
 
-        for orient_idx, orientation in enumerate([aligned_orientation, reversed_orientation]):
+    def generate_semi_random(self, path_name, converted_path, cfg, seed):
+        # Initialize random number generator
+        rng = np.random.default_rng(seed)
+        
+        path_length = converted_path.shape[0]
+        
+        # Calculate actual path distances between consecutive points
+        path_segments = np.diff(converted_path, axis=0)
+        segment_distances = np.sqrt(np.sum(path_segments**2, axis=1))
+        cumulative_distances = np.concatenate(([0], np.cumsum(segment_distances)))
+        total_path_length = cumulative_distances[-1]
+        
+        # Set maximum distance if not specified
+        if cfg.max_dist is None:
+            max_dist = total_path_length
+        else:
+            max_dist = min(cfg.max_dist, total_path_length)
+                
+        # Set mean and std if not specified
+        if cfg.dist_mean is None:
+            dist_mean = (cfg.min_dist + max_dist) / 2
+        if cfg.dist_std is None:
+            dist_std = (max_dist - cfg.min_dist) / 4
+
+        sampled_pairs = set()
+        attempts = 0
+        data_point_idx = 0  # Initialize the index counter here
+        
+        while len(sampled_pairs) < cfg.nr_points and attempts < cfg.nr_attempts:
+            # Sample desired distance in meters
+            desired_distance = np.clip(rng.normal(dist_mean, dist_std), cfg.min_dist, max_dist)
+            
+            # Sample start position along path (in meters)
+            max_start = total_path_length - desired_distance
+            if max_start <= 0:
+                attempts += 1
+                continue
+                    
+            start_dist = rng.uniform(0, max_start)
+            end_dist = start_dist + desired_distance
+            
+            # Convert distances to indices
+            init_index = np.searchsorted(cumulative_distances, start_dist)
+            goal_index = np.searchsorted(cumulative_distances, end_dist)
+            
+            # Ensure we have valid indices
+            if init_index >= path_length - 1 or goal_index >= path_length:
+                attempts += 1
+                continue
+
+            pair = (init_index, goal_index)
+            if pair not in sampled_pairs:
+                sampled_pairs.add(pair)
+                second_point_idx = init_index + 1
+                
+                init_pos = converted_path[init_index]
+                goal_pos = converted_path[goal_index]
+                second_pos = converted_path[second_point_idx]
+                
+                self.create_data_points(path_name, data_point_idx, init_pos, goal_pos, second_pos, cfg.reverse_align)
+                
+                if cfg.reverse_path:
+                    second_pos_reverse = converted_path[goal_index - 1]
+                    self.create_data_points(path_name, data_point_idx + 1, goal_pos, init_pos, second_pos_reverse, cfg.reverse_align)
+                    data_point_idx += 2
+                else:
+                    data_point_idx += 1
+                
+            attempts += 1
+
+    def create_data_points(self, path_name, idx, init_pos, goal_pos, second_pos, reverse_align):
+        # Calculate forward orientation
+        dy = second_pos[1] - init_pos[1]
+        dx = second_pos[0] - init_pos[0]
+        aligned_orientation = np.arctan2(dy, dx)
+        
+        orientations = [aligned_orientation]
+        if reverse_align:
+            reversed_orientation = aligned_orientation + np.pi
+            # Normalize to [-pi, pi] range
+            if reversed_orientation > np.pi:
+                reversed_orientation -= 2 * np.pi
+            orientations.append(reversed_orientation)
+
+        for orient_idx, orientation in enumerate(orientations):
             data_point = {
                 "init_pose": [float(init_pos[0]), float(init_pos[1]), float(0), float(orientation)],
-                "goal_pose": [float(goal_pos[0]), float(goal_pos[1]), float(0), float(0)] # NOTE: The goal orientation is always 0
+                "goal_pose": [float(goal_pos[0]), float(goal_pos[1]), float(0), float(0)] # NOTE: goal orientation is not used
             }
             path_to_data_point = Path(self.paths.data_sets.data_points) / f"{path_name}_{idx}_{orient_idx}.yaml"
             with open(path_to_data_point, 'w') as f:
                 yaml.dump(data_point, f)
-      
+        
     @staticmethod          
     def pgm_to_pixel_grid(path_to_map_pgm) -> list:
         """Return a raster of integers from a PGM as a list of lists."""

@@ -22,6 +22,7 @@ seed: 0                 # random seed
 generate_data: ???      # generate data
 max_episode_steps: 600  # maximum episode steps
 nr_episodes: 10         # number of episodes with random start and init from data loader
+render: false           # plot the observation and the start, goals and path on the map (WARNING: really slow!)
 plotter:                # result plotter settings
   save: true              # save the plot
   show: true              # show the plot

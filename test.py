@@ -29,7 +29,7 @@ def main(cfg: DictConfig):
     if cfg.generate_data:
         print('Removing old data and generating new...')
         # Generate map, path and data points in our axis convention
-        data_generator = dg.DataGenerator(cfg.data_generator, cfg.paths)
+        data_generator = dg.DataGenerator(cfg.data_generator, cfg.paths, cfg.seed)
         data_generator.erase_old_data()
         data_generator.generate_data()
 
@@ -50,7 +50,7 @@ def main(cfg: DictConfig):
             sim_cfg=train_cfg.setup.simulation,
             data_loader=data_loader,
             env_idx=0,
-            render_mode=None,
+            render=cfg.render,
         ), 
         train_cfg.setup.wrappers
     )
