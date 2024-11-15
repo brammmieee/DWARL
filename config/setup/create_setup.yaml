@@ -3,7 +3,7 @@ defaults:
   - cindy
 - wrappers: # order matters
   - sparse_lidar_observation
-  - command_velocity_action
+  - no_dynamic_window_action
   - parameterized_reward
   - time_limit
 - simulation:

@@ -10,6 +10,14 @@ class NoDynamicWindowAction(gym.ActionWrapper):
         super().__init__(env)
         self.cfg = cfg
         self.env_cfg = self.unwrapped.cfg
+        
+        # Define action space
+        self.action_space = gym.spaces.Box(
+            low=-1.0,
+            high=1.0,
+            shape=(2,),
+            dtype=np.float32
+        )
 
     def scale_x(self, x, y_min, y_max, x_min=-1.0, x_max=1.0):
         # Scale the value x that was in the range [x_min, x_max] to the range [y_min, y_max]
