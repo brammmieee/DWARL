@@ -175,25 +175,38 @@ class DataGenerator:
             with open(path_to_data_point, 'w') as f:
                 yaml.dump(data_point, f)
         
-    @staticmethod          
-    def pgm_to_pixel_grid(path_to_map_pgm) -> list:
-        """Return a raster of integers from a PGM as a list of lists."""
+    @staticmethod
+    def pgm_to_pixel_grid(path_to_map_pgm) -> np.ndarray:
+        """Return a raster of integers from a PGM as a numpy array."""
         with open(path_to_map_pgm, 'rb') as pgmf:
             # Read header information
             P_type = pgmf.readline().strip()
             if P_type not in [b'P2', b'P5']:
                 raise ValueError('Not a valid PGM file')
             
-            width, height, _ = map(int, pgmf.readline().strip().split())
+            # Skip comments
+            line = pgmf.readline()
+            while line.startswith(b'#'):
+                line = pgmf.readline()
+            
+            # Read width, height, and max value
+            dimensions = line.split()
+            if len(dimensions) == 2:
+                width, height = map(int, dimensions)
+                max_val = int(pgmf.readline().strip())
+            elif len(dimensions) == 3:
+                width, height, max_val = map(int, dimensions)
+            else:
+                raise ValueError('Invalid PGM header format')
             
             # Read raster data
-            raster = [
-                [ord(pgmf.read(1)) for _ in range(width)]
-                for _ in range(height)
-            ]
+            if P_type == b'P5':
+                raster = np.frombuffer(pgmf.read(), dtype=np.uint8).reshape(height, width)
+            else:  # P2
+                raster = np.array([list(map(int, pgmf.readline().split())) for _ in range(height)])
             
-        return np.array(raster)
-    
+        return raster
+
     @staticmethod
     def pixel_to_point(point, resolution, image_height):
         # TODO: add docstring for the axis convention
