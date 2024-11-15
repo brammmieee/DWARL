@@ -93,13 +93,15 @@ def main(cfg: DictConfig):
     else:
         print('Initializing new model...')
         model = PPO(
+            **OmegaConf.to_container(cfg.setup.model.PPO),
             env=vec_env,
             policy=cfg.setup.model.policy_type,
             tensorboard_log=cfg.paths.outputs.logs,
             policy_kwargs={
                 'net_arch': OmegaConf.to_container(cfg.setup.model.net_arch),
                 'activation_fn': getattr(th.nn, cfg.setup.model.activation_fn)
-            }
+            },
+            
         )
 
     # Training
