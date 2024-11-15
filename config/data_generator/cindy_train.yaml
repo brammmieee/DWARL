@@ -1,7 +1,7 @@
 defaults:
 - _self_
 - path_sampler:
-  - semi_random
+  - all
 
 map:
   list: barn_train    # name of the list containing the map names
