@@ -12,11 +12,11 @@ PPO: # [1] https://arxiv.org/html/2407.14262v1
   n_epochs: 10               # Reduced for more stable updates[1]
   gamma: 0.99               # Standard discount factor[1]
   gae_lambda: 0.95          # Standard GAE parameter[1]
-  clip_range: 0.2           # Standard clipping parameter[1]
+  # clip_range: 0.2           # Standard clipping parameter[1]
   clip_range_vf: null       # No value function clipping
   normalize_advantage: true # Helps with training stability[1]
   ent_coef: 0.0            # Increased entropy for better exploration[1]
   vf_coef: 0.5              # Standard value function coefficient[1]
   max_grad_norm: 0.5        # Prevents exploding gradients[1]
-  use_sde: true             # Enable stochastic differential exploration[1]
+  use_sde: false             # Enable stochastic differential exploration[1]
   sde_sample_freq: -1        # Frequency of SDE sampling[1]
