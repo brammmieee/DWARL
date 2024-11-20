@@ -87,6 +87,7 @@ def main(cfg: DictConfig):
         model = PPO.load(
             path=path_to_models / f'rl_model_{cfg.setup.model.steps}_steps.zip',
             env=vec_env,
+            custom_objects=OmegaConf.to_container(cfg.model_overrides),
         )
         model.tensorboard_log = cfg.paths.outputs.logs
         model.set_env(vec_env)
