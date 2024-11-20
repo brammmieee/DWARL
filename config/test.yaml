@@ -31,7 +31,7 @@ plotter:                # result plotter settings
     at_goal: 'lightgreen'
     outside_map: 'skyblue'
     collision: 'orange'
-    max_nr_steps_reached: 'lightcoral'
+    max_nr_steps_reached: 'khaki'
 json_results:           # raw results settings
   save: true              # save the raw results as json file
   json_file_path: ${paths.test_results.results}/results.json

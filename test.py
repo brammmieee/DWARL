@@ -19,7 +19,11 @@ from utils.train_tools import validate_config
 def main(cfg: DictConfig):
     # Validate the configuration
     validate_config(cfg)
-        
+    
+    # Print the output directory if saving is on:
+    if cfg.plotter.save:
+        print(f"Results will be saved to: {cfg.paths.test_results.results}")
+
     # Load the training config
     path_to_training_run_output = Path(cfg.paths.outputs.training) / str(cfg.setup.model.date) / str(cfg.setup.model.time)
     path_to_train_cfg = path_to_training_run_output / '.hydra/config.yaml'
@@ -72,9 +76,12 @@ def main(cfg: DictConfig):
         seed=cfg.seed
     )
     plotter = tt.ResultPlotter(cfg.plotter)
-    plotter.plot_results(results)
+    plotter.plot_paths(results)
     if cfg.plotter.save:
-        plotter.save_plots(cfg.paths.test_results.results)
+        plotter.save_plots(cfg.paths.test_results.results, prefix='paths')
+    plotter.plot_velocities(results)
+    if cfg.plotter.save:
+        plotter.save_plots(cfg.paths.test_results.results, prefix='velocities')
 
     # Save evaluation results
     if cfg.json_results.save:

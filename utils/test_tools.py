@@ -6,6 +6,12 @@ import matplotlib.pyplot as plt
 # from stable_baselines3.common.monitor import Monitor
 # from stable_baselines3.common.evaluation import evaluate_policy
 
+
+nobleo_colors = {'purple': np.array([154, 71, 153]),
+                 'blue': np.array([0, 102, 225]),
+                 'orange': np.array([246, 164, 37]),
+                 'lightblue': np.array([23,133,194])}
+
 def evaluate_model(nr_episodes, env, model, max_nr_steps, deterministic=False, seed=0):
     """ Evaluation of the model inspired by the evaluate function from Sb3 """
     results = []
@@ -68,35 +74,99 @@ class ResultPlotter:
         self.figs = {}
         # self.nr_figs = 0
 
-    def plot_results(self, results, block=False):
+    def plot_paths(self, results, block=False):
+        # Plot the traversed paths of all maps in 1 or more figures with multiple axes
         nr_maps = len(results)
-        self.create_figures(nr_maps)
+        self.create_figures(nr_maps, results)
         for i, result in enumerate(results):
             ax = self.figs[i]['ax']
             self.plot_grid(result, ax)
             self.plot_traversed_path(result, ax)
+        self.set_legend(results)
+        if self.cfg.show:
+            plt.show(block=block)
+
+    def plot_velocities(self, results, block=False):
+        # Plot the absolute velocities over time for all maps in 1 or more figures with multiple axes
+        nr_maps = len(results)
+        self.create_figures(nr_maps, results)
+        for i, result in enumerate(results):
+            ax = self.figs[i]['ax']
+            self.plot_velocity(result, ax)
+        self.set_legend(results)
 
         if self.cfg.show:
             plt.show(block=block)
 
-    def create_figures(self, nr_maps):
+    def plot_velocity(self, eval_result, ax):
+        # Plot velocity profile in axes ax
+        abs_velocities = [np.linalg.norm(velocity) for velocity in eval_result['velocities']]
+        ax.plot(abs_velocities, color=nobleo_colors['purple']/255)
+        ax.set_xlabel('Steps')
+        ax.set_ylabel('Velocity')
+        ax.set_title(eval_result['map_name'])
+        ax.set_facecolor(self.cfg.done_cause_colors[eval_result['done_cause']])
+
+    def create_figures(self, nr_maps, results):
+        # Create all figures and axes
         self.nr_figs = (nr_maps - 1) // self.cfg.max_nr_axes + 1
         map_inds = list(range(0, nr_maps, self.cfg.max_nr_axes)) + [nr_maps]
-        legend_elements = [plt.Line2D([0], [0], color=value, lw=4, label=key) 
-                           for key, value in self.cfg.done_cause_colors.items()]
 
         for fig_ind in range(self.nr_figs):
             nr_axes = map_inds[fig_ind+1] - map_inds[fig_ind]
             nr_rows = int(np.ceil(np.sqrt(nr_axes)))
             nr_cols = int(np.ceil(nr_axes / nr_rows))
             fig, axes = plt.subplots(nr_rows, nr_cols, figsize=(15, 15))
-            fig.legend(handles=legend_elements, loc='upper center', bbox_to_anchor=(0.5, 0.95), ncol=3)
             if not isinstance(axes, np.ndarray):
                 axes = np.array([axes])  # Necessary if nr_rows = nr_cols = 1
             for i, map_ind in enumerate(range(map_inds[fig_ind], map_inds[fig_ind+1])):
                 self.figs[map_ind] = {'fig_ind': fig_ind,'fig': fig, 'ax': axes.flat[i]}
 
+    def get_legend_elements(self, fig_ind):
+        # Get legend elements for a figure
+        legend_elements = []
+        for key, color in self.cfg.done_cause_colors.items():
+            label = f"{key}: {self.done_cause_count[fig_ind][key]}/{self.total_done_cause_count[key]}"
+            legend_element = plt.Line2D([0], [0], color=color, lw=4, label=label)
+            legend_elements.append(legend_element)
+        return legend_elements
+    
+    def set_legend(self, results):
+        # Set the legend for all figures including the number of done causes per figure and in total
+        self.count_done_causes(results)
+
+        fig_inds = []
+        for map_ind in range(len(self.figs)):
+            if self.figs[map_ind]['fig_ind'] not in fig_inds:
+                fig_ind = self.figs[map_ind]['fig_ind']
+                fig_inds.append(fig_ind)
+                fig_handle = self.figs[map_ind]['fig']
+                legend_elements = self.get_legend_elements(fig_ind)
+                fig_handle.legend(handles=legend_elements, loc='upper center', bbox_to_anchor=(0.5, 0.95), ncol=3)
+
+    def count_done_causes(self, results):
+        # Count the occurence of each done cause per figure and in total over all maps
+        done_cause_count = {}  # Count of done causes for each figure
+        total_done_cause_count = {}  # Total count of done causes over all figures
+        for done_cause in self.cfg.done_cause_colors.keys():
+            total_done_cause_count[done_cause] = 0
+        for map_ind in range(len(results)):
+            total_done_cause_count[results[map_ind]['done_cause']] += 1
+            self.total_done_cause_count = total_done_cause_count
+
+        # Per figure:
+        if hasattr(self, 'nr_figs'):
+            for fig_ind in range(self.nr_figs):
+                done_cause_count[fig_ind] = {}
+                for done_cause in self.cfg.done_cause_colors.keys():
+                    done_cause_count[fig_ind][done_cause] = 0
+            for map_ind in range(len(self.figs)):
+                fig_ind = self.figs[map_ind]['fig_ind']
+                done_cause_count[fig_ind][results[map_ind]['done_cause']] += 1
+            self.done_cause_count = done_cause_count
+
     def plot_grid(self, eval_result, ax):
+        # Plot the map grid in axes ax
         ax.set_aspect('equal', adjustable='box')
         xlim = [0, 0]
         ylim = [0, 0]
@@ -109,13 +179,14 @@ class ResultPlotter:
             xlim[1] = max(xlim[1], min_x + width)
             ylim[0] = min(ylim[0], min_y)
             ylim[1] = max(ylim[1], min_y + height)
-            rect = plt.Rectangle((min_x, min_y), width, height, facecolor='purple', edgecolor='purple')
+            rect = plt.Rectangle((min_x, min_y), width, height, facecolor=nobleo_colors['purple']/255, edgecolor=nobleo_colors['purple']/255)
             ax.add_patch(rect)
         ax.set_xlim(*xlim)
         ax.set_ylim(*ylim)
         ax.set_title(eval_result['map_name'])
 
     def plot_traversed_path(self, eval_result, ax):
+        # Plot the traversed path in axes ax
         positions = np.array(eval_result['positions'])
         init_pose = eval_result['init_pose']
         goal_pose = eval_result['goal_pose']
@@ -125,12 +196,13 @@ class ResultPlotter:
         ax.plot(positions[:,0], positions[:, 1], color='k')
         ax.set_facecolor(self.cfg.done_cause_colors[done_cause])
 
-    def save_plots(self, output_folder):
+    def save_plots(self, output_folder, prefix='figure'):
+        # Save the specific figures to png files
         Path(output_folder).mkdir(parents=True, exist_ok=True)
         for fig_ind in range(self.nr_figs):
             for fig in self.figs.values():
                 if fig['fig_ind'] == fig_ind:
-                    png_file_path = os.path.join(output_folder, f'figure_{fig_ind}.png')
+                    png_file_path = os.path.join(output_folder, f'{prefix}_{fig_ind}.png')
                     print(f'Saving figure to:              {png_file_path}') 
                     fig['fig'].savefig(png_file_path, bbox_inches='tight')
                     break
