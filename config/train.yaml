@@ -24,7 +24,7 @@ log_interval: 10            # logging interval for logging callback parsed to mo
 callbacks:
   model_eval_freq: 10000      # model evaluation frequency [steps]
   model_n_eval_episodes: 25   # number of episodes for model evaluation [episodes]
-  model_save_freq: 25000      # model saving frequency [steps]
+  model_save_freq: 100000      # model saving frequency [steps]
   max_no_improvement_evals: 1000  # maximum number of evaluations without improvement of the eval reward for early stopping callback
   min_evals: 1000             # minimum number of evaluations before early stopping callback
 
