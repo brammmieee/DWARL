@@ -1,6 +1,6 @@
 defaults:
 - environment:
-  - cindy
+  - point_bot
 - wrappers: # order matters
   - sparse_lidar_observation
   - no_dynamic_window_action
