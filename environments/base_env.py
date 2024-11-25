@@ -85,7 +85,6 @@ class BaseEnv(gym.Env):
             self.cur_orient_matrix, 
             self.goal_pose
         )
-        print(self.cfg.vehicle.dimensions.polygon_coordinates)
         # Getting new observation, done, reward
         self.observation = self.get_obs()
         self.done, self.done_cause = self.get_done()        

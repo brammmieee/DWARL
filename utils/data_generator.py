@@ -99,6 +99,12 @@ class DataGenerator:
             max_dist = total_path_length
         else:
             max_dist = min(cfg.max_dist, total_path_length)
+
+        # Check if min_dist is valid:
+        if cfg.min_dist is not None and cfg.min_dist >= max_dist:
+            raise ValueError(f"min_dist ({cfg.min_dist}) >= max_dist ({max_dist})")
+        elif cfg.min_dist < 0:
+            raise ValueError(f"min_dist ({cfg.min_dist}) < 0")
                 
         # Set mean and std if not specified
         if cfg.dist_mean is None:
