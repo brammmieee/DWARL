@@ -35,12 +35,15 @@ def evaluate_single_map(env, model, max_nr_steps, deterministic=False, seed=0):
         'velocities': [],
         'rewards': [],
         'done_cause': None,
-        'max_nr_steps': max_nr_steps
+        'max_nr_steps': max_nr_steps,
+        'observations': [],
+        'local_goal_pos': [],
     }
 
     result['positions'].append(env.unwrapped.cur_pos)
     result['orientations'].append(env.unwrapped.cur_orient_matrix)
     result['velocities'].append(env.unwrapped.cur_vel)
+    result['local_goal_pos'].append(env.unwrapped.local_goal_pos)
     
     states = None
     for _ in range(max_nr_steps):
@@ -56,6 +59,8 @@ def evaluate_single_map(env, model, max_nr_steps, deterministic=False, seed=0):
         result['orientations'].append(env.unwrapped.cur_orient_matrix)
         result['velocities'].append(env.unwrapped.cur_vel)
         result['rewards'].append(reward)
+        result['observations'].append(obs)
+        result['local_goal_pos'].append(env.unwrapped.local_goal_pos)
                     
         if done:
             result['done_cause'] = env.unwrapped.done_cause
