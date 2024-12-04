@@ -16,7 +16,7 @@ paths:
     root: ${paths.tmp}/sim_resources/training
 
 # Configuration for training a model with callbacks, model settings, etc.
-seed: 0                     # random seed
+seed: 0                     # random seed (set to -1 to prevent data_loader from shuffling data_points)
 quit_sim: ???               # kill all Webots instances before training
 generate_data: ???
 steps: ???                  # number of training steps

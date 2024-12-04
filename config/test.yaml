@@ -18,7 +18,7 @@ paths:
     results: ${paths.test_results.root}/results
     logs: ${paths.test_results.root}/logs
 
-seed: 0                 # random seed
+seed: 0                 # random seed (set to -1 to prevent data_loader from shuffling data_points)
 generate_data: ???      # generate data
 max_episode_steps: 600  # maximum episode steps
 nr_episodes: 25         # number of episodes with random start and init from data loader

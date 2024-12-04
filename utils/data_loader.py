@@ -20,9 +20,12 @@ class InfiniteDataLoader:
         Split dataset into mutually exclusive subsets for each environment.
         """
         # Shuffle the entire dataset with a seed if provided
-        if self.seed is not None:
-            np.random.seed(self.seed)
-        indices = np.random.permutation(len(self.dataset))
+        if self.seed == -1:
+            indices = np.arange(len(self.dataset))
+        else:
+            if self.seed is not None:
+                np.random.seed(self.seed)
+            indices = np.random.permutation(len(self.dataset))
         
         # Divide indices into roughly equal chunks
         split_indices = np.array_split(indices, self.num_envs)
