@@ -28,13 +28,11 @@ class DataGenerator:
         
         # Get the list of maps
         path_to_map_list = Path(self.paths.resources.map_name_lists) / f"{self.cfg.map.list}.yaml"
-        print(f"path_to_map_list: {path_to_map_list}")
         with open(path_to_map_list) as f:
             map_name_list = yaml.load(f, Loader=yaml.BaseLoader)
         
         # Process each map
         for map_name in map_name_list:
-            print(f"map_name: {map_name}")
             map_grid = self.pgm_to_pixel_grid(Path(self.paths.resources.maps) / f"{map_name}.pgm")
             map_box_array = self.pixel_grid_to_box_array(map_grid, self.cfg.map.resolution)
             np.save(Path(self.paths.data_sets.maps) / f"{map_name}.npy", map_box_array)
