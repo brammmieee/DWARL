@@ -85,7 +85,6 @@ class BaseEnv(gym.Env):
             self.cur_orient_matrix, 
             self.goal_pose
         )
-
         # Getting new observation, done, reward
         self.observation = self.get_obs()
         self.done, self.done_cause = self.get_done()        
@@ -110,8 +109,8 @@ class BaseEnv(gym.Env):
         # Define conditions and their corresponding done causes
         conditions = {
             'at_goal': np.linalg.norm(self.cur_pos[:2] - self.goal_pose[:2]) <= self.cfg.goal_tolerance,
-            'outside_map': not (self.map_bounds_polygon.contains(Point(self.cur_pos[0], self.cur_pos[1])) or 
-                                self.map_bounds_polygon.boundary.contains(Point(self.cur_pos[0], self.cur_pos[1]))),
+            # 'outside_map': not (self.map_bounds_polygon.contains(Point(self.cur_pos[0], self.cur_pos[1])) or 
+            #                     self.map_bounds_polygon.boundary.contains(Point(self.cur_pos[0], self.cur_pos[1]))),
             'collision': len(self.collision_tree.query(self.footprint_glob, predicate='intersects')) > 0
         }
 
