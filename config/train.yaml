@@ -1,0 +1,36 @@
+# Included configuration (Hydra creates a single configuration from the included files)
+defaults:
+- _self_
+- paths:
+  - general_sys_paths
+- data_generator:
+  - cindy_train
+- setup:
+  - create_setup
+
+# System paths for training
+paths:
+  data_sets:
+    root: ${paths.tmp}/data_sets/training
+  sim_resources:
+    root: ${paths.tmp}/sim_resources/training
+
+# Configuration for training a model with callbacks, model settings, etc.
+seed: 0                     # random seed
+quit_sim: ???               # kill all Webots instances before training
+generate_data: ???
+steps: ???                  # number of training steps
+log_interval: 10            # logging interval for logging callback parsed to model [steps]
+callbacks:
+  model_eval_freq: 10000      # model evaluation frequency [steps]
+  model_n_eval_episodes: 25   # number of episodes for model evaluation [episodes]
+  model_save_freq: 100000      # model saving frequency [steps]
+  max_no_improvement_evals: 1000  # maximum number of evaluations without improvement of the eval reward for early stopping callback
+  min_evals: 1000             # minimum number of evaluations before early stopping callback
+
+# Configuration for Hydra
+hydra:
+  run:
+    dir: outputs/training/${now:%Y-%m-%d}/${now:%H-%M-%S}
+  job:
+    chdir: true

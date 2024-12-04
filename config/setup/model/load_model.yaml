@@ -1,0 +1,4 @@
+date: ???             # e.g. '2021-06-01'
+time: ???             # e.g. '15-42-18'
+steps: ???            # load model trained up to this number of steps (-1 is use_best_model)
+deterministic: true   # deterministic evaluation

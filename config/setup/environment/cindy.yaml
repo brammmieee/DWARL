@@ -1,0 +1,18 @@
+name: cindy             # environment name
+render: false           # rendering enabled (true or false)
+map_padding: 0.2             # [m]
+goal_tolerance: 0.2      # [m] # TODO: place more conveniently
+vehicle:
+  kinematics:
+    v_max: 0.2        # maximum linear velocity [m/s]
+    v_min: -0.2       # minimum linear velocity [m/s]
+    a_max: 0.3        # maximum linear acceleration [m/s^2]
+    a_min: -0.3       # minimum linear acceleration [m/s^2]
+    omega_max: 0.6    # maximum angular velocity [rad/s]
+    omega_min: -0.6   # minimum angular velocity [rad/s]
+    alpha_max: 0.8    # maximum angular acceleration [rad/s^2]
+    alpha_min: -0.8   # minimum angular acceleration [rad/s^2]
+  dimensions: 
+    polygon_coordinates: [[0.16, 0.08], [0.16, -0.24], [0.0, -0.4], [-0.16, -0.24], [-0.16, 0.08]] # robot footprint polygon coordinates
+    lidar_y_offset: -0.07075 # y position of the lidar [m]
+    z_pos: 0.05           # z position of the robot [m] (used for kinematic robot movement)

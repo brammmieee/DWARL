@@ -1,0 +1,8 @@
+defaults:
+- _self_
+- path_sampler:
+  - start2finish
+
+map:
+  list: barn_test     # name of the list containing the map names
+  resolution: 0.1     # [m/pxl]

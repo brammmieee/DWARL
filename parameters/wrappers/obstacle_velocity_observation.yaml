@@ -1,7 +1,0 @@
-# Precomputations
-num_radii: 30 # !!! check visualisation -> should be some overlap between paths !!!
-delta_dist: 0.02
-max_lidar_range: 10.0
-gamma_rad_max: 17.5
-new_discretisation: True
-r_quick_check: 0.17888543819998318 #np.linalg.norm([0.16, 0.08])

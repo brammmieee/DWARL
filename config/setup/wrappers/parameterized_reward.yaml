@@ -1,0 +1,24 @@
+ParameterizedReward:
+  # The reward function is calculated as follows:
+  # - At episode end: One of the 'done' values based on the done_cause
+  # - During episode: Sum of the 'running' values at each step
+  done:               # Instantaneous rewards given at the end of an episode
+    at_goal: 250.0        # When env.done_cause == 'at_goal'
+    outside_map: -50.0    # When env.done_cause == 'outside_map'
+    collision: -1500.0    # When env.done_cause == 'collision'
+  running:            # Rewards accumulated at each step of the episode
+    linear: 10.0          # Coefficient for the get_linear_reward function
+  
+  # The following parameters are used to create the reward plots
+  render:
+    enabled: false  # Whether to plot the rewards
+    style_map:
+      linear:
+        color: 'blue'
+        linestyle: '-'
+      total:
+        color: 'red'
+        linestyle: '-'
+    plot_map:
+      linear: 1
+      total: 2

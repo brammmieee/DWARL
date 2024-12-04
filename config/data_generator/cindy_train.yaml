@@ -1,0 +1,8 @@
+defaults:
+- _self_
+- path_sampler:
+  - all
+
+map:
+  list: barn_train    # name of the list containing the map names
+  resolution: 0.1     # [m/pxl]

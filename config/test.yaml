@@ -1,0 +1,44 @@
+defaults:
+  - _self_
+  - paths:
+    - general_sys_paths
+  - data_generator:
+    - cindy_test
+  - setup:
+    - load_setup
+
+# System paths for testing
+paths:
+  data_sets:
+    root: ${paths.tmp}/data_sets/testing
+  sim_resources:
+    root: ${paths.tmp}/sim_resources/testing
+  test_results: 
+    root: ${hydra:runtime.output_dir}
+    results: ${paths.test_results.root}/results
+    logs: ${paths.test_results.root}/logs
+
+seed: 0                 # random seed
+generate_data: ???      # generate data
+max_episode_steps: 600  # maximum episode steps
+nr_episodes: 25         # number of episodes with random start and init from data loader
+render: false           # plot the observation and the start, goals and path on the map (WARNING: really slow!)
+plotter:                # result plotter settings
+  save: true              # save the plot
+  show: true              # show the plot
+  max_nr_axes: 25         # maximum nr of axes per figure
+  done_cause_colors:      # colors for done causes
+    at_goal: 'lightgreen'
+    outside_map: 'skyblue'
+    collision: 'orange'
+    max_nr_steps_reached: 'khaki'
+json_results:           # raw results settings
+  save: true              # save the raw results as json file
+  json_file_path: ${paths.test_results.results}/results.json
+
+# Configuration for Hydra
+hydra:
+  run:
+    dir: outputs/testing/${now:%Y-%m-%d}/${now:%H-%M-%S}
+  job:
+    chdir: true

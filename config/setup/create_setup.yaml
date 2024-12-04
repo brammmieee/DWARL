@@ -1,0 +1,12 @@
+defaults:
+- environment:
+  - point_bot
+- wrappers: # order matters
+  - sparse_lidar_observation
+  - no_dynamic_window_action
+  - parameterized_reward
+  - time_limit
+- simulation:
+  - webots
+- model: 
+  - create_model
