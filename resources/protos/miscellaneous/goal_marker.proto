@@ -1,0 +1,21 @@
+#VRML_SIM R2023b utf8
+
+PROTO goal_marker [
+  field SFVec3f translation 0 0 0
+] {
+  Transform {
+    translation IS translation
+    children [
+      Shape {
+        appearance PBRAppearance {
+          baseColor 1 0 0
+          roughness 0.5
+          metalness 0
+        }
+        geometry Sphere {
+          radius 0.1
+        }
+      }
+    ]
+  }
+}

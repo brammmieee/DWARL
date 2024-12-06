@@ -5,6 +5,7 @@ import numpy as np
 import os
 
 STATIC_ROBOT_Z_POS = 0.05
+STATIC_MARKER_Z_POS = 0.5
 WEBOTS_WORLD_FILE_NAME = 'webots_world_file.wbt'
 
 class WebotsEnv(Supervisor):
@@ -47,6 +48,21 @@ class WebotsEnv(Supervisor):
         # NOTE: could the issue be caused by the lidar frequency?
         # NOTE: could the issue be caused by basic timestep defined in the world file?
         # NOTE: could the issue be caused by the FPS of the simulation?
+    
+    def spawn_init_and_goal_markers(self, init_pose, goal_pose, init_proto_name='init_marker', goal_proto_name='goal_marker'):
+        # Spawn initial marker
+        self.root_children_field.importMFNodeFromString(position=-1, nodeString='DEF INIT_MARKER ' + init_proto_name + '{}')
+        init_marker_node = self.getFromDef('INIT_MARKER')
+        init_marker_translation_field = init_marker_node.getField('translation')
+        init_marker_translation_field.setSFVec3f([init_pose[0], init_pose[1], STATIC_MARKER_Z_POS])
+        super().step(self.basic_timestep)
+        
+        # Spawn goal marker
+        self.root_children_field.importMFNodeFromString(position=-1, nodeString='DEF GOAL_MARKER ' + goal_proto_name + '{}')
+        goal_marker_node = self.getFromDef('GOAL_MARKER')
+        goal_marker_translation_field = goal_marker_node.getField('translation')
+        goal_marker_translation_field.setSFVec3f([goal_pose[0], goal_pose[1], STATIC_MARKER_Z_POS])
+        super().step(self.basic_timestep)
     
     def step(self, new_position, new_orientation):
         self.robot_translation_field.setSFVec3f([new_position[0], new_position[1], new_position[2]])

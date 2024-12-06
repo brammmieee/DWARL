@@ -42,6 +42,7 @@ class BaseEnv(gym.Env):
         self.sim_env.reset()
         self.sim_env.reset_map(self.map_name)
         self.sim_env.reset_robot(self.init_pose)
+        self.sim_env.spawn_init_and_goal_markers(self.init_pose, self.goal_pose)
         
         # Precomputations
         self.collision_tree = et.compute_collision_detection_tree(self.map)

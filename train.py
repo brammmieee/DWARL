@@ -102,7 +102,6 @@ def main(cfg: DictConfig):
                 'net_arch': OmegaConf.to_container(cfg.setup.model.net_arch),
                 'activation_fn': getattr(th.nn, cfg.setup.model.activation_fn)
             },
-            
         )
 
     # Training
