@@ -8,6 +8,8 @@ EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2022b/project
 EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2022b/projects/appearances/protos/Roughcast.proto"
 
 IMPORTABLE EXTERNPROTO "../protos/robot/robot.proto"
+IMPORTABLE EXTERNPROTO "../protos/miscellaneous/goal_marker.proto"
+IMPORTABLE EXTERNPROTO "../protos/miscellaneous/init_marker.proto"
 
 WorldInfo {
   info [
