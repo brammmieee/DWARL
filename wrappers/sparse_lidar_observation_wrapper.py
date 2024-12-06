@@ -41,23 +41,49 @@ class SparseLidarObservation(gym.ObservationWrapper):
         if self.cfg.render == True:
             self.init_plot()
 
+        # Footprint distances for removing footprint from lidar data
+        self.footprint_polygon = self.unwrapped.vehicle.dimensions.footprint_polygon
+        self.footprint_distances = self.calculate_footprint_distances()
+    
+    def calculate_footprint_distances(self):
+        footprint = np.array(self.footprint_polygon)
+        lidar_offset = np.array([0, self.unwrapped.vehicle.dimensions.lidar_y_offset])
+        
+        # Adjust footprint coordinates relative to lidar position
+        adjusted_footprint = footprint - lidar_offset
+        
+        angles = np.linspace(0, 2 * np.pi, self.unwrapped.sim_env.lidar_resolution, endpoint=False)
+        
+        distances = []
+        for angle in angles:
+            direction = np.array([np.cos(angle), np.sin(angle)])
+            # Project adjusted footprint points onto the ray direction
+            projections = np.dot(adjusted_footprint, direction)
+            # Take maximum projection as the distance
+            max_projection = np.max(projections)
+            # Ensure non-negative distances
+            distances.append(max(0.0, max_projection))
+        
+        return np.array(distances)
+
     def process_lidar_data(self, lidar_data):
         # NOTE - the lidar data contains an offset wrt the robot's position!!!
+
+        # Remove footprint from lidar data
+        adjusted_lidar_data = np.maximum(lidar_data - self.footprint_distances, 0)
+
         # Parameters
         min_range = float(self.unwrapped.sim_env.lidar_min_range)
         max_range = float(self.unwrapped.sim_env.lidar_max_range)
 
-        # Convert lidar data to numpy array and limit limit
-        lidar_data_array = np.array(lidar_data)
-
         # Clip and replace invalid values with max range
-        lidar_data_array[np.isinf(lidar_data_array)] = max_range # this can happen when the lidar sensor doesn't detect anything
-        if np.isnan(lidar_data_array).any():
+        adjusted_lidar_data[np.isinf(adjusted_lidar_data)] = max_range # this can happen when the lidar sensor doesn't detect anything
+        if np.isnan(adjusted_lidar_data).any():
             print("Warning: Lidar data contains NaN values. Replacing with max range.")
-        lidar_data_array[np.isnan(lidar_data_array)] = max_range # this shoudn't happen ergo the warning
+        adjusted_lidar_data[np.isnan(adjusted_lidar_data)] = max_range # this shoudn't happen ergo the warning
 
         # Nomalize lidar data
-        normalized_array = normalize(lidar_data_array, min_range, max_range)
+        normalized_array = normalize(adjusted_lidar_data, min_range, max_range)
 
         return normalized_array
 
