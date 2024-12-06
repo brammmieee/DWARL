@@ -42,12 +42,12 @@ class SparseLidarObservation(gym.ObservationWrapper):
             self.init_plot()
 
         # Footprint distances for removing footprint from lidar data
-        self.footprint_polygon = self.unwrapped.vehicle.dimensions.footprint_polygon
+        self.footprint_polygon = self.unwrapped.cfg.vehicle.dimensions.polygon_coordinates
         self.footprint_distances = self.calculate_footprint_distances()
     
     def calculate_footprint_distances(self):
         footprint = np.array(self.footprint_polygon)
-        lidar_offset = np.array([0, self.unwrapped.vehicle.dimensions.lidar_y_offset])
+        lidar_offset = np.array([0, self.unwrapped.cfg.vehicle.dimensions.lidar_y_offset])
         
         # Adjust footprint coordinates relative to lidar position
         adjusted_footprint = footprint - lidar_offset
