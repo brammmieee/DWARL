@@ -1,4 +1,5 @@
 from omegaconf import DictConfig, OmegaConf
+from stable_baselines3.common.vec_env import VecNormalize
 from pathlib import Path
 import os
 import shutil
@@ -28,8 +29,10 @@ def make_vec_env(
         wrapper_kwargs,
         monitor_dir=None,
         monitor_kwargs=None,
+        # normalize_kwargs=None,
 ):
     monitor_kwargs = monitor_kwargs or {}
+    # normalize_kwargs = normalize_kwargs or {}
 
     def make_env(rank):
         def _init():
@@ -51,6 +54,10 @@ def make_vec_env(
         return _init
 
     vec_env = vec_env_cls([make_env(env_idx) for env_idx in range(n_envs)])
+    
+    # Normalize
+    # vec_env = VecNormalize(vec_env, **normalize_kwargs)
+
     # Prepare the seeds for the first reset
     vec_env.seed(seed)
     
