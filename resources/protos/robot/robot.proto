@@ -26,7 +26,7 @@ PROTO robot [
     children [
       RpLidarA2 {
         name           "lidar"
-        translation    -0.07075 0.000000 0.150000
+        translation    0.0000000 0.000000 0.150000
       }
       Solid {
         name "frame"
