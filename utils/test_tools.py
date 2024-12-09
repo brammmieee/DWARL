@@ -38,6 +38,7 @@ def evaluate_single_map(env, model, max_nr_steps, deterministic=False, seed=0):
         'max_nr_steps': max_nr_steps,
         'observations': [],
         'local_goal_pos': [],
+        'actions': []
     }
 
     result['positions'].append(env.unwrapped.cur_pos)
@@ -61,6 +62,7 @@ def evaluate_single_map(env, model, max_nr_steps, deterministic=False, seed=0):
         result['rewards'].append(reward)
         result['observations'].append(obs)
         result['local_goal_pos'].append(env.unwrapped.local_goal_pos)
+        result['actions'].append(action)
                     
         if done:
             result['done_cause'] = env.unwrapped.done_cause
