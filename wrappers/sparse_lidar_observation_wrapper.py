@@ -64,7 +64,6 @@ class SparseLidarObservation(gym.ObservationWrapper):
     def process_local_goal(self, local_goal):
         # Convert local goal to local polar coordinates
         goal_pos = np.array(local_goal)
-        # goal_pos_angle = np.arctan2(goal_pos[1], goal_pos[0])
         goal_pos_angle = np.arctan2(goal_pos[0], goal_pos[1])
         goal_pos_dist = np.linalg.norm(goal_pos)
 
