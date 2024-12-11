@@ -107,10 +107,10 @@ class ResultPlotter:
 
     def plot_velocity(self, eval_result, ax):
         # Plot velocity profile in axes ax
-        abs_velocities = [np.linalg.norm(velocity) for velocity in eval_result['velocities']]
-        ax.plot(abs_velocities, color=nobleo_colors['purple']/255)
+        linear_velocity = [velocity[1] for velocity in eval_result['velocities']]
+        ax.plot(linear_velocity, color=nobleo_colors['purple']/255)
         ax.set_xlabel('Steps')
-        ax.set_ylabel('Velocity')
+        ax.set_ylabel('Forward velocity')
         ax.set_title(eval_result['map_name'])
         ax.set_facecolor(self.cfg.done_cause_colors[eval_result['done_cause']])
 
