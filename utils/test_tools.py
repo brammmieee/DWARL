@@ -35,12 +35,16 @@ def evaluate_single_map(env, model, max_nr_steps, deterministic=False, seed=0):
         'velocities': [],
         'rewards': [],
         'done_cause': None,
-        'max_nr_steps': max_nr_steps
+        'max_nr_steps': max_nr_steps,
+        'observations': [],
+        'local_goal_pos': [],
+        'actions': []
     }
 
     result['positions'].append(env.unwrapped.cur_pos)
     result['orientations'].append(env.unwrapped.cur_orient_matrix)
     result['velocities'].append(env.unwrapped.cur_vel)
+    result['local_goal_pos'].append(env.unwrapped.local_goal_pos)
     
     states = None
     for _ in range(max_nr_steps):
@@ -56,6 +60,9 @@ def evaluate_single_map(env, model, max_nr_steps, deterministic=False, seed=0):
         result['orientations'].append(env.unwrapped.cur_orient_matrix)
         result['velocities'].append(env.unwrapped.cur_vel)
         result['rewards'].append(reward)
+        result['observations'].append(obs)
+        result['local_goal_pos'].append(env.unwrapped.local_goal_pos)
+        result['actions'].append(action)
                     
         if done:
             result['done_cause'] = env.unwrapped.done_cause
@@ -100,10 +107,10 @@ class ResultPlotter:
 
     def plot_velocity(self, eval_result, ax):
         # Plot velocity profile in axes ax
-        abs_velocities = [np.linalg.norm(velocity) for velocity in eval_result['velocities']]
-        ax.plot(abs_velocities, color=nobleo_colors['purple']/255)
+        linear_velocity = [velocity[1] for velocity in eval_result['velocities']]
+        ax.plot(linear_velocity, color=nobleo_colors['purple']/255)
         ax.set_xlabel('Steps')
-        ax.set_ylabel('Velocity')
+        ax.set_ylabel('Forward velocity')
         ax.set_title(eval_result['map_name'])
         ax.set_facecolor(self.cfg.done_cause_colors[eval_result['done_cause']])
 
