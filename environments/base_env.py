@@ -70,6 +70,7 @@ class BaseEnv(gym.Env):
         # Inacting the action (i.e. limit velocity to kinematically feasible values and forward simulate robot)
         self.cur_vel = et.apply_kinematic_constraints(self.sample_time, self.cfg.vehicle.kinematics, self.cur_vel, self.cmd_vel)
         pos, orient = et.compute_new_pose(self.sample_time, self.cur_pos, self.cur_orient_matrix, self.cur_vel)
+        self.orient = orient
         self.sim_env.step(pos, orient)
 
         # Updating prev_pos, cur_pos, cur_orient, footprint in global frame, and getting new local goal
