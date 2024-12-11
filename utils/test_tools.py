@@ -37,7 +37,7 @@ def evaluate_single_map(env, model, max_nr_steps, deterministic=False, seed=0):
         'done_cause': None,
         'max_nr_steps': max_nr_steps
     }
-    
+
     result['positions'].append(env.unwrapped.cur_pos)
     result['orientations'].append(env.unwrapped.cur_orient_matrix)
     result['velocities'].append(env.unwrapped.cur_vel)
@@ -168,17 +168,17 @@ class ResultPlotter:
     def plot_grid(self, eval_result, ax):
         # Plot the map grid in axes ax
         ax.set_aspect('equal', adjustable='box')
-        xlim = [0, 0]
-        ylim = [0, 0]
+        xlim = [np.nan, np.nan]
+        ylim = [np.nan, np.nan]
         for box in eval_result['map']:
             min_x = min(vertex[0] for vertex in box)
             min_y = min(vertex[1] for vertex in box)
             width = max(vertex[0] for vertex in box) - min_x
             height = max(vertex[1] for vertex in box) - min_y
-            xlim[0] = min(xlim[0], min_x)
-            xlim[1] = max(xlim[1], min_x + width)
-            ylim[0] = min(ylim[0], min_y)
-            ylim[1] = max(ylim[1], min_y + height)
+            xlim[0] = np.nanmin([xlim[0], min_x])
+            xlim[1] = np.nanmax([xlim[1], min_x + width])
+            ylim[0] = np.nanmin([ylim[0], min_y])
+            ylim[1] = np.nanmax([ylim[1], min_y + height])
             rect = plt.Rectangle((min_x, min_y), width, height, facecolor=nobleo_colors['purple']/255, edgecolor=nobleo_colors['purple']/255)
             ax.add_patch(rect)
         ax.set_xlim(*xlim)
@@ -195,6 +195,30 @@ class ResultPlotter:
         ax.plot(goal_pose[0], goal_pose[1], 'ro')
         ax.plot(positions[:,0], positions[:, 1], color='k')
         ax.set_facecolor(self.cfg.done_cause_colors[done_cause])
+        self.set_map_limits(ax, eval_result)
+
+    def set_map_limits(self, ax, eval_result):
+
+        # X limits
+        xlim = ax.get_xlim()
+        positions = np.array(eval_result['positions'])
+        path_x_min = np.min(positions[:,0])
+        path_x_max = np.max(positions[:,0])
+        path_x_dist = path_x_max - path_x_min
+        x_margin = 0.1 * path_x_dist
+        xlim_min = min(xlim[0], path_x_min - x_margin, eval_result['init_pose'][0] - x_margin, eval_result['goal_pose'][0] - x_margin)
+        xlim_max = max(xlim[1], path_x_max + x_margin, eval_result['init_pose'][0] + x_margin, eval_result['goal_pose'][0] + x_margin)
+        ax.set_xlim(xlim_min, xlim_max)
+
+        # Y limits
+        ylim = ax.get_ylim()
+        path_y_min = np.min(positions[:,1])
+        path_y_max = np.max(positions[:,1])
+        path_y_dist = path_y_max - path_y_min
+        y_margin = 0.1 * path_y_dist
+        ylim_min = min(ylim[0], path_y_min - y_margin, eval_result['init_pose'][1] - y_margin, eval_result['goal_pose'][1] - y_margin)
+        ylim_max = max(ylim[1], path_y_max + y_margin, eval_result['init_pose'][1] + y_margin, eval_result['goal_pose'][1] + y_margin)
+        ax.set_ylim(ylim_min, ylim_max)
 
     def save_plots(self, output_folder, prefix='figure'):
         # Save the specific figures to png files
