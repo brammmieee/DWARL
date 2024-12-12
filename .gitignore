@@ -8,6 +8,7 @@
 /.vscode/*
 /venv/*
 /outputs
+/tests/outputs
 
 .ipynb_checkpoints
 .vscode
