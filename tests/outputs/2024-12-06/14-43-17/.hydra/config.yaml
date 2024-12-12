@@ -1,0 +1,72 @@
+paths:
+  tmp: /tmp/DWARL/check_env
+  data_sets:
+    root: ${paths.tmp}/data_sets
+    paths: ${paths.data_sets.root}/paths
+    maps: ${paths.data_sets.root}/maps
+    data_points: ${paths.data_sets.root}/data_points
+  sim_resources:
+    root: ${paths.tmp}/sim_resources
+    worlds: ${paths.sim_resources.root}/worlds
+    protos: ${paths.sim_resources.root}/protos
+  root: ${hydra:runtime.cwd}/..
+  scripts:
+    root: ${paths.root}/scripts
+    killall_webots: ${paths.scripts.root}/killall_webots.bash
+  resources:
+    maps: ${paths.root}/resources/maps
+    paths: ${paths.root}/resources/paths
+    map_name_lists: ${paths.root}/resources/map_name_lists
+    protos: ${paths.root}/resources/protos
+    worlds: ${paths.root}/resources/worlds
+  outputs:
+    logs: ${hydra:runtime.output_dir}/logs
+    models: ${hydra:runtime.output_dir}/models
+    data_generator_logs: ${hydra:runtime.output_dir}/data_generator_logs
+    training: ${hydra:runtime.cwd}/outputs/training
+    testing: ${hydra:runtime.cwd}/outputs/testing
+seed: -1
+data_generator:
+  map:
+    list: check_env
+    resolution: 0.18
+  path_sampler:
+    name: start2finish
+    reverse_align: false
+    reverse_path: false
+setup:
+  environment:
+    name: cindy
+    render: true
+    map_padding: 0.2
+    goal_tolerance: 0.2
+    vehicle:
+      kinematics:
+        v_max: 0.2
+        v_min: -0.2
+        a_max: 0.3
+        a_min: -0.3
+        omega_max: 0.6
+        omega_min: -0.6
+        alpha_max: 0.8
+        alpha_min: -0.8
+      dimensions:
+        polygon_coordinates:
+        - - 0.16
+          - 0.08
+        - - 0.16
+          - -0.24
+        - - 0.0
+          - -0.4
+        - - -0.16
+          - -0.24
+        - - -0.16
+          - 0.08
+        lidar_y_offset: -0.07075
+        z_pos: 0.05
+  simulation:
+    name: webots
+    sample_time: 0.05
+    mode: fast
+    no_rendering: true
+    world_file_name: webots_world_file.wbt
