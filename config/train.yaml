@@ -4,7 +4,7 @@ defaults:
 - paths:
   - general_sys_paths
 - data_generator:
-  - cindy_train
+  - demo
 - setup:
   - create_setup
 

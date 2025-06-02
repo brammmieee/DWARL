@@ -1,1 +1,1 @@
-docker exec -it my_dwarl_container /bin/bash
+docker exec -it dwarl_container /bin/bash

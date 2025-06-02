@@ -8,13 +8,14 @@ sudo apt update -y
 
 # # Installing apt packages
 # sudo apt install -y docker
-sudo apt remove nvidia-container-toolkit* -y # Remove other versions
-sudo apt install -y nvidia-container-toolkit-base=1.14.6-1
-sudo apt install -y nvidia-container-toolkit=1.14.6-1  
+
+# # Fix for non-responsive GPU 
+# sudo apt remove nvidia-container-toolkit* -y # Remove other versions
+# sudo apt install -y nvidia-container-toolkit-base=1.14.6-1
+# sudo apt install -y nvidia-container-toolkit=1.14.6-1  
+
+sudo apt install -y nvidia-container-toolkit
 
 # Configure nvidia docker runtime environment
 sudo nvidia-ctk runtime configure --runtime=docker
 sudo systemctl restart docker
-
-# Build docker image (check if build exists with `docker images`)
-sudo docker build -t dwarl_container ..
