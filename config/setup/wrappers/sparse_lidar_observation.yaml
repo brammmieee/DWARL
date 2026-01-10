@@ -2,5 +2,5 @@ SparseLidarObservation:     # Name must be the name of the wrapper class
   render: false                   # plot the wrapped observation for debugging
   goal_pos_angle_max: 3.141592653589793  # maximum angle to the goal position [rad]
   goal_pos_angle_min: -3.141592653589793 # minimum angle to the goal position [rad]
-  goal_pos_dist_max: 3                   # maximum distance to the goal position [m]
-  goal_pos_dist_min: 0.05                # minimum distance to the goal position [m]
+  goal_pos_dist_max: 6                   # maximum distance to the goal position [m]
+  goal_pos_dist_min: 0.01                # minimum distance to the goal position [m]
